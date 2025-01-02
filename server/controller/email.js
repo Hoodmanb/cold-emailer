@@ -1,0 +1,25 @@
+const sendEmail = require('../services/emailService');
+
+async function sendEmails(recipients) {
+  try {
+    const emailPromises = recipients.map((recipient, index) => {
+      if (!recipient.to || !recipient.subject || !recipient.body) {
+        throw new Error(`all fields are required`);
+      }
+      return sendEmail({
+        to: recipient.to,
+        subject: recipient.subject,
+        body: recipient.body,
+      });
+    });
+
+    await Promise.all(emailPromises);
+    return { success: true, message: 'All emails sent successfully!' };
+  } catch (error) {
+    return { success: false, message: `Error sending emails: ${error.message}` };
+  }
+}
+
+module.exports = {
+  sendEmails,
+};
