@@ -19,9 +19,14 @@ const Sidebar = ({ setSelectedContent }) => {
 
   return (
     <div className={styles.sidebar}>
-      <h2>
-        <Link href="/" onClick={() => setSelectedContent('welcome')}>Cold Emailer</Link>
-      </h2>
+      <div>
+        <h2 className={styles.header}>
+          <Link href="/" onClick={() => setSelectedContent('welcome')} className={styles.logo}>Cold Emailer</Link>
+        </h2>
+
+        
+      </div>
+      
       <ul>
         <li>
           <div onClick={() => toggleDropdown('emails')} className={styles.dropdownToggle}>
