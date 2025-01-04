@@ -20,7 +20,7 @@ const Home = () => {
   const renderContent = () => {
     switch (selectedContent) {
       case 'welcome':
-        return <WelcomeComponent />;
+        return <WelcomeComponent setSelectedContent={setSelectedContent} />;
       case 'create-email':
         return <CreateEmail />;
       case 'view-email':
