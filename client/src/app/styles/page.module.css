@@ -1,6 +1,7 @@
 /* General Layout */
 .main-section {
   display: flex;
+  flex-direction: row;
   height: 100vh;
 }
 
@@ -98,6 +99,15 @@
   visibility: visible;
 }
 
+/* Content Styling */
+.content {
+  flex: 1;
+  padding: 20px;
+  background-color: var(--background-color);
+  margin-left: 0;
+  transition: margin-left 0.3s ease-in-out;
+}
+
 /* Responsive Styling */
 @media screen and (min-width: 768px) {
   .hamburgerIcon {
@@ -111,5 +121,6 @@
 
   .sidebar {
     transform: translateX(0);
+    position: static;
   }
 }

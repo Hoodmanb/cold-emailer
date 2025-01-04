@@ -1,0 +1,68 @@
+/* Components */
+.primaryButton{
+    background-color: var(--primary-color);
+    color: var(--secondary-color);
+    border: none;
+    padding: 12px 20px;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all .7s;
+    cursor: pointer;
+}
+
+.primaryButton:hover{
+    background-color: var(--accent-color);
+    color: var(--text-color);
+}
+
+/* Welcome Section */
+.welcomeContainer{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin-top: 18px;
+    color: var(--primary-color);
+    text-align: center;
+}
+.welcomeContainer .header{
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.welcomeContainer .header h1{
+    font-size: 64px;
+}
+
+.welcomeContainer h3{
+    font-size: 24px;
+}
+
+.welcomeContainer h4{
+    font-size: 20px;
+}
+
+.welcomeContainer ul{
+    list-style-type: none;
+}
+
+@media screen and (max-width: 768px){
+
+    .welcomeContainer .header{
+        gap: 0;
+    }
+
+    .welcomeContainer .header h1{
+        font-size: 38px;
+    }
+
+    .welcomeContainer h3{
+        font-size: 20px;
+    }
+
+    .welcomeContainer h4{
+        font-size: 18px;
+    }
+}

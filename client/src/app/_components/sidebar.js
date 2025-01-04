@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import styles from '../styles/page.module.css';
 import Image from 'next/image';
-import MenuIcon from '../assets/icons/menu.png'; // Replace with actual menu icon
-import CancelIcon from '../assets/icons/cancel.png'; // Replace with actual cancel icon
+import MenuIcon from '../assets/icons/menu.png';
+import CancelIcon from '../assets/icons/cancel.png';
 
 const Sidebar = ({ setSelectedContent }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
