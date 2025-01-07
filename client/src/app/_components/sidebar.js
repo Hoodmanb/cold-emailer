@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import Link from 'next/link';
 import styles from '../styles/page.module.css';
 import Image from 'next/image';
 import MenuIcon from '../assets/icons/menu.png';
@@ -27,28 +26,30 @@ const Sidebar = ({ setSelectedContent }) => {
 
   return (
     <>
-      <div className={`${styles.hamburgerIcon} ${isSidebarOpen ? styles.hidden : ''}`} onClick={toggleSidebar}>
+      {/* Hamburger Icon */}
+      <div
+        className={`${styles.hamburgerIcon} ${isSidebarOpen ? styles.hidden : ''}`}
+        onClick={toggleSidebar}
+      >
         <Image
-          src={MenuIcon}
-          alt="Menu Icon"
-          width={30}
-          height={30}
-        />
+        src={MenuIcon}
+        alt="Menu Icon"
+        width={30}
+        height={30} />
       </div>
 
       {/* Sidebar */}
       <div className={`${styles.sidebar} ${isSidebarOpen ? styles.open : ''}`}>
         <div className={styles.header}>
-          <Link href="/" onClick={() => setSelectedContent('welcome')} className={styles.logo}>
+          <div onClick={() => setSelectedContent('welcome')} className={styles.logo}>
             Cold Emailer
-          </Link>
+          </div>
           <div className={styles.closeIcon} onClick={toggleSidebar}>
             <Image
-              src={CancelIcon}
-              alt="Cancel Icon"
-              width={30}
-              height={30}
-            />
+            src={CancelIcon}
+            alt="Cancel Icon"
+            width={30}
+            height={30} />
           </div>
         </div>
 
@@ -58,10 +59,9 @@ const Sidebar = ({ setSelectedContent }) => {
               <span>Emails</span>
             </div>
             <ul className={`${styles.dropdownMenu} ${emailsOpen ? styles.open : ''}`}>
-              <li><Link href="/create-email" onClick={() => setSelectedContent('create-email')}>Create New Email</Link></li>
-              <li><Link href="/view-emails" onClick={() => setSelectedContent('view-email')}>View All Emails</Link></li>
-              <li><Link href="/send-email" onClick={() => setSelectedContent('send-email')}>Send Email</Link></li>
-              <li><Link href="/schedule-email" onClick={() => setSelectedContent('schedule-email')}>Schedule Email</Link></li>
+              <li onClick={() => setSelectedContent('create-email')}>Create New Email</li>
+              <li onClick={() => setSelectedContent('view-email')}>View All Emails</li>
+              <li onClick={() => setSelectedContent('schedule-email')}>Schedule Email</li>
             </ul>
           </li>
           <li>
@@ -69,7 +69,7 @@ const Sidebar = ({ setSelectedContent }) => {
               <span>Categories</span>
             </div>
             <ul className={`${styles.dropdownMenu} ${categoriesOpen ? styles.open : ''}`}>
-              <li><Link href="/manage-categories" onClick={() => setSelectedContent('manage-categories')}>Manage Categories</Link></li>
+              <li onClick={() => setSelectedContent('manage-categories')}>Manage Categories</li>
             </ul>
           </li>
           <li>
@@ -77,7 +77,8 @@ const Sidebar = ({ setSelectedContent }) => {
               <span>Recipients</span>
             </div>
             <ul className={`${styles.dropdownMenu} ${recipientsOpen ? styles.open : ''}`}>
-              <li><Link href="/manage-recipients" onClick={() => setSelectedContent('manage-recipients')}>Manage Recipients</Link></li>
+              <li onClick={() => setSelectedContent('add-recipient')}>Add Recipient</li>
+              <li onClick={() => setSelectedContent('manage-recipients')}>Manage Recipients</li>
             </ul>
           </li>
         </ul>

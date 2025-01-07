@@ -7,12 +7,12 @@ import styles from './styles/page.module.css';
 import Sidebar from './_components/sidebar';
 import CreateEmail from './_components/createEmail';
 import ViewEmail from './_components/viewEmail';
-import SendMail from './_components/sendMail';
 import ScheduleMail from './_components/scheduleMail';
 import ManageCategories from './_components/manageCategories';
 import ManageRecipients from './_components/manageRecipients';
 import PageNotFound from './_components/pageNotFound';
 import WelcomeComponent from './_components/welcome';
+import AddRecipient from './_components/addRecipient'
 
 const Home = () => {
   const [selectedContent, setSelectedContent] = useState('welcome');
@@ -25,12 +25,12 @@ const Home = () => {
         return <CreateEmail />;
       case 'view-email':
         return <ViewEmail />;
-      case 'send-email':
-        return <SendMail />;
       case 'schedule-email':
         return <ScheduleMail />;
       case 'manage-categories':
         return <ManageCategories />;
+      case 'add-recipient':
+        return <AddRecipient />;
       case 'manage-recipients':
         return <ManageRecipients />;
       default:

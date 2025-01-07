@@ -33,6 +33,7 @@
   text-decoration: none;
   color: var(--hover-color);
   font-size: 32px;
+  cursor: pointer;
 }
 
 .sidebar ul {
@@ -44,6 +45,7 @@
   margin: 10px 0;
   color: var(--secondary-color);
   padding-left: 8px;
+  cursor: pointer;
 }
 
 .sidebar .dropdownToggle {
@@ -66,12 +68,13 @@
   opacity: 1;
 }
 
-.sidebar .dropdownMenu li a {
+.sidebar .dropdownMenu li {
   text-decoration: none;
+  cursor: pointer;
   color: var(--secondary-color);
 }
 
-.sidebar .dropdownMenu li a:hover {
+.sidebar .dropdownMenu li:hover {
   color: var(--hover-color);
 }
 

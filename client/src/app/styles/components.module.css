@@ -145,14 +145,17 @@
 
     .welcomeContainer .header h1{
         font-size: 38px;
+        margin-top: 32px;
     }
 
     .welcomeContainer h3{
         font-size: 20px;
+        margin-top: 32px;
     }
 
     .welcomeContainer h4{
         font-size: 18px;
+        margin-top: 32px;
     }
 }
 
