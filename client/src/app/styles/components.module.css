@@ -11,10 +11,99 @@
     cursor: pointer;
 }
 
-.primaryButton:hover{
+.formButton{
+    background-color: var(--primary-color);
+    color: var(--secondary-color);
+    border: none;
+    margin-top: 18px;
+    margin-left: auto;
+    width: 220px;
+    height: 40px;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all .7s;
+    cursor: pointer;
+}
+
+.primaryButton:hover, .formButton:hover{
     background-color: var(--accent-color);
     color: var(--text-color);
 }
+
+/* Typography */
+.componentHeader{
+    color: var(--primary-color);
+    font-size: 32px;
+    font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+    font-weight: 600;
+}
+
+/* Form */
+.formGroup{
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 14px;
+}
+
+.formGroup label{
+    font-size: 20px;
+    color:var(--primary-color)
+}
+
+.formGroup input, .formGroup textarea{
+    padding: 8px 16px;
+    font-size: 16px;
+    color: var(--text-color);
+    outline: none;
+    border: 1.5px solid var(--secondary-color);
+    border-radius: 4px;
+}
+
+.formGroup input:focus{
+    border: 2px solid var(--accent-color);
+    outline: none;
+    box-shadow: inset 0 0 5px var(--secondary-color);
+}
+
+.responseMessage {
+    margin-top: 10px;
+    font-size: 14px;
+    text-align: center;
+}
+  
+.responseMessage.success {
+    color: var(--success-color);
+}
+  
+.responseMessage.error {
+    color: var(--error-color);
+}
+  
+
+@media screen and (max-width: 768px){
+    .componentHeader{
+        font-size: 28px;
+    }
+
+    .primaryButton, .formButton{
+        font-size: 14px;
+    }
+
+    .formButton{
+        width: 160px;
+    }
+
+    .formGroup label{
+        font-size: 18px;
+    }
+    
+    .formGroup input, .formGroup textarea{
+        font-size: 14px;
+    }
+}
+
 
 /* Welcome Section */
 .welcomeContainer{
@@ -65,4 +154,10 @@
     .welcomeContainer h4{
         font-size: 18px;
     }
+}
+
+
+/* Create Email */
+.emailForm{
+    padding: 0 24px;
 }
