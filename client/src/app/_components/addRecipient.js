@@ -8,6 +8,13 @@ const addRecipient = () => {
   const [category, setCategory] = useState('');
   const [message, setMessage] = useState(null);
 
+  // Dummy data for categories
+  const [categories] = useState([
+    { id: 1, category: 'Technology' },
+    { id: 2, category: 'Health' },
+    { id: 3, category: 'Education' },
+  ]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -59,12 +66,21 @@ const addRecipient = () => {
         </div>
         <div className={styles.formGroup}>
           <label htmlFor="category">Category:</label>
-          <input
-            type="text"
+          <select
             id="category"
             value={category}
-            onChange={(e) => setCategory(e.target.value)} // Correctly using setCategory
-          />
+            onChange={(e) => setCategory(e.target.value)}
+            required
+          >
+            <option value="" disabled>
+              Select a category
+            </option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.category}>
+                {cat.category}
+              </option>
+            ))}
+          </select>
         </div>
         <button type="submit" className={styles.formButton}>
           Add Recipient
