@@ -14,7 +14,7 @@ const update = async (req, res) => {
 }
 
 // Method to delete recipient data by email
-const deleteRecipient = (req, res) => {
+const deleteRecipient = async (req, res) => {
   const email = req.body.email
   try {
     const deletedRecipient = await Recipient.deleteRecipient(email);
@@ -27,7 +27,7 @@ const deleteRecipient = (req, res) => {
 }
 
 // Creating a new recipient
-const create = (req, res) => {
+const create = async (req, res) => {
   const {email, name, category} = req.body
   try {
     const newRecipient = await Recipient.createRecipient(email, name, category);
@@ -64,7 +64,7 @@ const fetchOne = async (req, res) => {
 }
 
 module.exports = {
-  create, fetchOne
+  create, fetchOne,
   deleteRecipient,
   update, fetchAll
 };
