@@ -1,0 +1,15 @@
+:root {
+    --primary-color: #331c08; 
+    --secondary-color: #b3b3b3; 
+    --accent-color: #664c36; 
+    --background-color: #f2f2f2;
+    --text-color: #000000;
+    --hover-color: #ffd3ac;
+    --success-color: #008000;
+    --error-color: #ff0000;
+  
+    --primary-font: 'Roboto', sans-serif;
+    --secondary-font: 'Open Sans', sans-serif;
+    --heading-font: 'Montserrat', sans-serif;
+  }
+  
