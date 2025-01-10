@@ -52,7 +52,7 @@
     color:var(--primary-color)
 }
 
-.formGroup input, .formGroup textarea, .formGroup select{
+.formGroup input, .formGroup textarea, .formGroup select, .input{
     padding: 8px 16px;
     font-size: 16px;
     color: var(--text-color);
@@ -99,7 +99,7 @@
         font-size: 18px;
     }
     
-    .formGroup input, .formGroup textarea, .formGroup select{
+    .formGroup input, .formGroup textarea, .formGroup select, .input{
         font-size: 14px;
     }
 }
@@ -204,42 +204,44 @@
     cursor: pointer;
 }
   
-  .categoriesTable {
+.categoriesTable {
     width: 100%;
     border-collapse: collapse;
-  }
+}
   
-  .categoriesTable th, .categoriesTable td {
+.categoriesTable th, .categoriesTable td {
     border: 1px solid var(--accent-color);
     padding: 12px;
     text-align: left;
-  }
+}
   
-  .categoriesTable th {
+.categoriesTable th {
     background-color: var(--secondary-color);
     font-size: 20px;
-  }
+}
 
-  .editCategoryInput{
+.editCategoryInput{
     border: 1px solid var(--text-color);
     background-color: var(--background-color)
-  }
+}
 
-  .categoriesTable button{
+.categoriesTable button, .manageRecipients .actionButton{
     padding: 6px 18px;
     font-weight: 600;
     border: none;
     cursor: pointer;
-  }
-  .categoriesTable button.cancelbtn{
+}
+
+.categoriesTable button.cancelbtn, .cancelButton{
     color: var(--accent-color);
-  }
-  .categoriesTable button.savebtn{
+}
+
+.categoriesTable button.savebtn, .saveButton{
     color: var(--success-color);
-  }
-  .categoriesTable button.deletebtn{
+}
+.categoriesTable button.deletebtn, .deleteButton{
     color: var(--error-color);
-  }
+}
   
   @media screen and (max-width: 768px){
     .addCategory input{
@@ -250,5 +252,57 @@
         padding: 8px 12px;
         font-size: 12px;
         font-weight: 600;
+    }
+}
+
+
+/* Manage Recipients */
+.manageRecipients {
+  padding: 20px;
+}
+
+.componentHeader {
+  font-size: 24px;
+  margin-bottom: 20px;
+}
+
+.search{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.searchBar {
+  margin-bottom: 10px;
+}
+
+.filter {
+  margin-bottom: 20px;
+}
+
+.recipientsTable {
+  width: 100%;
+  border-collapse: collapse;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.recipientsTable th,
+.recipientsTable td {
+  padding: 10px;
+  text-align: left;
+  border: 1px solid var(--accent-color);
+}
+
+.recipientsTable th {
+  background-color: var(--secondary-color);
+}
+
+@media screen and (max-width: 768px){
+    .search{
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
     }
 }
