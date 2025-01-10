@@ -40,7 +40,7 @@ const CreateEmail = () => {
       let response;
       if (recipients.length === 1) {
         // Use the /send route for a single recipient
-        response = await axios.post('http://localhost:5000/api/emails/send', {
+        response = await axios.post('http://localhost:5000/api/email/send', {
           to: recipients[0],
           subject: formData.subject,
           body: formData.body,

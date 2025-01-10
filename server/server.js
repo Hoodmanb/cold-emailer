@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const connectDB = require('./utils/db');
+const cors = require('cors')
 
 const recipientRouter = require('./routes/recipient.js');
 const emailRouter = require('./routes/email.js');
@@ -10,7 +11,9 @@ const categoryRouter = require('./routes/category.js')
 const { scheduleEmails } = require('./services/scheduler');
 
 const app = express();
+
 app.use(express.json());
+app.use(cors())
 
 // Connect DB
 connectDB();

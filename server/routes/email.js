@@ -27,6 +27,7 @@ emailRouter.post('/send', async (req, res) =>{
       return res.json({message:'missing field'})
     }
     const result = await sendEmail({to, subject, body})
+    console.log('sent')
     res.status(200).json({message:'email sent successfully'})
   }catch(error){
     console.log(error)
