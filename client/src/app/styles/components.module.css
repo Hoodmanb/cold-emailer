@@ -31,12 +31,31 @@
     color: var(--text-color);
 }
 
+.buttonLink{
+    background-color: transparent;
+    color: var(--accent-color);
+    border: none;
+    padding:12px  8px;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.buttonLink:hover{
+    color: var(--primary-color);
+}
+
 /* Typography */
 .componentHeader{
     color: var(--primary-color);
     font-size: 32px;
     font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
     font-weight: 600;
+}
+
+.btnGroup{
+    display: flex;
+    gap: 16px
 }
 
 /* Form */
@@ -111,9 +130,15 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    margin-top: 18px;
+    padding: 0;
     color: var(--primary-color);
     text-align: center;
+}
+.welcomeContainer .navbar{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
 }
 .welcomeContainer .header{
     display: flex;
@@ -145,7 +170,7 @@
 
     .welcomeContainer .header h1{
         font-size: 38px;
-        margin-top: 32px;
+        margin-top: 36px;
     }
 
     .welcomeContainer h3{
