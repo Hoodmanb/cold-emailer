@@ -1,7 +1,7 @@
-'use client'
-
+'use client';
 import React, { useState } from 'react';
 import styles from '../styles/components.module.css';
+import Link from 'next/link';
 
 const SignupForm = ({ setSelectedContent }) => {
   const [formData, setFormData] = useState({
@@ -28,8 +28,8 @@ const SignupForm = ({ setSelectedContent }) => {
 
   return (
     <div className={styles.signupContainer}>
-      <h1>Sign Up</h1>
-      <form className={styles.form} onSubmit={handleSubmit}>
+      <h1 className={styles.componentHeader}>Please take your time to signup</h1>
+      <form className={styles.formGroup} onSubmit={handleSubmit}>
         <input
           type="text"
           name="fullName"
@@ -81,14 +81,16 @@ const SignupForm = ({ setSelectedContent }) => {
         </button>
       </form>
 
-      <div className={styles.loginRedirect}>
+      <div className={styles.flexText}>
         <p>Already have an account?</p>
+
+        <Link href="/signin" className={styles.buttonLink}>
         <button
           className={styles.buttonLink}
-          onClick={() => setSelectedContent('sign-in')}
         >
           Sign In
         </button>
+        </Link>
       </div>
     </div>
   );
