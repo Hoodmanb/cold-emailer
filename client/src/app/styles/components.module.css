@@ -89,8 +89,8 @@
 }
 
 .signupContainer{
-    width: 70%;
-    margin: 36px auto;
+    width: 60%;
+    margin: 10% auto;
 }
 
 .responseMessage {
@@ -134,6 +134,10 @@
     
     .formGroup input, .formGroup textarea, .formGroup select, .input{
         font-size: 14px;
+    }
+
+    .signupContainer{
+        width: 80%;
     }
 }
 

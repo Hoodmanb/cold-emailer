@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import styles from '../styles/components.module.css';
 import Link from 'next/link';
 
-const SignupForm = ({ setSelectedContent }) => {
+const SignupForm = () => {
   const [formData, setFormData] = useState({
     fullName: '',
     username: '',
