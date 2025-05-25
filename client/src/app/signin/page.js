@@ -25,6 +25,7 @@ const SignInForm = () => {
 
   return (
     <div className={styles.signupContainer}>
+      <div className={styles.imageContainer}>
       <h1 className={styles.componentHeader}>Welcome Back! Please sign in</h1>
       <form className={styles.formGroup} onSubmit={handleSubmit}>
         <input
@@ -57,6 +58,7 @@ const SignInForm = () => {
             Register
           </button>
         </Link>
+      </div>
       </div>
     </div>
   );

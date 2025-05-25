@@ -19,7 +19,7 @@ const addRecipient = () => {
     e.preventDefault();
 
     try {
-      const response = await axios.post('http://localhost:5000/api/recipients/create', {
+      const response = await axios.post('http://localhost:5000/api/recipient/create', {
         email,
         name,
         category,
