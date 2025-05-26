@@ -91,24 +91,27 @@
 .signupContainer{
     width: 70%;
     height: 100vh;
-    margin: 5% auto;
+    margin: 8% auto;
 }
 .flexTextImage {
     display: flex;
     justify-content: space-around;
     align-items: center;
-    gap: 48px;
   }
   
   .flexTextImage section:first-child {
-    flex: 1.2;
-    max-width: 50%;
+    flex: 1;
   }
   
   .flexTextImage section:last-child {
     flex: 1;
     display: flex;
     justify-content: center;
+  }
+
+  .mailImg{
+    width: 500px;
+    height: 500px;
   }
 
 .responseMessage {
@@ -131,6 +134,13 @@
     gap: 8px;
     align-items: center;
     margin-top: 16px;
+}
+
+@media screen and (max-width: 966px){
+    .mailImg{
+        width: 350px;
+        height: 300px;
+      }
 }
 
 @media screen and (max-width: 768px){
@@ -157,6 +167,20 @@
     .signupContainer{
         width: 80%;
     }
+    .flexTextImage {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+    
+      .mailImg {
+        display: none;
+      }
+    
+      .formGroup {
+        width: 100%;
+        max-width: 400px;
+      }
 }
 
 
