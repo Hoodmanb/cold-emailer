@@ -89,9 +89,27 @@
 }
 
 .signupContainer{
-    width: 60%;
-    margin: 10% auto;
+    width: 70%;
+    height: 100vh;
+    margin: 5% auto;
 }
+.flexTextImage {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    gap: 48px;
+  }
+  
+  .flexTextImage section:first-child {
+    flex: 1.2;
+    max-width: 50%;
+  }
+  
+  .flexTextImage section:last-child {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+  }
 
 .responseMessage {
     margin-top: 10px;
