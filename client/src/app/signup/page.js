@@ -3,14 +3,15 @@ import React, { useState } from 'react';
 import styles from '../styles/components.module.css';
 import Link from 'next/link';
 import Image from 'next/image';
-import { auth } from '../firebaseConfig';
+import { auth } from '../firebaseConfig'; 
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import mailImg from '../assets/Images/signMail.png';
 
-
 const SignupForm = () => {
   const router = useRouter();
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -30,6 +31,8 @@ const SignupForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
 
     try {
       const userCredential = await createUserWithEmailAndPassword(
@@ -44,27 +47,18 @@ const SignupForm = () => {
         displayName: formData.username,
       });
 
-      const idToken = await user.getIdToken();
-
-      const response = await fetch('/api/auth/create', { //placeholder URL, replace with backend endpoint
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.emailGeneratedPassword,
-          firebaseToken: idToken,
-        }),
-      });
-
-      const result = await response.json();
-      console.log('Backend response:', result);
-
-      router.push('/signin'); 
+      // The emailGeneratedPassword is stored in state but not sent anywhere
+      console.log('Email Generated Password (saved locally):', formData.emailGeneratedPassword);
+      setSuccess('Signup successful! You can now sign in.')
+      router.push('/signin');
     } catch (error) {
       console.error('Signup error:', error.message);
+      if (error.code === 'auth/email-already-in-use') {
+        setError('This email is already in use. Please try another one.');
+      }else{
+        setError(error.message);
+      }
+      
     }
   };
 
@@ -73,11 +67,7 @@ const SignupForm = () => {
       <h1 className={styles.componentHeader}>Please take your time to signup</h1>
       <div className={styles.flexTextImage}>
         <section>
-          <Image
-            src={mailImg}
-            alt="Sign Up Image"
-            className={styles.mailImg}
-          />
+          <Image src={mailImg} alt="Sign Up Image" className={styles.mailImg} />
         </section>
 
         <section>
@@ -139,6 +129,9 @@ const SignupForm = () => {
                 <button className={styles.buttonLink}>Sign In</button>
               </Link>
             </div>
+
+            {error && <p className={styles.errorText}>{error}</p>}
+            {success && <p className={styles.successText}>{error}</p>}
           </div>
         </section>
       </div>
