@@ -40,7 +40,7 @@ const SignInForm = () => {
       console.log('User signed in:', user);
 
       // Redirect to dashboard or home
-      router.push('/');
+      router.push('/home');
     } catch (error) {
       console.error('Sign-in error:', error.message);
       setError('Invalid email or password. Please try again.');

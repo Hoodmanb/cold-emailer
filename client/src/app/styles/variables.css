@@ -12,4 +12,7 @@
     --secondary-font: 'Open Sans', sans-serif;
     --heading-font: 'Montserrat', sans-serif;
   }
-  
+ 
+*{
+  overflow: hidden;
+}
