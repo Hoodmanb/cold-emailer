@@ -1,19 +1,16 @@
 const express = require('express')
 const templateRouter = express.Router()
 
-const {
-  create, update,
-  deleteTemplate, getAll,
-  getOne} = require('../controller/template.js')
+const controller = require('../controller/template.js')
 
-templateRouter.post('/create', create)
+templateRouter.post('/', controller.create)
 
-templateRouter.put('/update', update)
+templateRouter.put('/:id', controller.update)
 
-templateRouter.delete('/delete', deleteTemplate)
+templateRouter.delete('/:id', controller.delete)
 
-templateRouter.get('/getAll', getAll)
+templateRouter.get('/', controller.getAll)
 
-templateRouter.post('/getOne', getOne)
+templateRouter.post('/:id', controller.getOne)
 
 module.exports = templateRouter;
