@@ -13,7 +13,6 @@ const categoryRouter = require('./routes/category.js')
 const scheduleRouter = require('./routes/schedule');
 const runSchedule = require('./services/scheduler.js');
 
-//const swaggerDocument = YAML.load('./swagger.yaml');
 const path = require('path');
 const swaggerDocument = YAML.load(path.join(__dirname, 'swagger.yaml'));
 
@@ -23,7 +22,6 @@ const app = express();
 app.use(express.json());
 app.use(cors())
 
-// Connect DB
 connectDB();
 
 // Routes
