@@ -15,7 +15,7 @@ const runSchedule = require('./services/scheduler.js');
 
 //const swaggerDocument = YAML.load('./swagger.yaml');
 const path = require('path');
-const swaggerDocument = yaml.load(path.join(__dirname, 'swagger.yaml'));
+const swaggerDocument = YAML.load(path.join(__dirname, 'swagger.yaml'));
 
 
 const app = express();
