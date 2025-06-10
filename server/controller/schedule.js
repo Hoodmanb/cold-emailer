@@ -46,6 +46,10 @@ exports.create = async (req, res) => {
 exports.get = async (req, res) => {
   try {
     const schedules = await Schedule.find();
+    if (schedules.length === 0) {
+      console.log("No schedules found.");
+      return res.status(404).json({ message: "No schedules found" });
+    }
     return res.json({ message: 'Fetched', schedules });
   } catch (error) {
     return res.status(500).json({ message: 'Error fetching schedules', error });

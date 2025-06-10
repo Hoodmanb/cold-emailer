@@ -7,7 +7,7 @@ const {sendEmails} = require('../controller/email.js')
 // Route to send emails
 emailRouter.post('/send/bulk', async (req, res) => {
   try {
-    const result = await sendEmails(req.body.recipients);
+    const result = await sendEmails(req.body.emails);
 
     if (result.success) {
       return res.status(200).json({ message: 'All emails sent successfully!' });

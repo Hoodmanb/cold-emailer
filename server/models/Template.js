@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const TemplateSchema = new mongoose.Schema({
   subject: { type: String, required: true },
   body: { type: String, required: true },
+  name:{type:String, required:true}
 });
 
 // Create and export the Template model

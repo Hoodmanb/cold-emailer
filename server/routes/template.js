@@ -11,6 +11,6 @@ templateRouter.delete('/:id', controller.delete)
 
 templateRouter.get('/', controller.getAll)
 
-templateRouter.post('/:id', controller.getOne)
+templateRouter.get('/:id', controller.getOne)
 
 module.exports = templateRouter;

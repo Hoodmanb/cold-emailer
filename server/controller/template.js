@@ -1,8 +1,9 @@
 const Template = require("../models/Template.js");
 
 exports.create = async (req, res) => {
+  const {name, subject, body} = req.body
   try {
-    const newTemplate = new Template.create({ subject, body });
+    const newTemplate = await Template.create({ subject, body, name });
     console.log("Template created successfully:", newTemplate);
     return res.status(200).json({ message: "template created successfully" });
   } catch (error) {
@@ -12,7 +13,7 @@ exports.create = async (req, res) => {
 };
 
 exports.update = async (req, res) => {
-  const { newData } = req.body;
+  const { subject, body, name } = req.body;
   const { id } = req.params;
   try {
     const template = await Template.findById(id);
@@ -21,8 +22,9 @@ exports.update = async (req, res) => {
       return res.status(404).json({ message: "template not found" });
     }
 
-    // Update template fields
-    Object.assign(template, newData);
+    if (subject !== undefined) template.subject = subject;
+    if (body !== undefined) template.body = body;
+    if (name !== undefined) template.name = name;
 
     // Save the updated template
     await template.save();
@@ -59,9 +61,7 @@ exports.getAll = async (req, res) => {
       return res.status(404).json({ message: "No template found" });
     }
     console.log("Templates fetched:", templates);
-    res
-      .status(200)
-      .json({ message: "retrieved successfully", data: templates });
+    res.status(200).json({ message: "retrieved successfully", data: templates });
       return
   } catch (error) {
     console.error("Error fetching all templates:", error);

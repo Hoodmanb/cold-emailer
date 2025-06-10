@@ -1,18 +1,19 @@
 const Recipient = require("../models/Recipient.js");
 
-// update recipient
 exports.update = async (req, res) => {
-  const { newData } = req.body;
+  const { name, newEmail, category } = req.body;
   const { email } = req.params;
+
   try {
-    // Find recipient by email
     const recipient = await Recipient.findOne({ email });
     if (!recipient) {
       console.log("Recipient not found");
       return res.status(404).json({ message: "recipient not found" });
     }
 
-    Object.assign(recipient, newData);
+    if (name !== undefined) recipient.name = name;
+    if (newEmail !== undefined) recipient.email = newEmail;
+    if (category !== undefined) recipient.category = category;
 
     await recipient.save();
     console.log("Recipient updated:", recipient);
@@ -23,6 +24,7 @@ exports.update = async (req, res) => {
   }
 };
 
+
 // delete recipient data by email
 exports.delete = async (req, res) => {
   const { email } = req.params;
@@ -32,7 +34,7 @@ exports.delete = async (req, res) => {
       return res.status(404).json({ message: "recipient not found" });
     } else {
       console.log("Recipient deleted successfully.");
-      return res.status(204);
+      return res.status(204).send();
     }
   } catch (error) {
     console.error("Error deleting recipient by email:", error);
@@ -56,7 +58,7 @@ exports.create = async (req, res) => {
       .json({ message: "created successfully", data: newRecipient });
   } catch (error) {
     console.error("Error creating recipient:", error);
-    return res.status(500).json({ message: "error creating recipient", error });
+    return res.status(500).json({ message: error.message, error });
   }
 };
 
@@ -64,13 +66,13 @@ exports.create = async (req, res) => {
 exports.get = async (req, res) => {
   try {
     // Retrieve all recipients from the database
-    const recipients = await this.find({});
+    const recipients = await Recipient.find({});
     if (recipients.length === 0) {
       console.log("No recipients found.");
       return res.status(404).json({ message: "no recipient found" });
     }
     console.log("Recipients fetched:", recipients);
-    return res.status(200).json({ message: "successful", data: recipients });
+    return res.status(200).json({ message: "retrieved successfully", data: recipients });
   } catch (error) {
     console.error("Error fetching all recipients:", error);
     return res
@@ -83,12 +85,12 @@ exports.getOne = async (req, res) => {
   const { email } = req.params;
   try {
     // Find recipient by email
-    const recipient = await this.findOne({ email });
+    const recipient = await Recipient.findOne({ email });
     if (!recipient) {
       return res.status(404).json({ message: "recipient not found" });
     }
     console.log(recipient);
-    return res.status(200).json({ message: "successful", data: recipient });
+    return res.status(200).json({ message: "retrieved successfully", data: recipient });
   } catch (error) {
     console.error("Error fetching recipient", error);
     return res.status(500).json({ message: "error fetching recipient", error });
