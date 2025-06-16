@@ -16,7 +16,7 @@ async function sendEmails(recipients) {
     await Promise.all(emailPromises);
     return { success: true, message: 'All emails sent successfully!' };
   } catch (error) {
-    return { success: false, message: `Error sending emails: ${error.message}` };
+    return { success: false, error };
   }
 }
 

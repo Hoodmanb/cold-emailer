@@ -1,20 +1,16 @@
 const express = require('express');
 const recipientRouter = express.Router();
 
-const { 
-  create, fetchOne,
-  deleteRecipient,
-  update, fetchAll
-} = require('../controller/recipient.js');
+const controller = require('../controller/recipient.js');
 
-recipientRouter.post('/create', create)
+recipientRouter.post('/', controller.create)
 
-recipientRouter.delete('/delete', deleteRecipient)
+recipientRouter.delete('/:email', controller.delete)
 
-recipientRouter.put('/update', update)
+recipientRouter.put('/:email', controller.update)
 
-recipientRouter.post('/fetchone', fetchOne)
+recipientRouter.get('/:email', controller.getOne)
 
-recipientRouter.get('/fetchall', fetchAll)
+recipientRouter.get('/', controller.get)
 
 module.exports = recipientRouter;

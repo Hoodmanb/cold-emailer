@@ -5,9 +5,9 @@ const sendEmail = require('../services/emailService');
 const {sendEmails} = require('../controller/email.js')
 
 // Route to send emails
-emailRouter.post('/sendMany', async (req, res) => {
+emailRouter.post('/send/bulk', async (req, res) => {
   try {
-    const result = await sendEmails(req.body.recipients); // Pass recipients from the request body
+    const result = await sendEmails(req.body.emails);
 
     if (result.success) {
       return res.status(200).json({ message: 'All emails sent successfully!' });
@@ -15,31 +15,27 @@ emailRouter.post('/sendMany', async (req, res) => {
       return res.status(500).json({ message: result.message });
     }
   } catch (error) {
-    console.error('Error in /sendMany:', error);
-    res.status(500).json({ message: 'An error occurred', error: error.message });
+    console.error('Error in /send/bulk:', error);
+    res.status(500).json({ message: 'An error occurred', error});
   }
 });
 
 emailRouter.post('/send', async (req, res) =>{
   const {to, subject, body} = req.body
   try{
+    let errorMessage
     if(!to || !subject || !body){
-      return res.json({message:'missing field'})
+      !to ? errorMessage.to = "recipient is required" : ""
+      !subject ? errorMessage.subject = "subject is required" : ""
+      !body ? errorMessage.body = "body is required" : ""
+      return res.status(400).json({message:'missing required field', error:errorMessage})
     }
     const result = await sendEmail({to, subject, body})
-    console.log('sent')
     res.status(200).json({message:'email sent successfully'})
   }catch(error){
     console.log(error)
+    res.status(500).json({message:"error sending email", error})
   }
 })
-
-// emailRouter.post('/schedule-email', async (req, res) => {
-//   try{
-    
-//   }catch(error){
-    
-//   }
-// })
 
 module.exports = emailRouter
