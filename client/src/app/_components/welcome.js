@@ -2,10 +2,12 @@ import React from 'react';
 import styles from '../styles/components.module.css';
 import Image from 'next/image';
 import PenIcon from '../assets/icons/pen.png';
+import Navbar from './navbar'; 
 
 const Welcome = ({ setSelectedContent }) => {
   return (
     <div className={styles.welcomeContainer}>
+      <Navbar />
       <div className={styles.header}>
         <h1>Welcome to Cold Emailer</h1>
         <Image

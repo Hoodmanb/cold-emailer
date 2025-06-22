@@ -1,28 +1,27 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styles from '../styles/components.module.css';
 import Link from 'next/link';
 import Image from 'next/image';
 import mailImg from '../assets/Images/signMail.png';
-import { auth } from '../firebaseConfig'; // adjust the path if needed
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../firebase/firebaseConfig';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '../context/AuthContext'; 
 
 const SignInForm = () => {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
-
+  const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const router = useRouter();
+  const { user } = useAuth(); 
+
+  useEffect(() => {
+    if (user) router.push('/home');
+  }, [user, router]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -30,20 +29,11 @@ const SignInForm = () => {
     setError('');
 
     try {
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        formData.email,
-        formData.password
-      );
-
-      const user = userCredential.user;
-      console.log('User signed in:', user);
-
-      // Redirect to dashboard or home
+      await signInWithEmailAndPassword(auth, formData.email, formData.password);
       router.push('/home');
     } catch (error) {
-      console.error('Sign-in error:', error.message);
       setError('Invalid email or password. Please try again.');
+      console.error('Sign-in error:', error.message);
     }
   };
 
@@ -79,7 +69,7 @@ const SignInForm = () => {
 
           <div className={styles.flexText}>
             <p>Don’t have an account?</p>
-            <Link href="/signup" className={styles.buttonLink}>
+            <Link href="/signup">
               <button className={styles.buttonLink}>Register</button>
             </Link>
           </div>

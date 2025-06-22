@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import styles from '../styles/components.module.css';
 import Link from 'next/link';
 import Image from 'next/image';
-import { auth } from '../firebaseConfig'; 
+import { auth } from '../firebase/firebaseConfig'; 
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import mailImg from '../assets/Images/signMail.png';
@@ -47,18 +47,17 @@ const SignupForm = () => {
         displayName: formData.username,
       });
 
-      // The emailGeneratedPassword is stored in state but not sent anywhere
       console.log('Email Generated Password (saved locally):', formData.emailGeneratedPassword);
-      setSuccess('Signup successful! You can now sign in.')
+      setSuccess('Signup successful! Redirecting to sign in...');
       router.push('/signin');
+
     } catch (error) {
       console.error('Signup error:', error.message);
       if (error.code === 'auth/email-already-in-use') {
         setError('This email is already in use. Please try another one.');
-      }else{
+      } else {
         setError(error.message);
       }
-      
     }
   };
 
@@ -67,7 +66,13 @@ const SignupForm = () => {
       <h1 className={styles.componentHeader}>Please take your time to signup</h1>
       <div className={styles.flexTextImage}>
         <section>
-          <Image src={mailImg} alt="Sign Up Image" className={styles.mailImg} />
+          <Image
+            src={mailImg}
+            alt="Sign Up Image"
+            width={500}
+            height={500}
+            className={styles.mailImg}
+          />
         </section>
 
         <section>
@@ -110,14 +115,14 @@ const SignupForm = () => {
                 minLength={8}
                 required
               />
-              <input
+              {/* <input
                 type="text"
                 name="emailGeneratedPassword"
                 placeholder="Email Generated Password"
                 className={styles.input}
                 value={formData.emailGeneratedPassword}
                 onChange={handleChange}
-              />
+              /> */}
               <button type="submit" className={styles.primaryButton}>
                 Sign Up
               </button>
@@ -125,13 +130,13 @@ const SignupForm = () => {
 
             <div className={styles.flexText}>
               <p>Already have an account?</p>
-              <Link href="/signin" className={styles.buttonLink}>
+              <Link href="/signin">
                 <button className={styles.buttonLink}>Sign In</button>
               </Link>
             </div>
 
             {error && <p className={styles.errorText}>{error}</p>}
-            {success && <p className={styles.successText}>{error}</p>}
+            {success && <p className={styles.successText}>{success}</p>}
           </div>
         </section>
       </div>
