@@ -1,106 +1,150 @@
-const Schedule = require('../models/Schedule');
-const sendEmail = require('./emailService');
+const Schedule = require("../models/Schedule");
+const queueEmail = require("../utils/queue");
 
-// Helper to get the correct template for the current round
-const getTemplateByRound = (job) => {
-  switch (job.round) {
-    case 0:
-      return job.template;
-    case 1:
-      return job.templateOne;
-    case 2:
-      return job.templateTwo;
-    case 3:
-      return job.templateThree;
+const statusOrder = [
+  "scheduleOne",
+  "scheduleTwo",
+  "scheduleThree",
+  "scheduleFour",
+];
+
+const getTemplateByStatusKey = (schedule, key) => {
+  switch (key) {
+    case "scheduleOne":
+      return schedule.template;
+    case "scheduleTwo":
+      return schedule.templateOne;
+    case "scheduleThree":
+      return schedule.templateTwo;
+    case "scheduleFour":
+      return schedule.templateThree;
     default:
       return null;
   }
 };
 
-// Helper to determine the last available round based on which optional templates are filled
-const getLastTemplateRound = (job) => {
-  const templates = [job.templateOne, job.templateTwo, job.templateThree];
-  let lastRound = 0;
-
-  templates.forEach((tpl, index) => {
-    if (tpl && tpl.subject && tpl.body) {
-      lastRound = index + 1;
-    }
-  });
-
-  return lastRound;
-};
-
 const runSchedule = async (req, res) => {
   try {
-    const currentUTC = new Date();
-    const hour = currentUTC.getUTCHours();
-    const dayOfWeek = currentUTC.getUTCDay();
-    const dayOfMonth = currentUTC.getUTCDate();
+    const accessKey = req.headers["x-cron-key"];
+
+    if (accessKey !== process.env.CRON_ACCESS_KEY) {
+      return res.status(403).send("Forbidden: Invalid access key");
+    }
+
+    const now = new Date();
+    const hour = now.getUTCHours();
+    const dayOfWeek = now.getUTCDay();
+    const dayOfMonth = now.getUTCDate();
+
+    console.log(
+      `🕒 Scheduler triggered at ${now.toISOString()} (UTC Hour: ${hour}, DayOfWeek: ${dayOfWeek}, DayOfMonth: ${dayOfMonth})`
+    );
 
     const schedules = await Schedule.find({ disabled: { $ne: true } });
+    const jobsToRun = schedules.filter(
+      (job) =>
+        (job.frequency === "weekly" &&
+          job.day === dayOfWeek &&
+          job.hour === hour) ||
+        (job.frequency === "monthly" &&
+          job.day === dayOfMonth &&
+          job.hour === hour)
+    );
 
-    const jobsToSend = schedules.filter((job) => {
-      return (
-        (job.frequency === 'weekly' && job.day === dayOfWeek && job.hour === hour) ||
-        (job.frequency === 'monthly' && job.day === dayOfMonth && job.hour === hour)
-      );
-    });
+    if (jobsToRun.length === 0) {
+      console.log(`🚫 No schedules to run at this hour.`);
+      if (res)
+        return res.status(200).json({ message: "No jobs to run at this time" });
+      return;
+    }
 
-    const emailPromises = jobsToSend.map(async (job) => {
-      const template = getTemplateByRound(job);
+    const queuePromises = jobsToRun.map(async (schedule) => {
+      for (const recipient of schedule.recipients || []) {
+        if (!recipient || recipient.disabled) continue;
 
-      if (!template || !template.subject || !template.body) {
-        console.warn(`❗ Skipping job: Missing template for round ${job.round}`);
-        job.failed += 1;
-        await job.save();
-        return Promise.reject(new Error('Template missing'));
-      }
+        for (let i = 0; i < statusOrder.length; i++) {
+          const key = statusOrder[i];
+          const status = recipient.statuses?.[key];
 
-      try {
-        await sendEmail({
-          to: job.recipients.join(','),
-          subject: template.subject,
-          body: template.body,
-          attachment: template.attachment || null
-        });
+          console.log(`📦 Checking '${key}' for ${recipient.email}: ${status}`);
 
-        job.successful += 1;
+          if (status === "sent") continue;
 
-        const lastRound = getLastTemplateRound(job);
-        if (job.round >= lastRound) {
-          job.disabled = true;
-        } else {
-          job.round += 1;
+          if (status === "void") {
+            console.log(
+              `🛑 Marking ${recipient.email} as disabled due to void template at ${key}`
+            );
+            recipient.disabled = true;
+            break;
+          }
+
+          if (i > 0) {
+            const prevKey = statusOrder[i - 1];
+            const prevStatus = recipient.statuses?.[prevKey];
+            if (prevStatus !== "sent") {
+              console.log(
+                `⛔ Skipping ${key} for ${recipient.email} — previous '${prevKey}' is '${prevStatus}'`
+              );
+              break;
+            }
+          }
+
+          const template = getTemplateByStatusKey(schedule, key);
+          if (!template || !template.subject || !template.body) {
+            console.warn(
+              `❗ Missing subject/body for ${key}. Marking as void.`
+            );
+            recipient.statuses[key] = "void";
+            recipient.disabled = true;
+            break;
+          }
+
+          try {
+            await queueEmail(
+              recipient.email,
+              template.subject,
+              template.body,
+              template.attachment || null,
+              key,
+              schedule._id
+            );
+            console.log(`📩 Queued email to ${recipient.email} for ${key}`);
+          } catch (err) {
+            console.error(
+              `❌ Queue error for ${recipient.email} [${key}]: ${err.message}`
+            );
+            recipient.statuses[key] = "failed";
+          }
+
+          break; // Send only one stage per run
         }
 
-        await job.save();
-        return Promise.resolve();
-      } catch (err) {
-        job.failed += 1;
-        await job.save();
-        return Promise.reject(err);
+        // Disable if all statuses are 'sent'
+        const allSent = statusOrder.every(
+          (k) => recipient.statuses?.[k] === "sent"
+        );
+        if (allSent) {
+          recipient.disabled = true;
+          console.log(
+            `⚠️ All emails sent to ${recipient.email}, disabling recipient.`
+          );
+        }
       }
+
+      await schedule.save();
+      console.log(`💾 Schedule ${schedule._id} saved`);
     });
 
-    const results = await Promise.allSettled(emailPromises);
-    const successful = results.filter(r => r.status === 'fulfilled').length;
-    const failed = results.length - successful;
-
-    const message = `📨 Email job complete. Sent: ${successful}, Failed: ${failed}`;
-    console.log(message);
-
-    if (res) {
-      return res.status(200).json({ message, sent: successful, failed });
-    }
-  } catch (error) {
-    console.error('❌ Error running scheduleEmails:', error);
-    if (res) {
-      return res.status(500).json({
-        message: 'Error running scheduled emails',
-        error: error.message || error,
-      });
-    }
+    await Promise.allSettled(queuePromises);
+    const msg = `✅ Scheduler run completed at ${now.toISOString()}`;
+    console.log(msg);
+    if (res) return res.status(200).json({ message: msg });
+  } catch (err) {
+    console.error("💥 Scheduler error:", err);
+    if (res)
+      return res
+        .status(500)
+        .json({ message: "Failed to run scheduler", error: err.message });
   }
 };
 

@@ -9,3 +9,4 @@ package-lock.json
 
 # test files
 scheduler.js
+generateSchedulesToAPI.js

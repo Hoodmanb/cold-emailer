@@ -1,46 +1,72 @@
-require('dotenv').config();
-const express = require('express');
-const connectDB = require('./utils/db');
-const cors = require('cors')
-const swaggerUi = require('swagger-ui-express');
-const YAML = require('yamljs');
+// env config
+require("dotenv").config();
 
-const recipientRouter = require('./routes/recipient.js');
-const emailRouter = require('./routes/email.js');
-const templateRouter = require('./routes/template.js');
-const categoryRouter = require('./routes/category.js')
+// packages
+const express = require("express");
+const cors = require("cors");
+const swaggerUi = require("swagger-ui-express");
+const YAML = require("yamljs");
 
-const scheduleRouter = require('./routes/schedule');
-const runSchedule = require('./services/scheduler.js');
+// db connection
+const connectDB = require("./utils/db.js");
 
-const path = require('path');
-const swaggerDocument = YAML.load(path.join(__dirname, 'swagger.yaml'));
+// routes imports
+const recipientRouter = require("./routes/recipient.js");
+const emailRouter = require("./routes/email.js");
+const templateRouter = require("./routes/template.js");
+const categoryRouter = require("./routes/category.js");
+const scheduleRouter = require("./routes/schedule");
 
+// middleware
+// const verifyToken = require("./midddleware/verifyToken.js");
+
+const runSchedule = require("./services/scheduler.js");
+
+const PORT = process.env.PORT || 5000;
+const path = require("path");
+const swaggerDocument = YAML.load(path.join(__dirname, "swagger.yaml"));
 
 const app = express();
 
 app.use(express.json());
-app.use(cors())
+app.use(cors());
+
+// let allowed;
+// if (process.env.NODE_ENV === "production") {
+//   allowed = "https://nike-recycle.vercel.app";
+// } else {
+//   allowed = "http://localhost:3000";
+// }
+
+// // Middleware
+// app.use(
+//   cors({
+//     origin: allowed,
+//     methods: "GET, POST, PUT, DELETE, OPTIONS",
+//     allowedHeaders: "Content-Type, Authorization",
+//   })
+// );
 
 connectDB();
 
+// wake server
+app.get("/api/ping", (req, res) => res.status(200).send("PONG"));
+
+// Worker
+app.get("/api/schedule/run", runSchedule);
+
 // Routes
+app.use("/api/recipient", recipientRouter);
 
-app.use('/api/recipient', recipientRouter);
+app.use("/api/email", emailRouter);
 
-app.use('/api/email', emailRouter)
+app.use("/api/template", templateRouter);
 
-app.use('/api/template', templateRouter)
+app.use("/api/category", categoryRouter);
 
-app.use('/api/category', categoryRouter)
+app.use("/api/schedule", scheduleRouter);
 
-app.use('/api/schedule', scheduleRouter);
+// Swagger doc
+app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-app.get("/api/schedule/run", runSchedule)
-
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-
-const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
-module.exports = app

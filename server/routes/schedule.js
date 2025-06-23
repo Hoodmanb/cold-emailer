@@ -4,6 +4,8 @@ const controller = require('../controller/schedule');
 
 router.post('/', controller.create);
 
+router.post('/:id/recipients', controller.addRecipient)
+
 router.get('/', controller.get);
 
 router.put('/:id', controller.update);
