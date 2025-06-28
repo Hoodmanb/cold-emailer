@@ -14,6 +14,7 @@ async function enqueueEmail(to, subject, body, attachment, key, scheduleId) {
       body,
       attachment,
       key,
+      sender,
       scheduleId,
     },
     {

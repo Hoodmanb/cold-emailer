@@ -106,6 +106,7 @@ const runSchedule = async (req, res) => {
               template.body,
               template.attachment || null,
               key,
+              schedule.sender,
               schedule._id
             );
             console.log(`📩 Queued email to ${recipient.email} for ${key}`);

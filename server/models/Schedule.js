@@ -51,7 +51,10 @@ const RecipientsSchema = new mongoose.Schema(
 );
 
 const ScheduleSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  userId: { type: String, required: true },
   frequency: { type: String, enum: ["weekly", "monthly"], required: true },
+  sender: { type: String, required: true },
   day: { type: Number, required: true },
   hour: { type: Number, required: true },
   recipients: [RecipientsSchema],

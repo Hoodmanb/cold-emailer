@@ -20,8 +20,6 @@ const verifyToken = async (req, res, next) => {
     req.userId = uid;
     req.email = decodedToken.email;
 
-    const userId = req.userId;
-
     // Continue to the next middleware or route handler
     next();
   } catch (error) {

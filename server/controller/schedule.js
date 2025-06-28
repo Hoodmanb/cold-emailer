@@ -5,16 +5,9 @@ const { prepareRecipients } = require("../utils/scheduleHelper");
 
 exports.create = async (req, res) => {
   try {
-    const {
-      frequency,
-      day,
-      hour,
-      recipients,
-      template,
-      templateOne,
-      templateTwo,
-      templateThree,
-    } = req.body;
+    const { name, frequency, day, hour, recipients, templates } = req.body;
+    const { template, templateOne, templateTwo, templateThree } = templates;
+    const userId = req.userId;
 
     if (!template?.subject || !template?.body) {
       return res
@@ -50,6 +43,8 @@ exports.create = async (req, res) => {
     );
 
     const scheduleData = {
+      name,
+      userId,
       frequency,
       day,
       hour,
@@ -70,12 +65,19 @@ exports.create = async (req, res) => {
 
 exports.addRecipient = async (req, res) => {
   const { id } = req.params;
-  const email = req.body.email;
+  const { email, userId } = req.body;
 
   try {
     const scheduler = await Schedule.findById(id);
+
     if (!scheduler) {
       return res.status(404).json({ message: "Schedule not found" });
+    }
+
+    if (scheduler.userId !== userId) {
+      return res
+        .status(401)
+        .json({ message: "you dont have access to this data" });
     }
 
     // Check for duplicate email
@@ -114,7 +116,8 @@ exports.addRecipient = async (req, res) => {
 
 exports.get = async (req, res) => {
   try {
-    const schedules = await Schedule.find();
+    const { userId } = req.body;
+    const schedules = await Schedule.find({ userId });
     if (schedules.length === 0) {
       console.log("No schedules found.");
       return res.status(404).json({ message: "No schedules found" });
@@ -127,9 +130,16 @@ exports.get = async (req, res) => {
 
 exports.update = async (req, res) => {
   try {
-    const schedule = await Schedule.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-    });
+    const { userId } = req.body;
+    const schedule = await Schedule.findOne(req.params.id);
+
+    if (schedule.userId !== userId) {
+      return res
+        .status(401)
+        .json({ message: "you dont have access to this data" });
+    }
+
+    await schedule.update(req.body);
     return res.json({ message: "Updated", schedule });
   } catch (error) {
     return res.status(500).json({ message: "Error updating schedule", error });
@@ -138,7 +148,14 @@ exports.update = async (req, res) => {
 
 exports.delete = async (req, res) => {
   try {
-    await Schedule.findByIdAndDelete(req.params.id);
+    const { userId } = req.body;
+    const schedule = await Schedule.findById(req.params.id);
+    if (schedule.userId !== userId) {
+      return res
+        .status(401)
+        .json({ message: "you dont have access to this data" });
+    }
+    schedule.deleteOne();
     return res.json({ message: "Deleted" });
   } catch (error) {
     return res.status(500).json({ message: "Error deleting schedule", error });

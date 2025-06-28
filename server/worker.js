@@ -39,7 +39,8 @@ const startWorker = async () => {
     const worker = new Worker(
       "emailQueue",
       async (job) => {
-        const { to, subject, body, attachment, key, scheduleId } = job.data;
+        const { to, subject, body, attachment, key, sender, scheduleId } =
+          job.data;
 
         const schedule = await Schedule.findById(scheduleId);
         if (!schedule) throw new Error("Schedule not found");
@@ -71,7 +72,7 @@ const startWorker = async () => {
         }
 
         try {
-          await sendEmail({ to, subject, body, attachment });
+          await sendEmail({ sender, to, subject, body, attachment });
           recipient.statuses[key] = "sent";
         } catch (err) {
           console.error(`❌ Error sending to ${to}: ${err.message}`);

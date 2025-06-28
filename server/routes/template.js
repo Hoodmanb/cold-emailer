@@ -1,16 +1,17 @@
-const express = require('express')
-const templateRouter = express.Router()
+const express = require("express");
+const templateRouter = express.Router();
+const verifyToken = require("../midddleware/verifyToken.js");
 
-const controller = require('../controller/template.js')
+const controller = require("../controller/template.js");
 
-templateRouter.post('/', controller.create)
+templateRouter.post("/", verifyToken, controller.create);
 
-templateRouter.put('/:id', controller.update)
+templateRouter.put("/:id", verifyToken, controller.update);
 
-templateRouter.delete('/:id', controller.delete)
+templateRouter.delete("/:id", verifyToken, controller.delete);
 
-templateRouter.get('/', controller.getAll)
+templateRouter.get("/", controller.getAll);
 
-templateRouter.get('/:id', controller.getOne)
+templateRouter.get("/:id", controller.getOne);
 
 module.exports = templateRouter;
