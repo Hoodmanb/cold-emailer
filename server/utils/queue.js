@@ -1,7 +1,7 @@
 const { Queue } = require("bullmq");
 const IORedis = require("ioredis");
 
-const connection = new IORedis("redis://127.0.0.1:6379");
+const connection = new IORedis(process.env.REDIS_URL);
 const emailQueue = new Queue("emailQueue", { connection });
 
 async function enqueueEmail(to, subject, body, attachment, key, scheduleId) {
