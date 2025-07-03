@@ -21,6 +21,12 @@ import {
   ShoppingCart,
   Dot,
   LogIn,
+  User2,
+  Calendar1,
+  Calendar,
+  Mail,
+  Activity,
+  File,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -411,7 +417,7 @@ const Drawer: React.FC<MiniDrawerProps> = ({ children }) => {
             <LinkHeader
               text="recipients"
               text1="Recipients"
-              icon={LayoutDashboard}
+              icon={User2}
               link="/dashboard/recipients"
               handleSectionSelect={handleSectionSelect}
               sectionStyles={sectionStyles}
@@ -422,7 +428,7 @@ const Drawer: React.FC<MiniDrawerProps> = ({ children }) => {
               text="schedules"
               text0="Schedules"
               text1="/dashboard/schedules/scheduler"
-              icon={ShoppingCart}
+              icon={Calendar}
               text2="/dashboard/schedules/history"
               sectionStyles={sectionStyles}
               toggleSection={toggleSection}
@@ -449,20 +455,10 @@ const Drawer: React.FC<MiniDrawerProps> = ({ children }) => {
             />
 
             <LinkHeader
-              text="email_templates"
-              text1="Email Templates"
-              icon={LayoutDashboard}
-              link="/dashboard/templates/email"
-              handleSectionSelect={handleSectionSelect}
-              sectionStyles={sectionStyles}
-              isDrawerOpen={isDrawerOpen}
-            />
-
-            <LinkHeader
-              text="cv_templates"
-              text1="CV Templates"
-              icon={LayoutDashboard}
-              link="/dashboard/templates/cv"
+              text="templates"
+              text1="Templates"
+              icon={File}
+              link="/dashboard/templates"
               handleSectionSelect={handleSectionSelect}
               sectionStyles={sectionStyles}
               isDrawerOpen={isDrawerOpen}
@@ -471,7 +467,7 @@ const Drawer: React.FC<MiniDrawerProps> = ({ children }) => {
             <LinkHeader
               text="activities"
               text1="Activities"
-              icon={LayoutDashboard}
+              icon={Activity}
               link="/dashboard/activities"
               handleSectionSelect={handleSectionSelect}
               sectionStyles={sectionStyles}

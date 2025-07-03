@@ -73,10 +73,11 @@ const Register = () => {
             onSubmit={async (values, { setSubmitting, resetForm }) => {
               setResponse("Creating user...");
               const { email, password, displayName, gmailPassword } = values;
+              console.log(values);
 
               try {
                 const res = await register({ email, password, displayName });
-
+                console.log(res);
                 if (!res.success) {
                   showSnackbar(res.message, "error");
                   setSubmitting(false);

@@ -1,6 +1,15 @@
 // utils/validationSchemas.ts
 import * as Yup from "yup";
 
+const FILE_SIZE = 5 * 1024 * 1024; // 5MB limit
+const SUPPORTED_FORMATS = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'image/jpeg',
+  'image/png',
+];
+
 export const registerValidationSchema = Yup.object().shape({
   displayName: Yup.string()
     .min(2, "Display name must be at least 2 characters")
@@ -93,4 +102,50 @@ export const CreateScheduleValidationSchema = Yup.object().shape({
       return true;
     }
   ),
+});
+
+export const AddEmailTemplateValidationSchema = Yup.object().shape({
+  body: Yup.string().required("body is required"),
+
+  name: Yup.string().required("name is required"),
+
+  url: Yup.string(),
+
+  subject: Yup.string().required("subject is required"),
+
+  attachment: Yup.mixed().nullable()
+  .test('fileSize', 'File too large, max 5MB', (value) => {
+    if (!value) return true; 
+    const file = value as File;
+    return file.size <= FILE_SIZE;
+  })
+  .test('fileFormat', 'Unsupported file format', (value) => {
+    if (!value) return true;
+    const file = value as File;
+    return SUPPORTED_FORMATS.includes(file.type);
+  }),
+
+  isPublic: Yup.boolean().required("choose to make this template public/private")
+
+});
+
+export const CreateCVValidationSchema = Yup.object().shape({
+  name: Yup.string().required("name is required"),
+
+  url: Yup.string(),
+
+  attachment: Yup.mixed().required("a document is required")
+  .test('fileSize', 'File too large, max 5MB', (value) => {
+    if (!value) return true; 
+    const file = value as File;
+    return file.size <= FILE_SIZE;
+  })
+  .test('fileFormat', 'Unsupported file format', (value) => {
+    if (!value) return true;
+    const file = value as File;
+    return SUPPORTED_FORMATS.includes(file.type);
+  }),
+
+  isPublic: Yup.boolean().required("choose to make this template public/private")
+
 });
