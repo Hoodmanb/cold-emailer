@@ -25,11 +25,11 @@ const getTemplateByStatusKey = (schedule, key) => {
 
 const runSchedule = async (req, res) => {
   try {
-    const accessKey = req.headers["x-cron-key"];
+    // const accessKey = req.headers["x-cron-key"];
 
-    if (accessKey !== process.env.CRON_ACCESS_KEY) {
-      return res.status(403).send("Forbidden: Invalid access key");
-    }
+    // if (accessKey !== process.env.CRON_ACCESS_KEY) {
+    //   return res.status(403).send("Forbidden: Invalid access key");
+    // }
 
     const now = new Date();
     const hour = now.getUTCHours();

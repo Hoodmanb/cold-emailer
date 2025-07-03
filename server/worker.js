@@ -4,10 +4,7 @@ const { Worker } = require("bullmq");
 const IORedis = require("ioredis");
 const Schedule = require("./models/Schedule");
 const sendEmail = require("./services/emailService");
-
-const connection = new IORedis(process.env.REDIS_URL, {
-  maxRetriesPerRequest: null,
-});
+const connection = require("./lib/redis")
 
 const statusOrder = [
   "scheduleOne",

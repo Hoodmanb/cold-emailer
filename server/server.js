@@ -14,6 +14,7 @@ const connectDB = require("./utils/db.js");
 const recipientRouter = require("./routes/recipient.js");
 const emailRouter = require("./routes/email.js");
 const templateRouter = require("./routes/template.js");
+const attachmentRouter = require("./routes/attachment.js");
 const categoryRouter = require("./routes/category.js");
 const scheduleRouter = require("./routes/schedule");
 const userRouter = require("./routes/user.js");
@@ -61,6 +62,8 @@ app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Routes
 app.use("/api/template", templateRouter);
+
+app.use("/api/attachment", attachmentRouter);
 
 app.use(verifyToken); // middleware to verify user
 

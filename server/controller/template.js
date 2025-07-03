@@ -1,9 +1,38 @@
 const Template = require("../models/Template.js");
+const Joi = require("joi");
+const { validateRequest } = require("../utils/validateRequest.js");
 
 exports.create = async (req, res) => {
-  const {name, subject, body} = req.body
+  const { name, subject, body, isPublic, url } = req.body;
+  const userId = req.userId;
+
+  const schema = Joi.object({
+    name: Joi.string().required().messages({
+      "string.empty": "name is required",
+    }),
+    body: Joi.string().min(10).required().messages({
+      "string.empty": "body is required",
+      "string.min": "body must be at least 10 characters",
+    }),
+    subject: Joi.string().required().messages({
+      "string.empty": "subject is required",
+    }),
+  }).unknown(true);
+  const { isValid, errors } = validateRequest(schema, req.body);
+
+  if (!isValid) {
+    return res.status(400).json({ message: "validation error", errors });
+  }
+
   try {
-    const newTemplate = await Template.create({ subject, body, name });
+    const newTemplate = await Template.create({
+      userId,
+      subject,
+      body,
+      name,
+      isPublic,
+      url,
+    });
     console.log("Template created successfully:", newTemplate);
     return res.status(200).json({ message: "template created successfully" });
   } catch (error) {
@@ -61,8 +90,10 @@ exports.getAll = async (req, res) => {
       return res.status(404).json({ message: "No template found" });
     }
     console.log("Templates fetched:", templates);
-    res.status(200).json({ message: "retrieved successfully", data: templates });
-      return
+    res
+      .status(200)
+      .json({ message: "retrieved successfully", data: templates });
+    return;
   } catch (error) {
     console.error("Error fetching all templates:", error);
     return res.status(500).json({ message: "error fetching templates", error });
