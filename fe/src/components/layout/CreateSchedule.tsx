@@ -26,7 +26,7 @@ import MultiSelectChip from "../ui/Select";
 
 type prop = {
   type: "add" | "update";
-  recipientEmail?: string;
+  scheduleID?: string;
   setRefresh: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
@@ -42,7 +42,7 @@ type OutputType = {
 
 export default function CreateSchedule({
   type,
-  recipientEmail,
+  scheduleID,
   setRefresh,
 }: prop) {
   const { closeModal } = useGlobalModal();
@@ -163,37 +163,37 @@ export default function CreateSchedule({
           // if (matchedCategory) {
           //   values.category = matchedCategory._id;
           // }
-          // const response =
-          //   type === "add"
-          //     ? await axiosInstance.post("/api/recipient", values)
-          //     : recipientEmail
-          //     ? await axiosInstance.put(
-          //         `/api/recipient/${recipientEmail}`,
-          //         values
-          //       )
-          //     : await axiosInstance.put(
-          //         `/api/recipient/example$$##&&%%.gmail.com`,
-          //         values
-          //       );
-          // console.log(response.data);
-          // if (response.data.message === "created successfully") {
-          //   showSnackbar(response.data.message, "success");
-          //   setRefresh((prev) => !prev);
-          //   return resetForm();
-          // } else if (response.data.message === "recipient not found") {
-          //   showSnackbar("recipient not found", "info");
-          // } else if (response.data.message === "recipient already exist") {
-          //   showSnackbar("recipient already exist", "info");
-          // } else if (
-          //   response.data.message === "recipient updated successfully"
-          // ) {
-          //   showSnackbar("recipient already exist", "info");
-          //   setRefresh((prev) => !prev);
-          //   return resetForm();
-          // } else {
-          //   showSnackbar(response.data.message, "error");
-          // }
-          // setSubmitting(false);
+          const response =
+            type === "add"
+              ? await axiosInstance.post("/api/schedule", values)
+              : scheduleID
+                ? await axiosInstance.put(
+                  `/api/schedule/${scheduleID}`,
+                  values
+                )
+                : await axiosInstance.put(
+                  `/api/recipient/example$$##&&%%.gmail.com`,
+                  values
+                );
+          console.log(response.data);
+          if (response.data.message === "created successfully") {
+            showSnackbar(response.data.message, "success");
+            setRefresh((prev) => !prev);
+            return resetForm();
+          } else if (response.data.message === "recipient not found") {
+            showSnackbar("recipient not found", "info");
+          } else if (response.data.message === "recipient already exist") {
+            showSnackbar("recipient already exist", "info");
+          } else if (
+            response.data.message === "recipient updated successfully"
+          ) {
+            showSnackbar("recipient already exist", "info");
+            setRefresh((prev) => !prev);
+            return resetForm();
+          } else {
+            showSnackbar(response.data.message, "error");
+          }
+          setSubmitting(false);
         }}
       >
         {({
@@ -584,21 +584,21 @@ export default function CreateSchedule({
                   disabled={
                     type === "add"
                       ? Object.entries(values)
-                          .filter(
-                            ([key]) =>
-                              ![
-                                "templateOne",
-                                "templateTwo",
-                                "templateThree",
-                              ].includes(key)
-                          )
-                          .some(
-                            ([, val]) =>
-                              (typeof val === "string" && !val.trim()) ||
-                              (Array.isArray(val) && val.length === 0)
-                          ) ||
-                        Object.keys(errors).length > 0 ||
-                        isSubmitting
+                        .filter(
+                          ([key]) =>
+                            ![
+                              "templateOne",
+                              "templateTwo",
+                              "templateThree",
+                            ].includes(key)
+                        )
+                        .some(
+                          ([, val]) =>
+                            (typeof val === "string" && !val.trim()) ||
+                            (Array.isArray(val) && val.length === 0)
+                        ) ||
+                      Object.keys(errors).length > 0 ||
+                      isSubmitting
                       : isSubmitting
                   }
                 />

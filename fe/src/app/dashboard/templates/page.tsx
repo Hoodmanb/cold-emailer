@@ -107,7 +107,7 @@ const Recipients = () => {
         ))} */}
 
       {(Array.isArray(template) && template.length > 0) ||
-      (Array.isArray(attachment) && attachment.length > 0) ? (
+        (Array.isArray(attachment) && attachment.length > 0) ? (
         <Stack
           sx={{
             mb: "20px",
@@ -122,7 +122,7 @@ const Recipients = () => {
           {Array.isArray(attachment) && attachment.length > 0 && (
             <Box>
               <CustomButton
-                text="Add A CV Template"
+                text="Add Attachment"
                 icon={PlusIcon}
                 iconColor="grey"
                 onClick={() =>

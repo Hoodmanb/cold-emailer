@@ -18,6 +18,7 @@ import {
   useGetSchedule,
 } from "@/hooks/queryHooks";
 import CreateSchedule from "@/components/layout/CreateSchedule";
+import SchedulesList from "@/components/layout/ScheduleList";
 
 const Recipients = () => {
   const { showModal } = useGlobalModal();
@@ -89,49 +90,50 @@ const Recipients = () => {
           </Box>
         </Stack>
       )}
-      {schedule && schedule?.length > 0 ? (
-        // <RecipientList recipient={schedule} setRefresh={setRefresh} />
-        <Box>Schedule</Box>
-      ) : (
-        <Stack>
-          <Stack
-            sx={{
-              flexDirection: "column",
-              alignItems: "center",
-              p: "70px 0px",
-              border: "1px solid #0F172A1A",
-              borderRadius: "20px",
-            }}
-          >
-            <Calendar size="3em" color="grey" />
-            <Typography mt="10px" variant="h6" fontWeight={600}>
-              No schedules yet
-            </Typography>
-            <Typography
-              width={"65%"}
-              textAlign="center"
-              mt="10px"
-              mb="15px"
-              variant="subtitle2"
-              color="grey"
+      {!schedule ? // && schedule?.length > 0 ?
+        (
+
+          <SchedulesList />
+        ) : (
+          <Stack>
+            <Stack
+              sx={{
+                flexDirection: "column",
+                alignItems: "center",
+                p: "70px 0px",
+                border: "1px solid #0F172A1A",
+                borderRadius: "20px",
+              }}
             >
-              Create your first email schedule to automate your campaigns
-            </Typography>
-            <Box sx={{ width: "auto" }}>
-              <CustomButton
-                text="Create Schedule"
-                icon={PlusIcon}
-                iconColor="grey"
-                onClick={() =>
-                  showModal(
-                    <CreateSchedule type={"add"} setRefresh={setRefresh} />
-                  )
-                }
-              />
-            </Box>
+              <Calendar size="3em" color="grey" />
+              <Typography mt="10px" variant="h6" fontWeight={600}>
+                No schedules yet
+              </Typography>
+              <Typography
+                width={"65%"}
+                textAlign="center"
+                mt="10px"
+                mb="15px"
+                variant="subtitle2"
+                color="grey"
+              >
+                Create your first email schedule to automate your campaigns
+              </Typography>
+              <Box sx={{ width: "auto" }}>
+                <CustomButton
+                  text="Create Schedule"
+                  icon={PlusIcon}
+                  iconColor="grey"
+                  onClick={() =>
+                    showModal(
+                      <CreateSchedule type={"add"} setRefresh={setRefresh} />
+                    )
+                  }
+                />
+              </Box>
+            </Stack>
           </Stack>
-        </Stack>
-      )}
+        )}
     </Stack>
   );
 };

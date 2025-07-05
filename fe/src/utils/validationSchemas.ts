@@ -129,6 +129,31 @@ export const AddEmailTemplateValidationSchema = Yup.object().shape({
 
 });
 
+export const UpdateEmailTemplateValidationSchema = Yup.object().shape({
+  body: Yup.string(),
+
+  name: Yup.string(),
+
+  url: Yup.string(),
+
+  subject: Yup.string(),
+
+  attachment: Yup.mixed().nullable()
+  .test('fileSize', 'File too large, max 5MB', (value) => {
+    if (!value) return true; 
+    const file = value as File;
+    return file.size <= FILE_SIZE;
+  })
+  .test('fileFormat', 'Unsupported file format', (value) => {
+    if (!value) return true;
+    const file = value as File;
+    return SUPPORTED_FORMATS.includes(file.type);
+  }),
+
+  isPublic: Yup.boolean()
+
+});
+
 export const CreateCVValidationSchema = Yup.object().shape({
   name: Yup.string().required("name is required"),
 

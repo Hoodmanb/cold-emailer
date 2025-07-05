@@ -53,8 +53,8 @@ const TemplateList = ({
   const deleteTemplate = async (id: string) => {
     try {
       const res = await axiosInstance.delete(`/api/template/${id}`);
-      if (res.status === 204) {
-        showSnackbar("Template deleted successfully.", "success");
+      if (res.status === 200) {
+        showSnackbar("deleted successfully", "success");
         setRefresh((prev) => !prev);
       } else {
         showSnackbar(res.data.message || "Error deleting template", "error");
@@ -78,6 +78,7 @@ const TemplateList = ({
                   alignItems: "center",
                   justifyContent: "space-between",
                   px: 1,
+
                 }}
               >
                 <Box sx={{ flex: 1 }}>
@@ -139,6 +140,7 @@ const TemplateList = ({
                           showModal(
                             <AddEmailTemplate
                               type="update"
+                              templateId={template._id}
                               setRefresh={setRefresh}
                             />
                           )

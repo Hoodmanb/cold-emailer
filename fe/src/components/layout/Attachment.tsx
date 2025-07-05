@@ -54,8 +54,8 @@ const AttachmentList = ({
 
   const deleteAttachment = async (id: string) => {
     try {
-      const res = await axiosInstance.delete(`/api/template/${id}`);
-      if (res.status === 204) {
+      const res = await axiosInstance.delete(`/api/attachment/${id}`);
+      if (res.data.message === "deleted successfully") {
         showSnackbar("Attachment deleted", "success");
         setRefresh((prev) => !prev);
       } else {

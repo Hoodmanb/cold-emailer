@@ -10,7 +10,7 @@ import { useGlobalModal } from "../ui/Modal";
 import CustomTextField from "@/components/ui/TextField";
 import {
   AddEmailTemplateValidationSchema,
-  UpdateRecipientValidationSchema,
+  UpdateEmailTemplateValidationSchema,
 } from "@/utils/validationSchemas";
 import { ErrorText } from "@/components/ui/ErrorText";
 import { Form, Formik } from "formik";
@@ -24,11 +24,12 @@ import { useFetchCategory } from "@/hooks/queryHooks";
 import CustomFileUpload from "../ui/FileUploadInput";
 import useAuthStore from "@/store/useAuthStore";
 import { uploadFileToFirebase } from "@/utils/fileUpload";
+import {cleanFormValues} from "@/utils/cleanFormValues"
 import { Android12Switch } from "../ui/Switch";
 
 type prop = {
   type: "add" | "update";
-  recipientEmail?: string;
+  templateId?: string;
   setRefresh: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
@@ -44,7 +45,7 @@ type OutputType = {
 
 export default function AddEmailTemplate({
   type,
-  recipientEmail,
+  templateId,
   setRefresh,
 }: prop) {
   const { closeModal } = useGlobalModal();
@@ -109,41 +110,42 @@ export default function AddEmailTemplate({
         validationSchema={
           type === "add"
             ? AddEmailTemplateValidationSchema
-            : AddEmailTemplateValidationSchema
+            : UpdateEmailTemplateValidationSchema
         }
         onSubmit={async (
           values,
           { setSubmitting, resetForm, setFieldError }
         ) => {
-          if (values.attachment) {
-            const uploadAttachmentUrl = await uploadFileToFirebase(
-              values.attachment
-            );
-            if (uploadAttachmentUrl.success) {
-              values.url = uploadAttachmentUrl.url || "";
-              console.log("Uploaded File URL:", uploadAttachmentUrl.url);
-            } else {
-              console.log("Upload Failed:", uploadAttachmentUrl.message);
-              showSnackbar(uploadAttachmentUrl.message, "error");
-            }
-          }
+          // if (values.attachment) {
+          //   const uploadAttachmentUrl = await uploadFileToFirebase(
+          //     values.attachment
+          //   );
+          //   if (uploadAttachmentUrl.success) {
+          //     values.url = uploadAttachmentUrl.url || "";
+          //     console.log("Uploaded File URL:", uploadAttachmentUrl.url);
+          //   } else {
+          //     console.log("Upload Failed:", uploadAttachmentUrl.message);
+          //     showSnackbar(uploadAttachmentUrl.message, "error");
+          //   }
+          // }
+          const cleanedValues = cleanFormValues(values)
           const response =
             type === "add"
-              ? await axiosInstance.post("/api/template", values)
-              : recipientEmail
-              ? await axiosInstance.put(
-                  `/api/recipient/${recipientEmail}`,
-                  values
+              ? await axiosInstance.post("/api/template", cleanedValues)
+              : templateId
+                ? await axiosInstance.put(
+                  `/api/template/${templateId}`,
+                  cleanedValues
                 )
-              : await axiosInstance.put(
-                  `/api/recipient/example$$##&&%%.gmail.com`,
-                  values
+                : await axiosInstance.put(
+                  `/api/template/example$$##&&%%.gmail.com`,
+                  cleanedValues
                 );
           console.log(response.data);
           if (response.data.message === "template created successfully") {
             showSnackbar(response.data.message, "success");
             setRefresh((prev) => !prev);
-            return resetForm();
+            // return resetForm();
           } else if (response.data.message === "validation error") {
             const errors = response.data.errors;
             Object.keys(errors).forEach((field) => {
@@ -269,21 +271,21 @@ export default function AddEmailTemplate({
                 }}
               >
                 <CustomButton
-                  text={isSubmitting ? "Creating..." : "Create Recipient"}
+                  text={isSubmitting ? "Creating..." : "Create Template"}
                   disabled={
                     type === "add"
                       ? Object.entries(values)
-                          .filter(
-                            ([key]) =>
-                              key !== "attachment" &&
-                              key !== "url" &&
-                              key !== "isPublic"
-                          )
-                          .some(([, val]) =>
-                            typeof val === "string" ? !val.trim() : !val
-                          ) ||
-                        Object.keys(errors).length > 0 ||
-                        isSubmitting
+                        .filter(
+                          ([key]) =>
+                            key !== "attachment" &&
+                            key !== "url" &&
+                            key !== "isPublic"
+                        )
+                        .some(([, val]) =>
+                          typeof val === "string" ? !val.trim() : !val
+                        ) ||
+                      Object.keys(errors).length > 0 ||
+                      isSubmitting
                       : isSubmitting
                   }
                 />
