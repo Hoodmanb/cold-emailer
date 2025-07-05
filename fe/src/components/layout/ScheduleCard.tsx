@@ -65,7 +65,7 @@ const ScheduleCard: React.FC<ScheduleCardProps> = ({
     };
 
     return (
-        <Card sx={{ '&:hover': { boxShadow: 4 }, transition: 'box-shadow 0.3s' }}>
+        <Card sx={{ '&:hover': { boxShadow: 4 }, transition: 'box-shadow 0.3s' }} >
             <CardHeader
                 title={
                     <Stack direction="row" alignItems="center" spacing={1}>
@@ -108,7 +108,7 @@ const ScheduleCard: React.FC<ScheduleCardProps> = ({
                 }
             />
             <CardContent>
-                <Stack direction={{ xs: 'row', md: 'row' }} justifyContent={"space-between" }>
+                <Stack direction={{ xs: 'row', md: 'row' }} justifyContent={"space-between"}>
                     <Stack direction="row" spacing={1} alignItems="center">
                         <Mail size={18} />
                         <Box>

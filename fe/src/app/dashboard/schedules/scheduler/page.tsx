@@ -76,7 +76,7 @@ const Recipients = () => {
             justifyContent: "flex-end",
           }}
         >
-          <Box>
+          <Box sx={{minWidth:"100px"}}>
             <CustomButton
               text="Create Schedule"
               icon={PlusIcon}

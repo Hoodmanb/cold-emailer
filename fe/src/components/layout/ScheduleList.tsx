@@ -6,7 +6,7 @@ import {
     Typography,
     Stack,
 } from '@mui/material';
-import {  PlusIcon } from 'lucide-react';
+import { PlusIcon } from 'lucide-react';
 import ScheduleCard from './ScheduleCard';
 import CustomButton from '../ui/Button';
 import CreateSchedule from './CreateSchedule';
@@ -88,19 +88,25 @@ const SchedulesList: React.FC = () => {
             </Stack>
 
 
-                <Box display="flex" flexDirection="column" gap={2}>
-                    {
-                        upcomingSchedules.map((schedule) => (
-                            <ScheduleCard
-                                key={schedule.id}
-                                schedule={schedule}
-                                onToggleStatus={handleToggleStatus}
-                                onEdit={handleEdit}
-                                onDelete={handleDelete}
-                            />
-                        ))
-                    }
+            <Box sx={{ overflowX: 'auto' }}>
+                <Box
+                    display="flex"
+                    flexDirection="column"
+                    minWidth="600px"
+                    gap={2}
+                >
+                    {upcomingSchedules.map((schedule) => (
+                        <ScheduleCard
+                            key={schedule.id}
+                            schedule={schedule}
+                            onToggleStatus={handleToggleStatus}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                        />
+                    ))}
                 </Box>
+            </Box>
+
         </Box>
     );
 };
