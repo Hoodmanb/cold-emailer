@@ -42,28 +42,39 @@ exports.create = async (req, res) => {
 };
 
 exports.update = async (req, res) => {
-  const { subject, body, name } = req.body;
+  const { subject, body, name, isPublic, url } = req.body;
   const { id } = req.params;
+  console.log(req.body)
   try {
     const template = await Template.findById(id);
     if (!template) {
       console.log("Template not found.");
-      return res.status(404).json({ message: "template not found" });
+      return res.status(404).json({ message: "Template not found" });
     }
 
+    // Update only fields provided in the request
     if (subject !== undefined) template.subject = subject;
     if (body !== undefined) template.body = body;
     if (name !== undefined) template.name = name;
+    if (isPublic !== undefined) template.isPublic = isPublic;
+    if (url !== undefined) template.url = url;
 
-    // Save the updated template
     await template.save();
+
     console.log("Template updated:", template);
-    return res.status(200).json({ message: "template updated successfully" });
+    return res.status(200).json({
+      message: "Template updated successfully",
+      template,
+    });
   } catch (error) {
     console.error("Error updating template by ID:", error);
-    return res.status(500).json({ message: "error updating template", error });
+    return res.status(500).json({
+      message: "Error updating template",
+      error: error.message,
+    });
   }
 };
+
 
 exports.delete = async (req, res) => {
   const { id } = req.params;

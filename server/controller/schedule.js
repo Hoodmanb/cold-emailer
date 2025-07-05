@@ -5,8 +5,7 @@ const { prepareRecipients } = require("../utils/scheduleHelper");
 
 exports.create = async (req, res) => {
   try {
-    const { name, frequency, day, hour, recipients, templates } = req.body;
-    const { template, templateOne, templateTwo, templateThree } = templates;
+    const { name, frequency, day, hour, recipients, template, templateOne, templateTwo, templateThree } = req.body;
     const userId = req.userId;
 
     if (!template?.subject || !template?.body) {

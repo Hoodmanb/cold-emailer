@@ -14,6 +14,7 @@ exports.create = async (req, res) => {
       "string.empty": "url is required",
     }),
   }).unknown(true);
+  
   const { isValid, errors } = validateRequest(schema, req.body);
 
   if (!isValid) {
