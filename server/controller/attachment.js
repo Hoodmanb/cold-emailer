@@ -1,42 +1,29 @@
 const Attachment = require("../models/Attachment.js");
 const Joi = require("joi");
-const { validateRequest } = require("../utils/validateRequest.js");
 
-exports.create = async (req, res) => {
-  const { name, isPublic, url } = req.body;
-  const userId = req.userId;
-
-  const schema = Joi.object({
-    name: Joi.string().required().messages({
-      "string.empty": "name is required",
-    }),
-    url: Joi.string().required().messages({
-      "string.empty": "url is required",
-    }),
-  }).unknown(true);
-  
-  const { isValid, errors } = validateRequest(schema, req.body);
-
-  if (!isValid) {
-    return res.status(400).json({ message: "validation error", errors });
-  }
-
+exports.create = async (cloudinaryResultObject, userId, isPublic, category = null) => {
   try {
     const newAttachment = await Attachment.create({
       userId,
-      name,
+      name: cloudinaryResultObject.original_filename,
+      publicId: cloudinaryResultObject.public_id,
+      url: cloudinaryResultObject.secure_url,
+      resourceType: cloudinaryResultObject.resource_type,
+      format: cloudinaryResultObject.format,
+      fileSize: cloudinaryResultObject.bytes,
       isPublic,
-      url,
+      category,
     });
-    console.log("attachment created successfully:", newAttachment);
-    return res.status(200).json({ message: "attachment created successfully" });
+
+    console.log("✅ Attachment created successfully:", newAttachment);
+    return newAttachment;
+
   } catch (error) {
-    console.error("Error creating attachment:", error);
-    return res
-      .status(500)
-      .json({ message: "error creating attachment", error });
+    console.error("❌ Error creating attachment:", error);
+    throw new Error("Attachment creation failed");
   }
 };
+
 
 exports.update = async (req, res) => {
   const { name } = req.body;

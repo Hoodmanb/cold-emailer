@@ -1,4 +1,8 @@
 const Recipient = require("../models/Recipient.js");
+const Category = require("../models/Category.js");
+const normalizeString = require("../utils/normalizeString.js");
+const Joi = require("joi");
+const { validateRequest } = require("../utils/validateRequest.js");
 
 exports.update = async (req, res) => {
   const { name, newEmail, category } = req.body;
@@ -53,14 +57,54 @@ exports.delete = async (req, res) => {
 // Creating a new recipient
 exports.create = async (req, res) => {
   const { email, name, category } = req.body;
+  console.log(category);
+
+  const normalizedEmail = normalizeString(email);
+  const normalizedName = normalizeString(name);
+
+  const valuesToValidate = { name, email };
+
+  const schema = Joi.object({
+    name: Joi.string().required().messages({
+      "string.empty": "name is required",
+    }),
+    email: Joi.string().email().required().messages({
+      "string.empty": "email is required",
+      "string.email": "invalid email format",
+    }),
+  }).unknown(true);
+
+  const { error: bodyError } = schema.validate(valuesToValidate);
+
+  if (bodyError) {
+    return res
+      .status(400)
+      .json({ message: "validation error", errors: bodyError.details });
+  }
+
   try {
     // Check if recipient already exists
-    const existingRecipient = await Recipient.findOne({ email });
-    if (existingRecipient) {
-      return res.status(409).json({ message: "recipient already exist" });
+    const existingCategory = await Category.findById(category);
+    const existingEmail = await Recipient.findOne({
+      email: { $regex: `^${normalizedEmail}$`, $options: "i" },
+    });
+    const existingName = await Recipient.findOne({
+      name: { $regex: `^${normalizedName}$`, $options: "i" },
+    });
+    if (existingEmail || existingName || !existingCategory) {
+      let errors = {};
+      existingEmail ? (errors.email = "email already exist") : "";
+      existingName ? (errors.name = "name already exist") : "";
+      !existingCategory ? (errors.category = "category not found") : "";
+
+      return res.status(400).json({ message: "field error", errors });
     }
     // Create a new recipient
-    const newRecipient = await Recipient.create({ email, name, category });
+    const newRecipient = await Recipient.create({
+      email: normalizedEmail,
+      name,
+      category,
+    });
     return res
       .status(200)
       .json({ message: "created successfully", data: newRecipient });
@@ -93,6 +137,7 @@ exports.get = async (req, res) => {
 
 exports.getOne = async (req, res) => {
   const { email } = req.params;
+  console.log(email)
   try {
     // Find recipient by email
     const recipient = await Recipient.findOne({ email });

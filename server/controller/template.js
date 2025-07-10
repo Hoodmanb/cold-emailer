@@ -1,45 +1,82 @@
 const Template = require("../models/Template.js");
 const Joi = require("joi");
 const { validateRequest } = require("../utils/validateRequest.js");
+const upload = require("../lib/multer.js")
+const uploadToCloudinary = require("../utils/uplopadToCloudinary.js")
+const {create} = require("../controller/attachment.js")
 
-exports.create = async (req, res) => {
-  const { name, subject, body, isPublic, url } = req.body;
-  const userId = req.userId;
+exports.create = [
+  upload.single('attachment'),
+  async (req, res) => {
+    const { name, subject, body, isPublic, url } = req.body;
+    const userId = req.userId;
+    const valuesToValidate = { name, subject, body, isPublic };
 
-  const schema = Joi.object({
-    name: Joi.string().required().messages({
-      "string.empty": "name is required",
-    }),
-    body: Joi.string().min(10).required().messages({
-      "string.empty": "body is required",
-      "string.min": "body must be at least 10 characters",
-    }),
-    subject: Joi.string().required().messages({
-      "string.empty": "subject is required",
-    }),
-  }).unknown(true);
-  const { isValid, errors } = validateRequest(schema, req.body);
+    const schema = Joi.object({
+      name: Joi.string().required().messages({
+        "string.empty": "name is required",
+      }),
+      body: Joi.string().min(10).required().messages({
+        "string.empty": "body is required",
+        "string.min": "body must be at least 10 characters",
+      }),
+      subject: Joi.string().required().messages({
+        "string.empty": "subject is required",
+      }),
+     
+    }).unknown(true);
 
-  if (!isValid) {
-    return res.status(400).json({ message: "validation error", errors });
+    const { error: bodyError } = schema.validate(valuesToValidate);
+
+if (bodyError) {
+  return res.status(400).json({ message: "validation error", errors: bodyError.details });
+}
+
+// If file is optional, only validate when it exists
+if (req.file) {
+  const fileSchema = Joi.object({
+    originalname: Joi.string().required(),
+    mimetype: Joi.string().valid(
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain',
+      'application/vnd.oasis.opendocument.text'
+    ).required(),
+    buffer: Joi.binary().required(),
+    size: Joi.number().max(5 * 1024 * 1024).messages({
+      "number.max": "File must not be larger than 5MB",
+    }),
+  }).unknown(true);;
+
+  const { error: fileError } = fileSchema.validate(req.file);
+
+  if (fileError) {
+    return res.status(400).json({ message: "validation error", errors: fileError.details });
   }
+}
 
-  try {
-    const newTemplate = await Template.create({
-      userId,
-      subject,
-      body,
-      name,
-      isPublic,
-      url,
-    });
-    console.log("Template created successfully:", newTemplate);
-    return res.status(200).json({ message: "template created successfully" });
-  } catch (error) {
-    console.error("Error creating template:", error);
-    return res.status(500).json({ message: "error creating template", error });
-  }
-};
+
+    try {
+      console.log("there is a file here")
+      if(req.file){
+        console.log("there is a file")
+         const cloudinaryResult = await uploadToCloudinary(req.file.buffer, 'my_files');
+         await create(cloudinaryResult, userId, isPublic)
+      }
+      const newTemplate = await Template.create({
+        userId,
+        subject,
+        body,
+        name,
+        isPublic
+      });
+      return res.status(200).json({ message: "template created successfully" });
+    } catch (error) {
+      console.error("Error creating template:", error);
+      return res.status(500).json({ message: "error creating template", error });
+    }
+  }];
 
 exports.update = async (req, res) => {
   const { subject, body, name, isPublic, url } = req.body;

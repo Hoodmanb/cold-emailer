@@ -6,8 +6,7 @@ const TemplateSchema = new mongoose.Schema({
   subject: { type: String, required: true },
   body: { type: String, required: true },
   name: { type: String, required: true },
-  url:{type: String},
-  isPublic: { type: Boolean, default: false },
+  isPublic: { type: Boolean, default: false }
 });
 
 // Create and export the Template model
