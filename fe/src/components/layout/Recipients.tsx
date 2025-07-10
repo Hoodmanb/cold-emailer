@@ -54,8 +54,9 @@ const RecipientList = ({
   return (
     <Box
       sx={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))",
+        display: "flex",
+        flexWrap: "wrap",
+        flexDirection: "row",
         gap: "8px",
       }}
     >
@@ -64,7 +65,7 @@ const RecipientList = ({
           key={item._id}
           sx={{
             width: { xs: "100%", sm: "30%", md: "200px" },
-            minWidth: "170px",
+            minWidth: "160px",
           }}
         >
           <Card
