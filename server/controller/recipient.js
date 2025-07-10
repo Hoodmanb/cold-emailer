@@ -1,7 +1,12 @@
 const Recipient = require("../models/Recipient.js");
+const Category = require("../models/Category.js");
+const normalizeString = require("../utils/normalizeString.js");
+const Joi = require("joi");
+const { validateRequest } = require("../utils/validateRequest.js");
 
 exports.update = async (req, res) => {
   const { name, newEmail, category } = req.body;
+  console.log(name, newEmail, category);
   const { email } = req.params;
 
   try {
@@ -11,23 +16,30 @@ exports.update = async (req, res) => {
       return res.status(404).json({ message: "recipient not found" });
     }
 
-    if (name !== undefined) recipient.name = name;
-    if (newEmail !== undefined) recipient.email = newEmail;
-    if (category !== undefined) recipient.category = category;
+    if (name) recipient.name = name;
+    if (newEmail) recipient.email = newEmail;
+    if (category) recipient.category = category;
 
-    await recipient.save();
-    console.log("Recipient updated:", recipient);
-    return res.status(200).json({ message: "recipient updated successfully" });
+    if (name || newEmail || category) {
+      await recipient.save();
+      console.log("Recipient updated:", recipient);
+      return res
+        .status(200)
+        .json({ message: "recipient updated successfully" });
+    }
+    return res.status(400).json({ message: "no data provided" });
   } catch (error) {
     console.error("Error updating recipient by email:", error);
-    return res.status(500).json({ message: "error updating recipient", error });
+    return res
+      .status(500)
+      .json({ message: error._message || "error updating recipient", error });
   }
 };
-
 
 // delete recipient data by email
 exports.delete = async (req, res) => {
   const { email } = req.params;
+  console.log(email);
   try {
     const result = await Recipient.deleteOne({ email });
     if (result.deletedCount === 0) {
@@ -45,20 +57,60 @@ exports.delete = async (req, res) => {
 // Creating a new recipient
 exports.create = async (req, res) => {
   const { email, name, category } = req.body;
+  console.log(category);
+
+  const normalizedEmail = normalizeString(email);
+  const normalizedName = normalizeString(name);
+
+  const valuesToValidate = { name, email };
+
+  const schema = Joi.object({
+    name: Joi.string().required().messages({
+      "string.empty": "name is required",
+    }),
+    email: Joi.string().email().required().messages({
+      "string.empty": "email is required",
+      "string.email": "invalid email format",
+    }),
+  }).unknown(true);
+
+  const { error: bodyError } = schema.validate(valuesToValidate);
+
+  if (bodyError) {
+    return res
+      .status(400)
+      .json({ message: "validation error", errors: bodyError.details });
+  }
+
   try {
     // Check if recipient already exists
-    const existingRecipient = await Recipient.findOne({ email });
-    if (existingRecipient) {
-      return res.status(409).json({ message: "recipient already exist" });
+    const existingCategory = await Category.findById(category);
+    const existingEmail = await Recipient.findOne({
+      email: { $regex: `^${normalizedEmail}$`, $options: "i" },
+    });
+    const existingName = await Recipient.findOne({
+      name: { $regex: `^${normalizedName}$`, $options: "i" },
+    });
+    if (existingEmail || existingName || !existingCategory) {
+      let errors = {};
+      existingEmail ? (errors.email = "email already exist") : "";
+      existingName ? (errors.name = "name already exist") : "";
+      !existingCategory ? (errors.category = "category not found") : "";
+
+      return res.status(400).json({ message: "field error", errors });
     }
     // Create a new recipient
-    const newRecipient = await Recipient.create({ email, name, category });
+    const newRecipient = await Recipient.create({
+      email: normalizedEmail,
+      name,
+      category,
+    });
     return res
       .status(200)
       .json({ message: "created successfully", data: newRecipient });
   } catch (error) {
     console.error("Error creating recipient:", error);
-    return res.status(500).json({ message: error.message, error });
+    return res.status(500).json({ message: "error creating recipient", error });
   }
 };
 
@@ -72,7 +124,9 @@ exports.get = async (req, res) => {
       return res.status(404).json({ message: "no recipient found" });
     }
     console.log("Recipients fetched:", recipients);
-    return res.status(200).json({ message: "retrieved successfully", data: recipients });
+    return res
+      .status(200)
+      .json({ message: "retrieved successfully", data: recipients });
   } catch (error) {
     console.error("Error fetching all recipients:", error);
     return res
@@ -83,6 +137,7 @@ exports.get = async (req, res) => {
 
 exports.getOne = async (req, res) => {
   const { email } = req.params;
+  console.log(email)
   try {
     // Find recipient by email
     const recipient = await Recipient.findOne({ email });
@@ -90,7 +145,9 @@ exports.getOne = async (req, res) => {
       return res.status(404).json({ message: "recipient not found" });
     }
     console.log(recipient);
-    return res.status(200).json({ message: "retrieved successfully", data: recipient });
+    return res
+      .status(200)
+      .json({ message: "retrieved successfully", data: recipient });
   } catch (error) {
     console.error("Error fetching recipient", error);
     return res.status(500).json({ message: "error fetching recipient", error });
