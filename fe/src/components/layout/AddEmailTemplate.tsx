@@ -24,8 +24,9 @@ import { useFetchCategory } from "@/hooks/queryHooks";
 import CustomFileUpload from "../ui/FileUploadInput";
 import useAuthStore from "@/store/useAuthStore";
 import { uploadFileToFirebase } from "@/utils/fileUpload";
-import {cleanFormValues} from "@/utils/cleanFormValues"
+import { cleanFormValues } from "@/utils/cleanFormValues"
 import { Android12Switch } from "../ui/Switch";
+import { objectToFormData } from "@/utils/objectToFormData";
 
 type prop = {
   type: "add" | "update";
@@ -104,7 +105,6 @@ export default function AddEmailTemplate({
           subject: "",
           body: "",
           attachment: null,
-          url: "",
           isPublic: false,
         }}
         validationSchema={
@@ -116,30 +116,37 @@ export default function AddEmailTemplate({
           values,
           { setSubmitting, resetForm, setFieldError }
         ) => {
-          // if (values.attachment) {
-          //   const uploadAttachmentUrl = await uploadFileToFirebase(
-          //     values.attachment
-          //   );
-          //   if (uploadAttachmentUrl.success) {
-          //     values.url = uploadAttachmentUrl.url || "";
-          //     console.log("Uploaded File URL:", uploadAttachmentUrl.url);
-          //   } else {
-          //     console.log("Upload Failed:", uploadAttachmentUrl.message);
-          //     showSnackbar(uploadAttachmentUrl.message, "error");
-          //   }
-          // }
+
+
+
           const cleanedValues = cleanFormValues(values)
+          const formdata = objectToFormData(cleanedValues)
+
+          console.log("ATTACHMENT:", formdata);
+
+          const logFormData = (formData: FormData) => {
+            for (const [key, value] of formData.entries()) {
+              console.log(`${key}:`, value);
+            }
+          };
+
+          logFormData(formdata)
+
           const response =
             type === "add"
-              ? await axiosInstance.post("/api/template", cleanedValues)
+              ? await axiosInstance.post("/api/template", formdata, {
+                headers: {
+                  "Content-Type": "multipart/form-data",
+                }
+              })
               : templateId
                 ? await axiosInstance.put(
                   `/api/template/${templateId}`,
-                  cleanedValues
+                  formdata
                 )
                 : await axiosInstance.put(
                   `/api/template/example$$##&&%%.gmail.com`,
-                  cleanedValues
+                  formdata
                 );
           console.log(response.data);
           if (response.data.message === "template created successfully") {
@@ -231,9 +238,13 @@ export default function AddEmailTemplate({
                   Attachment (optional)
                 </Typography>
                 <CustomFileUpload
+                  name="attachment"
                   placeholder="Upload your CV/Resume/Cover Letter..."
                   file={values.attachment}
-                  onChange={(val) => setFieldValue("attachment", val)}
+                  onChange={(val) => {
+                    setFieldValue("attachment", val)
+                    console.log(val)
+                  }}
                   icon={File}
                   iconColor="gray"
                 />

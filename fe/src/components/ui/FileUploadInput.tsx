@@ -8,6 +8,7 @@ import {
 import { LucideIcon, Upload } from "lucide-react";
 
 interface FileUploadProps extends Omit<TextFieldProps, "onChange" | "value"> {
+  name?: string;
   icon?: LucideIcon;
   iconOne?: LucideIcon;
   iconColor?: string;
@@ -17,6 +18,7 @@ interface FileUploadProps extends Omit<TextFieldProps, "onChange" | "value"> {
 }
 
 const CustomFileUpload: React.FC<FileUploadProps> = ({
+  name,
   icon: Icon,
   iconOne: IconOne,
   iconColor = "gray",
@@ -41,9 +43,9 @@ const CustomFileUpload: React.FC<FileUploadProps> = ({
   return (
     <>
       <MuiTextField
+      name={name}
         size={size}
         fullWidth={fullWidth}
-        value={file?.name || ""}
         onClick={handleClick}
         placeholder={file?.name || placeholder}
         InputProps={{

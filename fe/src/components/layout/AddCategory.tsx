@@ -1,21 +1,18 @@
-import { Stack, Box, Button, Typography, IconButton } from "@mui/material";
+import { Stack, Box, Typography, IconButton } from "@mui/material";
 import { useGlobalModal } from "../ui/Modal";
 import CustomTextField from "@/components/ui/TextField";
 import * as Yup from "yup";
 import { ErrorText } from "@/components/ui/ErrorText";
 import { Form, Formik } from "formik";
 import { useSnackbar } from "@/context/SnackbarContext";
-import SelectOption from "../ui/Option";
 import { XIcon } from "lucide-react";
 import CustomButton from "../ui/Button";
 import axiosInstance from "@/hooks/axios";
+import { useFetchSingleCategory } from "@/hooks/queryHooks";
+import { useEffect } from "react";
 
 const AddCategoryValidationSchema = Yup.object().shape({
   category: Yup.string().required("Category is required"),
-});
-
-const UpdateCategoryValidationSchema = Yup.object().shape({
-  category: Yup.string(),
 });
 
 type prop = {
@@ -27,6 +24,13 @@ type prop = {
 export default function AddCategory({ type, categoryId, setRefresh }: prop) {
   const { closeModal } = useGlobalModal();
   const { showSnackbar } = useSnackbar();
+  const { category, refetchCategory } = useFetchSingleCategory(categoryId);
+
+  useEffect(() => {
+      if (type === "update") {
+        refetchCategory(); // Only refetch if it's update
+      }
+    }, [type]);
 
   return (
     <Stack
@@ -54,13 +58,10 @@ export default function AddCategory({ type, categoryId, setRefresh }: prop) {
       </Stack>
       <Formik
         initialValues={{
-          category: "",
+          category: category?.category || "",
         }}
-        validationSchema={
-          type === "add"
-            ? AddCategoryValidationSchema
-            : UpdateCategoryValidationSchema
-        }
+        enableReinitialize={type === "update"}
+        validationSchema={AddCategoryValidationSchema}
         onSubmit={async (values, { setSubmitting, resetForm }) => {
           const response =
             type === "add"

@@ -6,8 +6,8 @@ const SUPPORTED_FORMATS = [
   'application/pdf',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'image/jpeg',
-  'image/png',
+  'text/plain',
+  'application/vnd.oasis.opendocument.text',
 ];
 
 export const registerValidationSchema = Yup.object().shape({
@@ -109,21 +109,18 @@ export const AddEmailTemplateValidationSchema = Yup.object().shape({
 
   name: Yup.string().required("name is required"),
 
-  url: Yup.string(),
-
   subject: Yup.string().required("subject is required"),
 
-  attachment: Yup.mixed().nullable()
-  .test('fileSize', 'File too large, max 5MB', (value) => {
-    if (!value) return true; 
-    const file = value as File;
-    return file.size <= FILE_SIZE;
-  })
-  .test('fileFormat', 'Unsupported file format', (value) => {
-    if (!value) return true;
-    const file = value as File;
-    return SUPPORTED_FORMATS.includes(file.type);
-  }),
+  attachment: Yup.mixed<File>()
+    .nullable()
+    .test('fileSize', 'File too large, max 5MB', (value) => {
+      if (!value) return true;
+      return value.size <= FILE_SIZE;
+    })
+    .test('fileFormat', 'Unsupported file format', (value) => {
+      if (!value) return true;
+      return SUPPORTED_FORMATS.includes(value.type);
+    }),
 
   isPublic: Yup.boolean().required("choose to make this template public/private")
 
@@ -134,21 +131,18 @@ export const UpdateEmailTemplateValidationSchema = Yup.object().shape({
 
   name: Yup.string(),
 
-  url: Yup.string(),
-
   subject: Yup.string(),
 
-  attachment: Yup.mixed().nullable()
-  .test('fileSize', 'File too large, max 5MB', (value) => {
-    if (!value) return true; 
-    const file = value as File;
-    return file.size <= FILE_SIZE;
-  })
-  .test('fileFormat', 'Unsupported file format', (value) => {
-    if (!value) return true;
-    const file = value as File;
-    return SUPPORTED_FORMATS.includes(file.type);
-  }),
+  attachment: Yup.mixed<File>()
+    .nullable()
+    .test('fileSize', 'File too large, max 5MB', (value) => {
+      if (!value) return true;
+      return value.size <= FILE_SIZE;
+    })
+    .test('fileFormat', 'Unsupported file format', (value) => {
+      if (!value) return true;
+      return SUPPORTED_FORMATS.includes(value.type);
+    }),
 
   isPublic: Yup.boolean()
 
@@ -157,19 +151,17 @@ export const UpdateEmailTemplateValidationSchema = Yup.object().shape({
 export const CreateCVValidationSchema = Yup.object().shape({
   name: Yup.string().required("name is required"),
 
-  url: Yup.string(),
-
   attachment: Yup.mixed().required("a document is required")
-  .test('fileSize', 'File too large, max 5MB', (value) => {
-    if (!value) return true; 
-    const file = value as File;
-    return file.size <= FILE_SIZE;
-  })
-  .test('fileFormat', 'Unsupported file format', (value) => {
-    if (!value) return true;
-    const file = value as File;
-    return SUPPORTED_FORMATS.includes(file.type);
-  }),
+    .test('fileSize', 'File too large, max 5MB', (value) => {
+      if (!value) return true;
+      const file = value as File;
+      return file.size <= FILE_SIZE;
+    })
+    .test('fileFormat', 'Unsupported file format', (value) => {
+      if (!value) return true;
+      const file = value as File;
+      return SUPPORTED_FORMATS.includes(file.type);
+    }),
 
   isPublic: Yup.boolean().required("choose to make this template public/private")
 

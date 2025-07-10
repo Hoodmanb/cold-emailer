@@ -13,7 +13,11 @@ import { XIcon } from "lucide-react";
 import CustomButton from "../ui/Button";
 import axiosInstance from "@/hooks/axios";
 import { useEffect, useState } from "react";
-import { useFetchCategory } from "@/hooks/queryHooks";
+import {
+  useFetchCategory,
+  useGetSingleRecipient,
+  useFetchSingleCategory,
+} from "@/hooks/queryHooks";
 
 type prop = {
   type: "add" | "update";
@@ -38,25 +42,28 @@ export default function AddRecipient({
 }: prop) {
   const { closeModal } = useGlobalModal();
   const { showSnackbar } = useSnackbar();
-  const [mounted, setMounted] = useState(false);
   const [categoryList, setCategoryList] = useState<OutputType[]>([]);
   const { categories, refetchCategories } = useFetchCategory("/api/category");
+  const { singleRecipient, loading, error, refetch } =
+    useGetSingleRecipient(recipientEmail);
 
   const transformCategory = (): OutputType[] => {
     const lists = categories.map((item) => ({
       value: item._id,
       label: item.category,
     }));
-    console.log("Nwigiri", categories);
     return lists;
   };
 
   useEffect(() => {
-    setCategoryList(transformCategory());
-    setMounted(true);
-  }, [categories]);
+    if (type === "update") {
+      refetch(); // Only refetch if it's update
+    }
+  }, [type]);
 
-  if (!mounted) return;
+  useEffect(() => {
+    setCategoryList(transformCategory());
+  }, [categories, recipientEmail]);
 
   return (
     <Stack
@@ -84,11 +91,12 @@ export default function AddRecipient({
       </Stack>
       <Formik
         initialValues={{
-          name: "",
-          email: "",
-          category: "",
-          newEmail: "",
+          name: singleRecipient?.name || "",
+          email: singleRecipient?.email || "",
+          category: singleRecipient?.category || "", // perfect
+          // newEmail: "",
         }}
+        enableReinitialize={type === "update"}
         validationSchema={
           type === "add"
             ? AddRecipientValidationSchema
@@ -122,10 +130,24 @@ export default function AddRecipient({
             showSnackbar(response.data.message, "success");
             setRefresh((prev) => !prev);
             return resetForm();
+          } else if (
+            response.data.message === "recipient updated successfully"
+          ) {
+            showSnackbar("recipient updated successfully", "success");
+            setRefresh((prev) => !prev);
+            return resetForm();
           } else if (response.data.message === "recipient not found") {
             showSnackbar("recipient not found", "info");
-          } else if (response.data.message === "recipient already exist") {
-            showSnackbar("recipient already exist", "info");
+          } else if (response.data.errors) {
+            if (response.data.errors.email) {
+              setFieldError("email", response.data.errors.email);
+            }
+            if (response.data.errors.name) {
+              setFieldError("name", response.data.errors.name);
+            }
+            if (response.data.errors.category) {
+              setFieldError("category", response.data.errors.category);
+            }
           } else if (
             response.data.message === "recipient updated successfully"
           ) {

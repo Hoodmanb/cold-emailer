@@ -18,7 +18,6 @@ const Recipients = () => {
   const { showModal } = useGlobalModal();
 
   const user = useAuthStore((state) => state.user);
-  const [mounted, setMounted] = useState(false);
 
   const { recipient, loading, error, refetch } = useGetRecipients();
   const { categories, loadingFetch, refetchCategories } =
@@ -49,11 +48,8 @@ const Recipients = () => {
         await refetchCategories();
       }
     })();
-    setMounted(true);
   }, [refresh]);
 
-  if (!mounted) return;
-  if (loading) return <Box>Loading</Box>;
   if (error) return <Box>Error occured</Box>;
 
   return (
