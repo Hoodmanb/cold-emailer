@@ -4,20 +4,24 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { auth } from '@/firebase/firebaseConfig'; 
+import { auth } from '../firebase/firebaseConfig';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { Eye, EyeOff } from 'lucide-react';
 import mailImg from '../assets/images/heroimg.png';
 
-export default function Signup() {
+const SignUp = () => {
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const [formData, setFormData] = useState({
     fullName: '',
     username: '',
     email: '',
     password: '',
+    confirmPassword: '',
   });
 
   const handleChange = (e) => {
@@ -29,6 +33,11 @@ export default function Signup() {
     e.preventDefault();
     setError('');
     setSuccess('');
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
 
     try {
       const userCredential = await createUserWithEmailAndPassword(
@@ -70,7 +79,7 @@ export default function Signup() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="fullName">Full Name</Label>
+              <Label htmlFor="fullName" className="mb-2">Full Name</Label>
               <Input
                 id="fullName"
                 name="fullName"
@@ -80,8 +89,9 @@ export default function Signup() {
                 required
               />
             </div>
+
             <div>
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username" className="mb-2">Username</Label>
               <Input
                 id="username"
                 name="username"
@@ -91,8 +101,9 @@ export default function Signup() {
                 required
               />
             </div>
+
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="mb-2">Email</Label>
               <Input
                 id="email"
                 name="email"
@@ -103,21 +114,52 @@ export default function Signup() {
                 required
               />
             </div>
-            <div>
-              <Label htmlFor="password">Password</Label>
+
+            {/* Password with toggle */}
+            <div className="relative">
+              <Label htmlFor="password" className="mb-2">Password</Label>
               <Input
                 id="password"
                 name="password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 placeholder="Your password"
                 minLength={8}
                 value={formData.password}
                 onChange={handleChange}
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute top-[30px] right-3 text-[#3B3030]"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
 
-            <Button type="submit" className="w-full bg-[#795757] text-[#FFF0D1] hover:bg-[#6a4949]">
+            {/* Confirm Password with toggle */}
+            <div className="relative">
+              <Label htmlFor="confirmPassword" className="mb-2">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                name="confirmPassword"
+                type={showConfirm ? 'text' : 'password'}
+                placeholder="Confirm your password"
+                minLength={8}
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirm(!showConfirm)}
+                className="absolute top-[30px] right-3 text-[#3B3030]"
+              >
+                {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+
+            <Button type="submit" className="w-full bg-[#795757] text-[#FFF0D1] hover:bg-[#6a4949] py-6 mt-3 text-md">
               Sign Up
             </Button>
           </form>
@@ -135,4 +177,6 @@ export default function Signup() {
       </motion.div>
     </div>
   );
-}
+};
+
+export default SignUp;

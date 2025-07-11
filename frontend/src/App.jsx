@@ -3,11 +3,12 @@ import { Route, Routes } from 'react-router-dom'
 
 // IMPORTING PAGES
 import HomePage from './Pages/HomePage'
-import SignUp from './Pages/SignUp'
-import LogIn from './Pages/LogIn'
+import SignIn from './Pages/SignIn'
+import SignUp from './Pages/Signup'
+import Welcome from './Pages/Welcome'
 
 // IMPORTING COMPONENTS
-import Navbar from './components/ui/Components/Navbar'
+import Navbar from './components/Components/Navbar'
 
 const App = () => {
   return (
@@ -17,7 +18,8 @@ const App = () => {
       <Routes>
         <Route path="/" element={<HomePage/>} />
         <Route path="/signup" element={<SignUp/>} />
-        <Route path="/login" element={<LogIn/>} />
+        <Route path="/signin" element={<SignIn/>} />
+        <Route path="/home" element={<Welcome/>} />
       </Routes>
     </>
   )

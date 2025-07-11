@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import heroImage from '../assets/images/heroimg.png'
 
-export default function HomePage() {
+const HomePage = () => {
   return (
     <main className="bg-[#FFFFF8] text-[#3B3030] flex items-center justify-center px-6">
       <div className="grid md:grid-cols-2 gap-12 max-w-6xl items-center">
@@ -55,3 +55,5 @@ export default function HomePage() {
     </main>
   );
 }
+
+export default HomePage;
