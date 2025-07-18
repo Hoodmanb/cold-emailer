@@ -4,6 +4,9 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import heroImage from '../assets/images/heroimg.png'
 
+console.log("API KEY:", import.meta.env.VITE_FIREBASE_API_KEY);
+
+
 const HomePage = () => {
   return (
     <main className="bg-[#FFFFF8] text-[#3B3030] flex items-center justify-center px-6">
