@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -14,7 +14,14 @@ import WelcomeComponent from '../components/Components/welcome';
 import AddRecipient from '../components/Components/addRecipient';
 
 const Welcome = () => {
-  const [selectedContent, setSelectedContent] = useState('welcome');
+  const [selectedContent, setSelectedContent] = useState(() => {
+    return localStorage.getItem('selectedContent') || 'welcome';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('selectedContent', selectedContent);
+  }, [selectedContent]);
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);

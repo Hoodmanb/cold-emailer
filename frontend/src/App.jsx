@@ -4,7 +4,7 @@ import { Route, Routes } from 'react-router-dom'
 // IMPORTING PAGES
 import HomePage from './Pages/HomePage'
 import SignIn from './Pages/SignIn'
-import SignUp from './Pages/Signup'
+import SignUp from './Pages/SignUp'
 import Welcome from './Pages/Welcome'
 
 // IMPORTING COMPONENTS

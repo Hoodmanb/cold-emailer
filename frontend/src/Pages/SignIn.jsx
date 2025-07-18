@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import mailImg from '../assets/images/heroimg.png';
+import { getAuth } from 'firebase/auth';
 import { login } from '../firebase/authService';
 
 const SignIn = () => {
@@ -24,18 +25,26 @@ const SignIn = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
+  e.preventDefault();
+  setError('');
 
-    try {
-      await login(formData.email, formData.password); // ✅ using helper
+  try {
+    await login(formData.email, formData.password);
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (user) {
+      const token = await user.getIdToken();
+      localStorage.setItem('token', token);
       navigate('/home');
-    } catch (error) {
-      console.error('Sign-in error:', error.message);
-      setError('Invalid email or password. Please try again.');
+    } else {
+      setError('Authentication failed. No user found.');
     }
-  };
-
+  } catch (error) {
+    console.error('Sign-in error:', error.message);
+    setError('Invalid email or password. Please try again.');
+  }
+};
   return (
     <div className="min-h-screen bg-[#FFF0D1] flex items-center justify-center px-4 py-1 text-[#3B3030]">
       <motion.div

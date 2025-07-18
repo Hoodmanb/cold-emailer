@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import PenIcon from '../../assets/icons/pen.png';
 
 const Welcome = ({ setSelectedContent }) => {
+  
   return (
     <div className="min-h-screen px-6 py-10 bg-[#FFF0D1] text-[#3B3030]">
       <motion.div

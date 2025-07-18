@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import api from '../../utils/api';
 import axios from 'axios';
 import { motion } from 'framer-motion';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
+
+console.log(getAuth().currentUser);
 
 const ManageCategories = () => {
   const [categories, setCategories] = useState([]);
@@ -9,17 +13,28 @@ const ManageCategories = () => {
   const [editName, setEditName] = useState('');
 
   useEffect(() => {
-    const fetchCategories = async () => {
+  const auth = getAuth();
+
+  const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    if (user) {
       try {
-        const response = await axios.get('http://localhost:5000/api/category');
+        const token = await user.getIdToken();
+        const response = await api.get('/category', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
         setCategories(response.data.categories || []);
       } catch (error) {
         console.error('Error fetching categories:', error);
       }
-    };
+    } else {
+      console.warn('User is not logged in');
+    }
+  });
 
-    fetchCategories();
-  }, []);
+  return () => unsubscribe(); // Cleanup when component unmounts
+}, []);
 
   const handleAddCategory = async () => {
     if (!newCategory.trim()) return;
