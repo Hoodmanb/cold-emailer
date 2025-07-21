@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../utils/api';
-import axios from 'axios';
 import { motion } from 'framer-motion';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 
-console.log(getAuth().currentUser);
+
+
+console.log(`api:${api}`)
 
 const ManageCategories = () => {
   const [categories, setCategories] = useState([]);
@@ -12,84 +13,96 @@ const ManageCategories = () => {
   const [editCategory, setEditCategory] = useState(null);
   const [editName, setEditName] = useState('');
 
-  useEffect(() => {
+
+  //GET
+useEffect(() => {
   const auth = getAuth();
 
   const unsubscribe = onAuthStateChanged(auth, async (user) => {
     if (user) {
+      console.log("Logged in user:", user);
+
       try {
-        const token = await user.getIdToken();
-        const response = await api.get('/category', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await api.get('/category');
         setCategories(response.data.categories || []);
       } catch (error) {
         console.error('Error fetching categories:', error);
       }
     } else {
-      console.warn('User is not logged in');
+      console.warn('No user logged in');
     }
   });
 
-  return () => unsubscribe(); // Cleanup when component unmounts
+  return () => unsubscribe();
 }, []);
 
+
+
+//POST
   const handleAddCategory = async () => {
-    if (!newCategory.trim()) return;
+  if (!newCategory.trim()) return;
 
-    try {
-      const response = await axios.post('http://localhost:5000/api/category/create', {
-        categoryName: newCategory,
-      });
-      if (response.data.message === 'successful') {
-        setCategories([...categories, response.data.newCategory]);
-        setNewCategory('');
-      } else {
-        alert(response.data.message);
-      }
-    } catch (error) {
-      console.error('Error adding category:', error);
+  try {
+    const response = await api.post('/category/create', {
+      categoryName: newCategory,
+    });
+
+    if (response.data.message === 'successful') {
+      setCategories([...categories, response.data.newCategory]);
+      setNewCategory('');
+    } else {
+      alert(response.data.message);
     }
-  };
+  } catch (error) {
+    console.error('Error adding category:', error);
+  }
+};
 
+
+//PUT
   const handleEditCategory = async () => {
-    try {
-      const response = await axios.put('http://localhost:5000/api/category/update', {
-        id: editCategory,
-        newData: { category: editName },
-      });
-      if (response.data.message === 'successful') {
-        setCategories(
-          categories.map((cat) =>
-            cat._id === editCategory ? { ...cat, category: editName } : cat
-          )
-        );
-        setEditCategory(null);
-        setEditName('');
-      } else {
-        alert(response.data.message);
-      }
-    } catch (error) {
-      console.error('Error updating category:', error);
-    }
-  };
+  if (!editName.trim()) return;
 
-  const handleDeleteCategory = async (id) => {
-    try {
-      const response = await axios.delete('http://localhost:5000/api/category/delete', {
-        data: { id },
-      });
-      if (response.data.message === 'Category deleted successfully') {
-        setCategories(categories.filter((cat) => cat._id !== id));
-      } else {
-        alert(response.data.message);
-      }
-    } catch (error) {
-      console.error('Error deleting category:', error);
+  try {
+    const response = await api.put('/category/update', {
+      id: editCategory,
+      newData: { category: editName },
+    });
+
+    if (response.data.message === 'successful') {
+      setCategories(
+        categories.map((cat) =>
+          cat._id === editCategory ? { ...cat, category: editName } : cat
+        )
+      );
+      setEditCategory(null);
+      setEditName('');
+    } else {
+      alert(response.data.message);
     }
-  };
+  } catch (error) {
+    console.error('Error updating category:', error);
+  }
+};
+
+
+//DELETE
+  const handleDeleteCategory = async (id) => {
+  try {
+    const response = await api.delete('/category/delete', {
+      data: { id },
+    });
+
+    if (response.data.message === 'Category deleted successfully') {
+      setCategories(categories.filter((cat) => cat._id !== id));
+    } else {
+      alert(response.data.message);
+    }
+  } catch (error) {
+    console.error('Error deleting category:', error);
+  }
+};
+
 
   return (
     <motion.div
