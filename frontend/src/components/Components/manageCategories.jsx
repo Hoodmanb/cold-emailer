@@ -14,27 +14,15 @@ const ManageCategories = () => {
   const [editName, setEditName] = useState('');
 
 
-  //GET
-useEffect(() => {
-  const auth = getAuth();
-
-  const unsubscribe = onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      console.log("Logged in user:", user);
-
-      try {
-        const response = await api.get('/category');
-        setCategories(response.data.categories || []);
-      } catch (error) {
-        console.error('Error fetching categories:', error);
-      }
-    } else {
-      console.warn('No user logged in');
-    }
-  });
-
-  return () => unsubscribe();
-}, []);
+//GET
+const fetchCategories = async () => {
+  try {
+    const response = await api.get('/category');
+    setCategories(response.data.data);
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+  }
+};
 
 
 
@@ -43,16 +31,17 @@ useEffect(() => {
   if (!newCategory.trim()) return;
 
   try {
-    const response = await api.post('/category/create', {
-      categoryName: newCategory,
+    const response = await api.post('/category', {
+      category: newCategory,
     });
 
-    if (response.data.message === 'successful') {
-      setCategories([...categories, response.data.newCategory]);
+    if (response.data.message === 'category created successful') {
+      setCategories(prev => [...prev, response.data.data]);
       setNewCategory('');
     } else {
       alert(response.data.message);
     }
+
   } catch (error) {
     console.error('Error adding category:', error);
   }
@@ -64,12 +53,11 @@ useEffect(() => {
   if (!editName.trim()) return;
 
   try {
-    const response = await api.put('/category/update', {
-      id: editCategory,
-      newData: { category: editName },
+    const response = await api.put(`/category/${editCategory}`, {
+      category: editName,
     });
 
-    if (response.data.message === 'successful') {
+    if (response.data.message === 'category updated successful') {
       setCategories(
         categories.map((cat) =>
           cat._id === editCategory ? { ...cat, category: editName } : cat
@@ -87,21 +75,25 @@ useEffect(() => {
 
 
 //DELETE
-  const handleDeleteCategory = async (id) => {
+const handleDeleteCategory = async (id) => {
   try {
-    const response = await api.delete('/category/delete', {
-      data: { id },
-    });
-
-    if (response.data.message === 'Category deleted successfully') {
-      setCategories(categories.filter((cat) => cat._id !== id));
-    } else {
-      alert(response.data.message);
-    }
+    await api.delete(`/category/${id}`);
+    setCategories(categories.filter((cat) => cat._id !== id));
   } catch (error) {
     console.error('Error deleting category:', error);
   }
 };
+
+
+useEffect(() => {
+  const auth = getAuth();
+  const unsubscribe = onAuthStateChanged(auth, (user) => {
+    if (user) {
+      fetchCategories();
+    }
+  });
+  return () => unsubscribe();
+}, []);
 
 
   return (
@@ -174,7 +166,7 @@ useEffect(() => {
                         setEditCategory(category._id);
                         setEditName(category.category);
                       }}
-                      className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                      className="bg-[#795757] text-white px-3 py-1 rounded hover:bg-blue-700"
                     >
                       Edit
                     </button>
