@@ -1,24 +1,41 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import { useEffect, useState } from 'react';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import api from '../../utils/api';
 import { motion } from 'framer-motion';
 
 const AddRecipient = () => {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
+  const [categories, setCategories] = useState([]);
   const [message, setMessage] = useState(null);
 
-  const [categories] = useState([
-    { id: 1, category: 'Technology' },
-    { id: 2, category: 'Health' },
-    { id: 3, category: 'Education' },
-  ]);
+  useEffect(() => {
+    const auth = getAuth();
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        fetchCategories();
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await api.get('/category');
+      setCategories(response.data.data);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
-      const response = await axios.post('http://localhost:5000/api/recipient/create', {
+      const response = await api.post('/recipient', {
         email,
         name,
         category,
@@ -26,10 +43,12 @@ const AddRecipient = () => {
 
       setMessage(response.data.message);
 
-      if (response.data.message === 'successful') {
+      if (response.data.message === 'created successfully') {
         setEmail('');
         setName('');
         setCategory('');
+
+        setTimeout(() => setMessage(null), 3000);
       }
     } catch (error) {
       console.error('Error creating recipient:', error);
@@ -94,7 +113,7 @@ const AddRecipient = () => {
           >
             <option value="" disabled>Select a category</option>
             {categories.map((cat) => (
-              <option key={cat.id} value={cat.category}>
+              <option key={cat._id} value={cat._id}>
                 {cat.category}
               </option>
             ))}
