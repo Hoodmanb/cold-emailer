@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from 'react';
+import api from '../../utils/api';
 import { motion } from 'framer-motion';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
+
 
 const CreateEmail = () => {
   const [formData, setFormData] = useState({
@@ -39,13 +41,13 @@ const CreateEmail = () => {
     try {
       let response;
       if (recipients.length === 1) {
-        response = await axios.post('http://localhost:5000/api/email/send', {
+        response = await api.post('/email/send', {
           to: recipients[0],
           subject: formData.subject,
           body: formData.body,
         });
       } else {
-        response = await axios.post('http://localhost:5000/api/emails/sendMany', {
+        response = await api.post('/email/send/bulk', {
           recipients: recipients.map((to) => ({
             to,
             subject: formData.subject,
