@@ -1,39 +1,43 @@
-import React, { useState } from 'react';
-import axios from 'axios';
-import { motion } from 'framer-motion';
+import React, { useState } from "react";
+import axios from "axios";
+import { motion } from "framer-motion";
+import api from "../../utils/api";
 
 const AddRecipient = () => {
-  const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState('');
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState("");
   const [message, setMessage] = useState(null);
 
   const [categories] = useState([
-    { id: 1, category: 'Technology' },
-    { id: 2, category: 'Health' },
-    { id: 3, category: 'Education' },
+    { id: 1, category: "Technology" },
+    { id: 2, category: "Health" },
+    { id: 3, category: "Education" },
   ]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
-      const response = await axios.post('http://localhost:5000/api/recipient/create', {
-        email,
-        name,
-        category,
-      });
+      const response = await api.post(
+        "https://didactic-space-zebra-7g4w45qw5wp3p576-5000.app.github.dev/api/recipient",
+        {
+          email,
+          name,
+          category,
+        }
+      );
 
       setMessage(response.data.message);
 
-      if (response.data.message === 'successful') {
-        setEmail('');
-        setName('');
-        setCategory('');
+      if (response.data.message === "successful") {
+        setEmail("");
+        setName("");
+        setCategory("");
       }
     } catch (error) {
-      console.error('Error creating recipient:', error);
-      setMessage('An error occurred while adding the recipient.');
+      console.error("Error creating recipient:", error);
+      setMessage("An error occurred while adding the recipient.");
     }
   };
 
@@ -51,7 +55,7 @@ const AddRecipient = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className={`mb-4 text-center font-medium ${
-            message === 'successful' ? 'text-green-600' : 'text-red-600'
+            message === "successful" ? "text-green-600" : "text-red-600"
           }`}
         >
           {message}
@@ -60,7 +64,9 @@ const AddRecipient = () => {
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label htmlFor="email" className="block font-medium mb-1">Email</label>
+          <label htmlFor="email" className="block font-medium mb-1">
+            Email
+          </label>
           <input
             type="email"
             id="email"
@@ -72,7 +78,9 @@ const AddRecipient = () => {
         </div>
 
         <div>
-          <label htmlFor="name" className="block font-medium mb-1">Name</label>
+          <label htmlFor="name" className="block font-medium mb-1">
+            Name
+          </label>
           <input
             type="text"
             id="name"
@@ -84,7 +92,9 @@ const AddRecipient = () => {
         </div>
 
         <div>
-          <label htmlFor="category" className="block font-medium mb-1">Category</label>
+          <label htmlFor="category" className="block font-medium mb-1">
+            Category
+          </label>
           <select
             id="category"
             className="w-full p-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#795757]"
@@ -92,7 +102,9 @@ const AddRecipient = () => {
             onChange={(e) => setCategory(e.target.value)}
             required
           >
-            <option value="" disabled>Select a category</option>
+            <option value="" disabled>
+              Select a category
+            </option>
             {categories.map((cat) => (
               <option key={cat.id} value={cat.category}>
                 {cat.category}

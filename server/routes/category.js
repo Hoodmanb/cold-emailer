@@ -225,6 +225,7 @@ categoryRouter.get("/", controller.get);
  *               message: Error fetching category by ID:
  *               error: {}
  */
-categoryRouter.get("/{id}", controller.getOne);
+// categoryRouter.get("/{id}", controller.getOne);
+categoryRouter.get("/:id", controller.getOne);
 
 module.exports = categoryRouter;
