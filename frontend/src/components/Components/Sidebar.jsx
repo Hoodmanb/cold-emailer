@@ -73,6 +73,9 @@ const Sidebar = ({ setSelectedContent }) => {
                   <li className="cursor-pointer hover:underline" onClick={() => setSelectedContent('schedule-email')}>
                     Schedule Email
                   </li>
+                  <li className="cursor-pointer hover:underline" onClick={() => setSelectedContent('scheduled-emails')}>
+                    Scheduled Emails
+                  </li>
                 </motion.ul>
               )}
             </AnimatePresence>

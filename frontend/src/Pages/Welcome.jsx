@@ -12,6 +12,7 @@ import ManageRecipients from '../components/Components/manageRecipients';
 import PageNotFound from '../components/Components/pageNotFound';
 import WelcomeComponent from '../components/Components/welcome';
 import AddRecipient from '../components/Components/addRecipient';
+import ScheduledEmails from '../components/Components/scheduledEmails';
 
 const Welcome = () => {
   const [selectedContent, setSelectedContent] = useState(() => {
@@ -43,6 +44,8 @@ const Welcome = () => {
         return <AddRecipient />;
       case 'manage-recipients':
         return <ManageRecipients />;
+      case 'scheduled-emails':
+        return <ScheduledEmails />;
       default:
         return <PageNotFound />;
     }

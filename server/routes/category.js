@@ -227,5 +227,4 @@ categoryRouter.get("/", controller.get);
  */
 // categoryRouter.get("/{id}", controller.getOne);
 categoryRouter.get("/:id", controller.getOne);
-
 module.exports = categoryRouter;

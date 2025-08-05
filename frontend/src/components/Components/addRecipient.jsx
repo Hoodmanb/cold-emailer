@@ -1,39 +1,56 @@
-import React, { useState } from "react";
-import axios from "axios";
-import { motion } from "framer-motion";
-import api from "../../utils/api";
+import { useEffect, useState } from 'react';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import api from '../../utils/api';
+import { motion } from 'framer-motion';
 
 const AddRecipient = () => {
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [category, setCategory] = useState("");
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState('');
+  const [categories, setCategories] = useState([]);
   const [message, setMessage] = useState(null);
 
-  const [categories] = useState([
-    { id: 1, category: "Technology" },
-    { id: 2, category: "Health" },
-    { id: 3, category: "Education" },
-  ]);
+  useEffect(() => {
+    const auth = getAuth();
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        fetchCategories();
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await api.get('/category');
+      setCategories(response.data.data);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+>>>>>>> c4175b54c3950c642b4ff01ec96161ade53796db
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
-      const response = await api.post(
-        "https://didactic-space-zebra-7g4w45qw5wp3p576-5000.app.github.dev/api/recipient",
-        {
-          email,
-          name,
-          category,
-        }
-      );
+
+      const response = await api.post('/recipient', {
+        email,
+        name,
+        category,
+      });
 
       setMessage(response.data.message);
 
-      if (response.data.message === "successful") {
-        setEmail("");
-        setName("");
-        setCategory("");
+      if (response.data.message === 'created successfully') {
+        setEmail('');
+        setName('');
+        setCategory('');
+
+        setTimeout(() => setMessage(null), 3000);
       }
     } catch (error) {
       console.error("Error creating recipient:", error);
@@ -106,7 +123,7 @@ const AddRecipient = () => {
               Select a category
             </option>
             {categories.map((cat) => (
-              <option key={cat.id} value={cat.category}>
+              <option key={cat._id} value={cat._id}>
                 {cat.category}
               </option>
             ))}
