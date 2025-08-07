@@ -30,11 +30,13 @@ const AddRecipient = () => {
       console.error('Error fetching categories:', error);
     }
   };
+>>>>>>> c4175b54c3950c642b4ff01ec96161ade53796db
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
+
       const response = await api.post('/recipient', {
         email,
         name,
@@ -51,8 +53,8 @@ const AddRecipient = () => {
         setTimeout(() => setMessage(null), 3000);
       }
     } catch (error) {
-      console.error('Error creating recipient:', error);
-      setMessage('An error occurred while adding the recipient.');
+      console.error("Error creating recipient:", error);
+      setMessage("An error occurred while adding the recipient.");
     }
   };
 
@@ -70,7 +72,7 @@ const AddRecipient = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className={`mb-4 text-center font-medium ${
-            message === 'successful' ? 'text-green-600' : 'text-red-600'
+            message === "successful" ? "text-green-600" : "text-red-600"
           }`}
         >
           {message}
@@ -79,7 +81,9 @@ const AddRecipient = () => {
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label htmlFor="email" className="block font-medium mb-1">Email</label>
+          <label htmlFor="email" className="block font-medium mb-1">
+            Email
+          </label>
           <input
             type="email"
             id="email"
@@ -91,7 +95,9 @@ const AddRecipient = () => {
         </div>
 
         <div>
-          <label htmlFor="name" className="block font-medium mb-1">Name</label>
+          <label htmlFor="name" className="block font-medium mb-1">
+            Name
+          </label>
           <input
             type="text"
             id="name"
@@ -103,7 +109,9 @@ const AddRecipient = () => {
         </div>
 
         <div>
-          <label htmlFor="category" className="block font-medium mb-1">Category</label>
+          <label htmlFor="category" className="block font-medium mb-1">
+            Category
+          </label>
           <select
             id="category"
             className="w-full p-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#795757]"
@@ -111,7 +119,9 @@ const AddRecipient = () => {
             onChange={(e) => setCategory(e.target.value)}
             required
           >
-            <option value="" disabled>Select a category</option>
+            <option value="" disabled>
+              Select a category
+            </option>
             {categories.map((cat) => (
               <option key={cat._id} value={cat._id}>
                 {cat.category}
