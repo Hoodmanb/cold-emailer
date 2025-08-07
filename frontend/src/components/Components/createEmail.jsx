@@ -23,55 +23,66 @@ const CreateEmail = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage({ type: '', content: '' });
+  e.preventDefault();
+  setLoading(true);
+  setMessage({ type: '', content: '' });
 
-    const recipients = formData.recipients
-      .split(',')
-      .map((email) => email.trim())
-      .filter((email) => email);
+  const recipients = formData.recipients
+    .split(',')
+    .map((email) => email.trim())
+    .filter((email) => email);
 
-    if (recipients.length === 0) {
-      setMessage({ type: 'error', content: 'Please provide at least one recipient.' });
-      setLoading(false);
-      return;
-    }
+  if (recipients.length === 0) {
+    setMessage({ type: 'error', content: 'Please provide at least one recipient.' });
+    setLoading(false);
+    return;
+  }
 
-    try {
-      let response;
-      if (recipients.length === 1) {
-        response = await api.post('/email/send', {
-          to: recipients[0],
+  try {
+    let response;
+
+    if (recipients.length === 1) {
+      response = await api.post('/email/send', {
+        to: recipients[0],
+        subject: formData.subject,
+        body: formData.body,
+      });
+    } else {
+      const auth = getAuth();
+      const user = auth.currentUser;
+      const senderEmail = user?.email;
+
+      const payload = {
+        email: senderEmail,
+        emails: recipients.map((to) => ({
+          to,
           subject: formData.subject,
           body: formData.body,
-        });
-      } else {
-        response = await api.post('/email/send/bulk', {
-          recipients: recipients.map((to) => ({
-            to,
-            subject: formData.subject,
-            body: formData.body,
-          })),
-        });
-      }
+        })),
+      };
 
-      if (response.status === 200) {
-        setMessage({ type: 'success', content: response.data.message });
-        setFormData({ recipients: '', subject: '', body: '' });
-      } else {
-        setMessage({ type: 'error', content: response.data.message || 'An error occurred.' });
-      }
-    } catch (error) {
-      console.error('Error sending email:', error);
-      setMessage({
-        type: 'error',
-        content: error.response?.data?.message || 'Failed to send emails.',
-      });
-    } finally {
-      setLoading(false);
+      console.log("Payload to /send/bulk:", payload);
+
+      response = await api.post('/email/send/bulk', payload);
     }
-  };
+
+    if (response.status === 200) {
+      setMessage({ type: 'success', content: response.data.message });
+      setFormData({ recipients: '', subject: '', body: '' });
+    } else {
+      setMessage({ type: 'error', content: response.data.message || 'An error occurred.' });
+    }
+  } catch (error) {
+    console.error('Error sending email:', error);
+    setMessage({
+      type: 'error',
+      content: error.response?.data?.message || 'Failed to send emails.',
+    });
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <motion.div
