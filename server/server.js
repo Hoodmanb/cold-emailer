@@ -4,8 +4,6 @@ require("dotenv").config();
 // packages
 const express = require("express");
 const cors = require("cors");
-const swaggerUi = require("swagger-ui-express");
-const swaggerSpec = require("./swagger");
 
 // db connection
 const connectDB = require("./utils/db.js");
@@ -26,7 +24,6 @@ const runSchedule = require("./services/scheduler.js");
 
 const PORT = process.env.PORT || 9000;
 const path = require("path");
-// const swaggerDocument = YAML.load(path.join(__dirname, "swagger.yaml"));
 
 const app = express();
 
@@ -50,8 +47,6 @@ app.use(cors());
 // );
 
 connectDB();
-
-app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // ping my server every 10 min
 app.get("/api/ping", (req, res) => res.status(200).send("PONG"));
@@ -77,7 +72,3 @@ app.use("/api/category", categoryRouter);
 app.use("/api/schedule", scheduleRouter);
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
-// email done
-// categopry done
-// recipient done

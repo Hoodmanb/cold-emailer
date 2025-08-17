@@ -6,7 +6,7 @@ const controller = require("../controller/template.js");
 
 templateRouter.post("/", verifyToken, controller.create);
 
-templateRouter.put("/:id", verifyToken, controller.update);
+templateRouter.patch("/:id", verifyToken, controller.update);
 
 templateRouter.delete("/:id", verifyToken, controller.delete);
 
