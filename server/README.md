@@ -81,37 +81,37 @@ http://localhost:9000/api
 
 | Method | Endpoint                 | Description                     |
 | ------ | ------------------------ | ------------------------------- |
-| POST   | `/recipient`             | Create a recipient              |  # recipient
+| POST   | `/recipient`             | Create a recipient              |
 | GET    | `/recipient`             | Get all recipients              |
 | GET    | `/recipient/:email`      | Get single recipient by email   |
 | PATCH  | `/recipient/:email`      | Update recipient                |
 | DELETE | `/recipient/:email`      | Delete recipient                |
-| POST   | `/category`              | Create a category               |  # category
+| POST   | `/category`              | Create a category               |
 | GET    | `/category`              | Get all categories              |
 | GET    | `/category/:id`          | Get single category             |
 | PATCH  | `/category/:id`          | Update category                 |
 | DELETE | `/category/:id`          | Delete category                 |
-| POST   | `/email/send`            | Send single email               |  # email
+| POST   | `/email/send`            | Send single email               |
 | POST   | `/email/send/bulk`       | Send email to bulk recipients   |
-| POST   | `/user`                  | Get single user                 |  # user
+| POST   | `/user`                  | Get single user                 |
 | PATCH  | `/user`                  | Update user                     |
-| POST   | `/template`              | Create a template               |  # template
+| POST   | `/template`              | Create a template               |
 | GET    | `/template`              | Get all template                |
 | GET    | `/template/:id`          | Get single template by id       |
 | PATCH  | `/template/:id`          | Update template                 |
 | DELETE | `/template/:id`          | Delete template                 |
-| POST   | `/attachment`            | Create a attachment             |  # attachments
+| POST   | `/attachment`            | Create a attachment             |
 | GET    | `/attachment`            | Get all attachments             |
 | GET    | `/attachment/:id`        | Get single attachment           |
 | PATCH  | `/attachment/:id`        | Update attachment               |
 | DELETE | `/attachment/:id`        | Delete attachment               |
-| POST   | `/schedule`              | Create a schedule               |  # schedule
+| POST   | `/schedule`              | Create a schedule               |
 | POST   |`/schedule/:id/recipients`| Add a recipient to a schedule   |
 | GET    | `/schedule`              | Get all schedules               |
 | PATCH  | `/schedule/:id`          | Update schedule                 |
 | DELETE | `/schedule/:id`          | Delete schedule                 |
 | GET    | `/schedule/run`          | Webhook to run schedule         |
-| GET    | `/api/ping`              | Used to keep server alive       |  ## called by cron job to stop render server from sleeping
+| GET    | `/api/ping`              | Used to keep server alive       |
 
 ---
 
@@ -123,7 +123,8 @@ All responses follow this structure:
 {
   "message": "string",
   "data": {},
-  "errors": {}
+  "errors": {},
+  "error":"Error Object"
 }
 ```
 
@@ -131,6 +132,50 @@ All responses follow this structure:
 * `data`: The response payload (if successful)
 * `errors`: Validation or conflict errors
 
+Common response structure based on code 
+
+**Not Found (404):**
+
+```json
+{
+  "message": "not found"
+}
+```
+
+**Server Error (500):**
+
+```json
+{
+  "message": "Error deleting recipient",
+  "error":"Error Object"
+}
+```
+
+**Error (400 - Validation):**
+
+```json
+{
+  "message": "validation error",
+  "errors": [
+    { "email": "invalid email format" },
+    { "name": "name is required" },
+    ...
+  ]
+}
+```
+
+**Error (409 - Conflict):**
+
+```json
+{
+  "message": "field error",
+  "errors": [
+    { "email": "email already exist" },
+    { "name": "name already exist" },
+    ...
+  ]
+}
+```
 ---
 
 ## 👤 Recipient Routes
@@ -160,11 +205,11 @@ Creates a new recipient and assigns them to a category.
 
 **Body:**
 
-| Field      | Type   | Required | Description                |
-| ---------- | ------ | -------- | -------------------------- |
-| `name`     | String | ✅ Yes    | Full name of the recipient |
-| `email`    | String | ✅ Yes    | Recipient email address    |
-| `category` | String | ✅ Yes    | Category ID (MongoDB \_id) |
+| Field      | Type   | Required   | Description                |
+| ---------- | ------ | ---------  | -------------------------- |
+| `name`     | String |  Yes    | Name of the recipient      |
+| `email`    | String |  Yes    | Recipient email address    |
+| `category` | String |  No     | Category ID (MongoDB \_id) |
 
 **Example:**
 
@@ -180,11 +225,11 @@ Creates a new recipient and assigns them to a category.
 
 ### 📤 Response
 
-**Success (201):**
+**Success (200):**
 
 ```json
 {
-  "message": "Recipient created successfully",
+  "message": "created successfully",
   "data": {
     "_id": "6501a1a9b3cfa5ff1a234567",
     "name": "John Doe",
@@ -194,33 +239,11 @@ Creates a new recipient and assigns them to a category.
 }
 ```
 
-**Error (400 - Validation):**
-
-```json
-{
-  "message": "validation error",
-  "errors": [
-    { "field": "email", "message": "invalid email format" }
-  ]
-}
-```
-
-**Error (409 - Conflict):**
-
-```json
-{
-  "message": "field error",
-  "errors": {
-    "email": "email already exists"
-  }
-}
-```
-
 ---
 
 ### 🔢 Status Codes
 
-* `201 Created` → Recipient successfully created
+* `200 Created` → Recipient successfully created
 * `400 Bad Request` → Validation error
 * `404 Not Found` → Category not found
 * `409 Conflict` → Duplicate email or name
@@ -240,14 +263,20 @@ GET /api/recipient
 
 ```json
 {
-  "message": "Recipients fetched successfully",
+  "message": "retrieved successfully",
   "data": [
     {
       "_id": "6501a1a9b3cfa5ff1a234567",
       "name": "John Doe",
       "email": "johndoe@example.com",
       "category": "64fdd7c213abc90812345"
-    }
+    }, {
+      "_id": "6501a1a9b3cfa5ff1a234567",
+      "name": "Jane Doe",
+      "email": "janedoe@example.com",
+      "category": "64fdd7c213abc90812345"
+    },
+    ...
   ]
 }
 ```
@@ -257,14 +286,14 @@ GET /api/recipient
 ### 👤 Get Single Recipient
 
 ```http
-GET /api/recipient/:id
+GET /api/recipient/:email
 ```
 
 **Success (200):**
 
 ```json
 {
-  "message": "Recipient fetched successfully",
+  "message": "retrieved successfully",
   "data": {
     "_id": "6501a1a9b3cfa5ff1a234567",
     "name": "John Doe",
@@ -279,14 +308,15 @@ GET /api/recipient/:id
 ### ✏️ Update Recipient
 
 ```http
-PUT /api/recipient/:id
+PATCH /api/recipient/:email
 ```
 
 **Body:**
 
 ```json
 {
-  "name": "Jane Doe"
+  "name": "Jane Doe",
+  ...
 }
 ```
 
@@ -294,13 +324,7 @@ PUT /api/recipient/:id
 
 ```json
 {
-  "message": "Recipient updated successfully",
-  "data": {
-    "_id": "6501a1a9b3cfa5ff1a234567",
-    "name": "Jane Doe",
-    "email": "johndoe@example.com",
-    "category": "64fdd7c213abc90812345"
-  }
+  "message": "recipient updated successfully"
 }
 ```
 
@@ -309,15 +333,13 @@ PUT /api/recipient/:id
 ### ❌ Delete Recipient
 
 ```http
-DELETE /api/recipient/:id
+DELETE /api/recipient/:email
 ```
 
-**Success (200):**
+**Success (204):**
 
-```json
-{
-  "message": "Recipient deleted successfully"
-}
+```
+"No response body"
 ```
 
 ---
