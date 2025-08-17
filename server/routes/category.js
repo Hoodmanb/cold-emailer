@@ -149,7 +149,7 @@ categoryRouter.put("/:id", controller.update);
  *         content:
  *           application/json:
  *             example:
- *               message: Error deleting category by ID:
+ *               message: "Error deleting category by ID:"
  *               error: {}
  */
 categoryRouter.delete("/:id", controller.delete);
@@ -179,7 +179,7 @@ categoryRouter.delete("/:id", controller.delete);
  *             example:
  *               message: No categories found
  *       500:
- *         description: Error fetching categories
+ *         description: "Error fetching categories"
  *         content:
  *           application/json:
  *             example:
@@ -222,7 +222,7 @@ categoryRouter.get("/", controller.get);
  *         content:
  *           application/json:
  *             example:
- *               message: Error fetching category by ID:
+ *               message: "Error fetching category by ID:"
  *               error: {}
  */
 categoryRouter.get("/{id}", controller.getOne);

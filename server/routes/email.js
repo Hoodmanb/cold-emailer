@@ -198,6 +198,7 @@ emailRouter.post("/send/bulk", async (req, res) => {
  */
 emailRouter.post("/send", async (req, res) => {
   const { to, subject, body, email } = req.body;
+  console.log(email);
   try {
     let errorMessage = {};
     if (!to || !subject || !body) {

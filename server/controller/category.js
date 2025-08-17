@@ -50,9 +50,7 @@ exports.delete = async (req, res) => {
     }
     return res.status(204).send();
   } catch (error) {
-    return res
-      .status(500)
-      .json({ message: "Error deleting category by ID:", error });
+    return res.status(500).json({ message: "Error deleting category by ID:", error });
   }
 };
 
