@@ -586,6 +586,83 @@ DELETE /api/template/:id
 
 ---
 
+## 🗂 User Routes
+
+### ➕ Attach a gmail password to a user account for sending email
+
+```http
+POST /api/user
+``` 
+
+**Body:**
+
+| Field        | Type   | Required   | Description                          |
+| -------------| ------ | ---------  | -----------------------------------  |
+| `appPassword`| String |  Yes       | Password used to authorize gmail     |
+
+**Example:**
+
+```json
+{
+  "appPassword": "jgey iwyv bjts yetf",
+}
+```
+
+**Success (200):**
+
+```json
+{
+  "message": "user created successfully",
+}
+```
+
+**Success (500):**
+
+```json
+{
+  "message": "Error saving password",
+}
+```
+
+---
+
+### ➕ Modify gmail app password
+
+```http
+PATCH /api/user
+```
+
+**Body:**
+
+| Field                | Type   | Required   | Description                          |
+| -------------------- | ------ | ---------  | -----------------------------------  |
+| `updatedAppPassword` | String |  Yes       | password to change to                |
+
+**Example:**
+
+```json
+{
+  "updatedAppPassword": "hndg hute uyrt yret",
+}
+```
+
+**Success (200):**
+
+```json
+{
+  "message": "password updated successfully",
+}
+```
+
+**Success (500):**
+
+```json
+{
+  "error": "Error object",
+  "message": "error updating password",
+}
+```
+
 ## 🗂 Email Routes
 
 ### ➕ Send Single email
@@ -616,6 +693,15 @@ POST /api/email
   "to": "johndoe@gmail.com",
   "subject": "🔥 Test Email",
   "body": "Hello from Cold Email API! This is a test.",
+}
+```
+
+**OR:**
+
+```json
+{
+  "to": "jodedoe@gmail.com",
+  "templateId": "ffacd0b85a93c074879859",
 }
 ```
 
@@ -716,7 +802,406 @@ POST /api/email/bulk
 }
 ```
 
+## 🗂 Schedule Routes
+
+### ➕ Create Schedule
+
+```http
+POST /api/schedule
+```
+
+**Body:**
+
+| Field          | Type     | Required   | Description                                                           |
+| -------------- | -------- | ---------  | --------------------------------------------------------------------  |
+| `name`         | String   |  Yes       | Name of the schedule                                                  |
+| `frequency`    | String   |  Yes       | how frequently the schedule would run. (weekly, monthly)              |
+| `hour`         | Number   |  Yes       | the hour of the day the schedule should run. (0 - 23), 0 = 00:00am    |
+| `day`          | Number   |  Yes       | the day of the week the schedule should run. (1 - 7) 1 = sunday       |
+| `recipients`   | [String] |  Yes       | an array of emails, that this schedule would be sent to               |
+| `template`     | [Object] |  Yes       | email template that is sent on the first run, this is required        |
+| `templateOne`  | [Object] |  No        | ...the second run, optional                                           |
+| `templateTwo`  | [Object] |  No        | ...the third run, you can only pass this if templateOne is provided   |
+| `templateThree`| [Object] |  No        | ...the fourth run, you can only pass this if templateTwo is provided  |
+
+**OR**
+
+| Field          | Type     | Required   | Description                                                           |
+| -------------- | -------- | ---------  | --------------------------------------------------------------------  |
+| `name`         | String   |  Yes       | Name of the schedule                                                  |
+| `frequency`    | String   |  Yes       | how frequently the schedule would run. (weekly, monthly)              |
+| `hour`         | Number   |  Yes       | the hour of the day the schedule should run. (0 - 23), 0 = 00:00am    |
+| `day`          | Number   |  Yes       | the day of the week the schedule should run. (1 - 7) 1 = sunday       |
+| `recipients`   | [String] |  Yes       | an array of recipients id, that this schedule would be sent to        |
+| `template`     | String   |  Yes       | template id that is sent on the first run, this is required           |
+| `templateOne`  | String   |  No        | ...the second run, optional                                           |
+| `templateTwo`  | String   |  No        | ...the third run, you can only pass this if templateOne is provided   |
+| `templateThree`| String   |  No        | ...the fourth run, you can only pass this if templateTwo is provided  |
+
+**Example:**
+
+```json
+{
+  "name": "Weekly Product Update",
+  "frequency": "weekly",
+  "hour": "10",
+  "day": "2",
+  "recipients": [
+    "jane.doe@example.com",
+    "john.smith@example.com",
+    "team@company.com"
+  ],
+  "template": {
+    "subject": "🚀 Our Weekly Product Update",
+    "body": "<p>Hi there,</p><p>Here’s what’s new this week...</p>",
+  },
+  "templateOne": {
+    "subject": "Reminder: Last Week’s Highlights",
+    "body": "<p>Hey! In case you missed it...</p>"
+  },
+  "templateTwo": {
+    "subject": "Checking In 👋",
+    "body": "<p>Still haven’t heard from you, just making sure...</p>"
+  },
+  "templateThree": {
+    "subject": "Final Reminder",
+    "body": "<p>This will be our last email regarding this update.</p>"
+  }
+}
+
+```
+
+**OR**
+
+```json
+{
+  "name": "Weekly Marketing Campaign",
+  "frequency": "weekly",
+  "hour": 9,
+  "day": 2,
+  "recipients": [
+    "64f0c0a2b9d1c7f0e9a12345",
+    "64f0c0a2b9d1c7f0e9a67890",
+    "64f0c0a2b9d1c7f0e9a54321"
+  ],
+  "template": "750fbc9e6a2f44a1c1234567",
+  "templateOne": "750fbc9e6a2f44a1c7654321",
+  "templateTwo": "750fbc9e6a2f44a1c9876543",
+  "templateThree": "750fbc9e6a2f44a1c4567890"
+}
+
+```
+
+**Success (201):**
+
+```json
+{
+  "message": "Schedule created",
+  "schedule": {
+  "_id": "66c1b7c0e36c4f1f8e3b1234",
+  "name": "Weekly Newsletter",
+  "userId": "64f0c0a2b9d1c7f0e9a12345",
+  "frequency": "weekly",
+  "sender": "marketing@company.com",
+  "day": 2,
+  "hour": 9,
+  "recipients": [
+    {
+      "email": "john.doe@example.com",
+      "statuses": {
+        "scheduleOne": "sent",
+        "scheduleTwo": "pending",
+        "scheduleThree": "void",
+        "scheduleFour": "void"
+      },
+      "disabled": false
+    },
+    {
+      "email": "jane.smith@example.com",
+      "statuses": {
+        "scheduleOne": "failed",
+        "scheduleTwo": "pending",
+        "scheduleThree": "pending",
+        "scheduleFour": "void"
+      },
+      "disabled": false
+    }
+  ],
+  "disabled": false,
+  "template": {
+    "subject": "Welcome to our Newsletter 🎉",
+    "body": "Hi there, thanks for subscribing! Here's your weekly digest.",
+    "attachment": "https://files.company.com/welcome.pdf"
+  },
+  "templateOne": {
+    "subject": "Follow-up: Did you see this?",
+    "body": "Hey, just checking if you caught our last update.",
+    "attachment": null
+  },
+  "templateTwo": {
+    "subject": "Final Reminder ⚡",
+    "body": "This is your last chance to check it out!",
+    "attachment": null
+  },
+  "templateThree": {
+    "subject": "Exclusive Offer Inside 🚀",
+    "body": "Since you didn’t respond, here’s a special deal just for you.",
+    "attachment": "https://files.company.com/offer.pdf"
+  },
+  "__v": 0
+}
+}
+
+```
+
 ---
+
+### 📋 Get All Schedule
+
+```http
+GET /api/schedule
+```
+
+**Success (200):**
+
+```json
+{
+  "message": "retrieved successfully",
+  "data": [{
+  "_id": "66c1b7c0e36c4f1f8e3b1234",
+  "name": "Weekly Newsletter",
+  "userId": "64f0c0a2b9d1c7f0e9a12345",
+  "frequency": "weekly",
+  "sender": "marketing@company.com",
+  "day": 2,
+  "hour": 9,
+  "recipients": [
+    {
+      "email": "john.doe@example.com",
+      "statuses": {
+        "scheduleOne": "sent",
+        "scheduleTwo": "pending",
+        "scheduleThree": "void",
+        "scheduleFour": "void"
+      },
+      "disabled": false
+    },
+    {
+      "email": "jane.smith@example.com",
+      "statuses": {
+        "scheduleOne": "failed",
+        "scheduleTwo": "pending",
+        "scheduleThree": "pending",
+        "scheduleFour": "void"
+      },
+      "disabled": false
+    }
+  ],
+  "disabled": false,
+  "template": {
+    "subject": "Welcome to our Newsletter 🎉",
+    "body": "Hi there, thanks for subscribing! Here's your weekly digest.",
+    "attachment": "https://files.company.com/welcome.pdf"
+  },
+  "templateOne": {
+    "subject": "Follow-up: Did you see this?",
+    "body": "Hey, just checking if you caught our last update.",
+    "attachment": null
+  },
+  "templateTwo": {
+    "subject": "Final Reminder ⚡",
+    "body": "This is your last chance to check it out!",
+    "attachment": null
+  },
+  "templateThree": {
+    "subject": "Exclusive Offer Inside 🚀",
+    "body": "Since you didn’t respond, here’s a special deal just for you.",
+    "attachment": "https://files.company.com/offer.pdf"
+  },
+  "__v": 0
+}
+  ...
+  ]
+}
+```
+
+---
+
+### 👤 Get Single Schedule
+
+```http
+GET /api/schedule/:id
+```
+
+**Success (200):**
+
+```json
+{
+  "message": "retrieved successfully",
+  "data": {
+  "_id": "66c1b7c0e36c4f1f8e3b1234",
+  "name": "Weekly Newsletter",
+  "userId": "64f0c0a2b9d1c7f0e9a12345",
+  "frequency": "weekly",
+  "sender": "marketing@company.com",
+  "day": 2,
+  "hour": 9,
+  "recipients": [
+    {
+      "email": "john.doe@example.com",
+      "statuses": {
+        "scheduleOne": "sent",
+        "scheduleTwo": "pending",
+        "scheduleThree": "void",
+        "scheduleFour": "void"
+      },
+      "disabled": false
+    },
+    {
+      "email": "jane.smith@example.com",
+      "statuses": {
+        "scheduleOne": "failed",
+        "scheduleTwo": "pending",
+        "scheduleThree": "pending",
+        "scheduleFour": "void"
+      },
+      "disabled": false
+    }
+  ],
+  "disabled": false,
+  "template": {
+    "subject": "Welcome to our Newsletter 🎉",
+    "body": "Hi there, thanks for subscribing! Here's your weekly digest.",
+    "attachment": "https://files.company.com/welcome.pdf"
+  },
+  "templateOne": {
+    "subject": "Follow-up: Did you see this?",
+    "body": "Hey, just checking if you caught our last update.",
+    "attachment": null
+  },
+  "templateTwo": {
+    "subject": "Final Reminder ⚡",
+    "body": "This is your last chance to check it out!",
+    "attachment": null
+  },
+  "templateThree": {
+    "subject": "Exclusive Offer Inside 🚀",
+    "body": "Since you didn’t respond, here’s a special deal just for you.",
+    "attachment": "https://files.company.com/offer.pdf"
+  },
+  "__v": 0
+},
+}
+```
+
+---
+
+### ✏️ Update Schedule
+
+```http
+PATCH /api/schedule/:id
+```
+
+**Body:**
+
+All fields are optional, only provided fields would be updated
+
+**Example:**
+
+```json
+{
+  "name": "Weekly Newsletter",
+  "frequency": "weekly",
+  "day": 2,
+  "hour": 9,
+  "recipients": [
+    {
+      "email": "john.doe@example.com",
+      "disabled": true
+    },
+    {
+      "email": "jane.smith@example.com",
+      "disabled": true
+    }
+  ],
+  "disabled": true,
+  "template": {
+    "subject": "Welcome to our Newsletter 🎉",
+    "body": "Hi there, thanks for subscribing! Here's your weekly digest.",
+    "attachment": "https://files.company.com/welcome.pdf"
+  },
+  "templateOne": {
+    "subject": "Follow-up: Did you see this?",
+    "body": "Hey, just checking if you caught our last update.",
+    "attachment": null
+  },
+  "templateTwo": {
+    "subject": "Final Reminder ⚡",
+    "body": "This is your last chance to check it out!",
+    "attachment": null
+  },
+  "templateThree": {
+    "subject": "Exclusive Offer Inside 🚀",
+    "body": "Since you didn’t respond, here’s a special deal just for you.",
+    "attachment": "https://files.company.com/offer.pdf"
+  },
+  "__v": 0
+},
+
+```
+
+**Success (200):**
+
+```json
+{
+  "message": "updated successfully",
+  "data":"schedule object"
+}
+```
+
+---
+
+### ❌ Delete Schedule
+
+```http
+DELETE /api/template/:id
+```
+
+**Success (204):**
+
+```
+"No response body"
+```
+
+---
+
+### ➕ Add Recipient to a schedule
+
+```http
+POST /api/schedule/:id/recipients
+```
+
+**Body:**
+
+| Field      | Type   | Required   | Description                          |
+| ---------- | ------ | ---------  | -----------------------------------  |
+| `email`    | String |  Yes       | email of the recipient to add        |
+
+**Example:**
+
+```json
+{
+  "email": "johndoe@gmail.com",
+}
+```
+
+**Success (201):**
+
+```json
+{
+  "message": "Recipient added successfully",
+}
+```
 
 ## 🤝 Contributing
 

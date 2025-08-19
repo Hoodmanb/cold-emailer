@@ -32,11 +32,24 @@ emailRouter.post("/bulk", async (req, res) => {
 
 // Route to send email
 emailRouter.post("/", async (req, res) => {
-  const { to, subject, body, attachment } = req.body;
+  const { to, templateId } = req.body;
   const { email } = req
+  let template;
+  if (templateId) {
+    const templateObj = templateModel.findById({ templateId })
+    if (!templateId) {
+      return res
+        .status(404)
+        .json({ message: "template with this id not found" });
+    }
+    template = { subject: templateObj.subject, body: templateObj.body, attachment: templateObj.attachment || null }
+  } else {
+    const { subject, body, attachment } = req.body;
+    template = { subject, body, attachment }
+  }
   try {
     let errorMessage;
-    if (!to || !subject || !body) {
+    if (!to || !template.subject || !template.body) {
       !to ? (errorMessage.to = "recipient is required") : "";
       !subject ? (errorMessage.subject = "subject is required") : "";
       !body ? (errorMessage.body = "body is required") : "";
@@ -44,7 +57,7 @@ emailRouter.post("/", async (req, res) => {
         .status(400)
         .json({ message: "missing required field", error: errorMessage });
     }
-    const result = await sendEmail({ email, to, subject, body, attachment });
+    const result = await sendEmail({ email, to, subject: template.subject, body: template.body, attachment: template.attachment });
 
     res.status(200).json(result);
   } catch (error) {

@@ -61,14 +61,14 @@ app.use("/api/attachment", attachmentRouter);
 
 // app.use(verifyToken);
 
-app.use("/api/user", userRouter);
+// app.use("/api/user", userRouter);
 
 // app.use("/api/recipient", recipientRouter);
 
-app.use("/api/email", emailRouter);
+// app.use("/api/email", emailRouter);
 
 // app.use("/api/category", categoryRouter);
 
-app.use("/api/schedule", scheduleRouter);
+// app.use("/api/schedule", scheduleRouter);
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

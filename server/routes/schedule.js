@@ -8,6 +8,8 @@ router.post("/:id/recipients", controller.addRecipient);
 
 router.get("/", controller.get);
 
+router.get("/:id", controller.getOne);
+
 router.patch("/:id", controller.update);
 
 router.delete("/:id", controller.delete);
