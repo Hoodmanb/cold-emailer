@@ -1,8 +1,9 @@
+// services/emailService.js
 const nodemailer = require("nodemailer");
 const User = require("../models/User.js");
 const { decrypt } = require("../utils/encription.js");
 
-const sendEmail = async (email, to, subject, body, attachment) => {
+const sendEmail = async ({ email, to, subject, body, attachment }) => {
   try {
     const user = await User.findOne({ email });
     if (!user) throw new Error("user data not found");
@@ -10,9 +11,7 @@ const sendEmail = async (email, to, subject, body, attachment) => {
     const decryptedPassword = decrypt(user.encryptedAppPassword, user.iv);
 
     const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
+      service: "gmail",
       auth: {
         user: email,
         pass: decryptedPassword,
@@ -30,11 +29,13 @@ const sendEmail = async (email, to, subject, body, attachment) => {
       mailOptions.attachments = [attachment];
     }
 
-    await transporter.sendMail(mailOptions);
+    const info = await transporter.sendMail(mailOptions);
+
     console.log(`✅ Email sent to ${to}`);
+    return { to, success: true, messageId: info.messageId, response: info.response };
   } catch (error) {
-    console.error(`❌ Error sending to ${to}: ${err.message}`);
-    throw err;
+    console.error(`❌ Error sending to ${to}: ${error.message}`);
+    return { to, success: false, error: error.message };
   }
 };
 

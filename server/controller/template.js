@@ -3,12 +3,12 @@ const Joi = require("joi");
 const { validateRequest } = require("../utils/validateRequest.js");
 const upload = require("../lib/multer.js")
 const uploadToCloudinary = require("../utils/uplopadToCloudinary.js")
-const {create} = require("../controller/attachment.js")
+const { create } = require("../controller/attachment.js")
 
 exports.create = [
-  upload.single('attachment'),
+  // upload.single('attachment'),
   async (req, res) => {
-    const { name, subject, body, isPublic, url } = req.body;
+    const { name, subject, body, isPublic } = req.body;
     const userId = req.userId;
     const valuesToValidate = { name, subject, body, isPublic };
 
@@ -20,49 +20,49 @@ exports.create = [
         "string.empty": "body is required",
         "string.min": "body must be at least 10 characters",
       }),
-      subject: Joi.string().required().messages({
-        "string.empty": "subject is required",
-      }),
-     
+      // subject: Joi.string().required().messages({
+      //   "string.empty": "subject is required",
+      // }),
+
     }).unknown(true);
 
     const { error: bodyError } = schema.validate(valuesToValidate);
 
-if (bodyError) {
-  return res.status(400).json({ message: "validation error", errors: bodyError.details });
-}
+    if (bodyError) {
+      return res.status(400).json({ message: "validation error", errors: bodyError.details });
+    }
 
-// If file is optional, only validate when it exists
-if (req.file) {
-  const fileSchema = Joi.object({
-    originalname: Joi.string().required(),
-    mimetype: Joi.string().valid(
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'text/plain',
-      'application/vnd.oasis.opendocument.text'
-    ).required(),
-    buffer: Joi.binary().required(),
-    size: Joi.number().max(5 * 1024 * 1024).messages({
-      "number.max": "File must not be larger than 5MB",
-    }),
-  }).unknown(true);;
+    // If file is optional, only validate when it exists
+    if (req.file) {
+      const fileSchema = Joi.object({
+        originalname: Joi.string().required(),
+        mimetype: Joi.string().valid(
+          'application/pdf',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'text/plain',
+          'application/vnd.oasis.opendocument.text'
+        ).required(),
+        buffer: Joi.binary().required(),
+        size: Joi.number().max(5 * 1024 * 1024).messages({
+          "number.max": "File must not be larger than 5MB",
+        }),
+      }).unknown(true);;
 
-  const { error: fileError } = fileSchema.validate(req.file);
+      const { error: fileError } = fileSchema.validate(req.file);
 
-  if (fileError) {
-    return res.status(400).json({ message: "validation error", errors: fileError.details });
-  }
-}
+      if (fileError) {
+        return res.status(400).json({ message: "validation error", errors: fileError.details });
+      }
+    }
 
 
     try {
       console.log("there is a file here")
-      if(req.file){
+      if (req.file) {
         console.log("there is a file")
-         const cloudinaryResult = await uploadToCloudinary(req.file.buffer, 'my_files');
-         await create(cloudinaryResult, userId, isPublic)
+        const cloudinaryResult = await uploadToCloudinary(req.file.buffer, 'my_files');
+        await create(cloudinaryResult, userId, isPublic)
       }
       const newTemplate = await Template.create({
         userId,
@@ -122,7 +122,7 @@ exports.delete = async (req, res) => {
       return res.status(404).json({ message: "no template found" });
     } else {
       console.log("Template deleted successfully:", result);
-      return res.status(200).json({ message: "deleted successfully" });
+      return res.status(204)
     }
   } catch (error) {
     console.error("Error deleting template by ID:", error);

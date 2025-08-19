@@ -239,18 +239,6 @@ Creates a new recipient and assigns them to a category.
 }
 ```
 
----
-
-### 🔢 Status Codes
-
-* `200 Created` → Recipient successfully created
-* `400 Bad Request` → Validation error
-* `404 Not Found` → Category not found
-* `409 Conflict` → Duplicate email or name
-* `500 Internal Server Error` → Something went wrong
-
----
-
 ## 📑 Other Recipient Routes
 
 ### 📋 Get All Recipients
@@ -344,7 +332,7 @@ DELETE /api/recipient/:email
 
 ---
 
-## 🗂 Category Routes (Template)
+## 🗂 Category Routes
 
 ### ➕ Create Category
 
@@ -356,7 +344,7 @@ POST /api/category
 
 ```json
 {
-  "name": "Tech Startups"
+  "category": "Tech Startups"
 }
 ```
 
@@ -364,15 +352,369 @@ POST /api/category
 
 ```json
 {
-  "message": "Category created successfully",
+  "message": "category created successful",
   "data": {
     "_id": "6501a1a9b3cfa5ff1a987654",
-    "name": "Tech Startups"
+    "category": "Tech Startups"
   }
 }
 ```
 
-*(Follow the same pattern as recipients for Get, Update, Delete.)*
+---
+
+### 📋 Get All Category
+
+```http
+GET /api/category
+```
+
+**Success (200):**
+
+```json
+{
+  "message": "retrieved successfully",
+  "data": [
+    {
+      "_id": "6501a1a9b3cfa5ff1a234567",
+      "category": "Tech Startups",
+    }, {
+      "_id": "6501a1a9b3cfa5ff1a234567",
+      "category": "SE",
+    },
+    ...
+  ]
+}
+```
+
+---
+
+### 👤 Get Single Category
+
+```http
+GET /api/category/:id
+```
+
+**Success (200):**
+
+```json
+{
+  "message": "retrieved successfully",
+  "data": {
+    "_id": "6501a1a9b3cfa5ff1a234567",
+    "category": "Backend",
+  }
+}
+```
+
+---
+
+### ✏️ Update Category
+
+```http
+PATCH /api/category/:id
+```
+
+**Body:**
+
+```json
+{
+  "category": "Jane Doe",
+}
+```
+
+**Success (200):**
+
+```json
+{
+  "message": "category updated successful"
+}
+```
+
+---
+
+### ❌ Delete Category
+
+```http
+DELETE /api/category/:id
+```
+
+**Success (204):**
+
+```
+"No response body"
+```
+
+---
+
+## 🗂 Template Routes
+
+### ➕ Create Template
+
+```http
+POST /api/template
+```
+
+**Body:**
+
+| Field      | Type   | Required   | Description                          |
+| ---------- | ------ | ---------  | -----------------------------------  |
+| `name`     | String |  Yes       | Name of the template                 |
+| `subject`  | String |  No        | Subject of the template              |
+| `body`     | String |  Yes       | Body of the email                    |
+| `isPublic` | Bool   |  No        | (private/public) Default to false    |
+
+**Example:**
+
+```json
+{
+  "name": "John Doe",
+  "subject": "🔥 Test Email",
+  "body": "Hello from Cold Email API! This is a test.",
+  "isPublic": true
+}
+```
+
+**Success (201):**
+
+```json
+{
+  "message": "template created successfully",
+}
+```
+
+---
+
+### 📋 Get All Template
+
+```http
+GET /api/template
+```
+
+**Success (200):**
+
+```json
+{
+  "message": "retrieved successfully",
+  "data": [
+      {
+        "userId":"6501a1a9b3cfa5ff1a234567",
+        "_id": "6501a1a9b3cfa5ff1a234567",
+        "name": "John Doe",
+        "subject": "🔥 Test Email",
+        "body": "Hello from Cold Email API! This is a test.",
+        "isPublic": true
+  }, {
+        "userId":"6501a1a9b3cfa5ff1a234567",
+        "_id": "6501a1a9b3cfa5ff1a234567",
+        "name": "John Doe",
+        "subject": "🔥 Test Email",
+        "body": "Hello from Cold Email API! This is a test.",
+        "isPublic": true
+  },
+    ...
+  ]
+}
+```
+
+---
+
+### 👤 Get Single Template
+
+```http
+GET /api/template/:id
+```
+
+**Success (200):**
+
+```json
+{
+  "message": "retrieved successfully",
+  "data": {
+        "userId":"6501a1a9b3cfa5ff1a234567",
+        "_id": "6501a1a9b3cfa5ff1a234567",
+        "name": "John Doe",
+        "subject": "🔥 Test Email",
+        "body": "Hello from Cold Email API! This is a test.",
+        "isPublic": true
+  },
+}
+```
+
+---
+
+### ✏️ Update Template
+
+```http
+PATCH /api/template/:id
+```
+
+**Body:**
+
+All fields are optional, only provided fields would be updated
+
+**Example:**
+
+```json
+{
+  "name": "John Doe",
+  "subject": "🔥 Test Email",
+  ...
+}
+```
+
+**Success (200):**
+
+```json
+{
+  "message": "Template updated successfully"
+}
+```
+
+---
+
+### ❌ Delete Template
+
+```http
+DELETE /api/template/:id
+```
+
+**Success (204):**
+
+```
+"No response body"
+```
+
+---
+
+## 🗂 Email Routes
+
+### ➕ Send Single email
+
+```http
+POST /api/email
+```
+
+**Body:**
+
+| Field      | Type   | Required   | Description                          |
+| ---------- | ------ | ---------  | -----------------------------------  |
+| `to`       | String |  Yes       | Email of the reciever                |
+| `subject`  | String |  Yes       | Subject of the email                 |
+| `body`     | String |  Yes       | Body of the email                    |
+
+**OR:**
+
+| Field      | Type   | Required   | Description                          |
+| ---------- | ------ | ---------  | -----------------------------------  |
+| `to`       | String |  Yes       | Email of the reciever                |
+|`templateId`| String |  Yes       | The id of the saved template to use  |
+
+**Example:**
+
+```json
+{
+  "to": "johndoe@gmail.com",
+  "subject": "🔥 Test Email",
+  "body": "Hello from Cold Email API! This is a test.",
+}
+```
+
+**Success (200):**
+
+```json
+{
+  "success": true,
+  "message": "Emails processed",
+  "results":"gmail response object {...}"
+}
+```
+
+**Success (500):**
+
+```json
+{
+  "success": false,
+  "message": "Error sending message",
+}
+```
+
+---
+
+### ➕ Send Bulk email
+
+```http
+POST /api/email/bulk
+```
+
+**Body:**
+
+| Field      | Type   | Required   | Description                          |
+| ---------- | ------ | ---------  | -----------------------------------  |
+| `emails`   |[String]|  Yes       | List of email to send to             |
+| `subject`  | String |  Yes       | Subject of the email                 |
+| `body`     | String |  Yes       | Body of the email                    |
+
+**OR:**
+
+| Field      | Type   | Required   | Description                          |
+| ---------- | ------ | ---------  | -----------------------------------  |
+| `emails`   |[String]|  Yes       | List of email to send to             |
+|`templateId`| String |  Yes       | The id of the saved template to use  |
+
+**Example:**
+
+```json
+{
+  "emails": ["johndoe@gmail.com", "janedoe@gmail.com", "jodedoe@gmail.com"],
+  "subject": "🔥 Test Email",
+  "body": "Hello from Cold Email API! This is a test.",
+}
+```
+
+**OR:**
+
+```json
+{
+  "emails": ["johndoe@gmail.com", "janedoe@gmail.com", "jodedoe@gmail.com"],
+  "templateId": "ffacd0b85a93c074879859",
+}
+```
+
+**Success (200):**
+
+```json
+{
+  "success": true,
+  "message": "Emails processed",
+  "results":[{
+      "to": "joshuadebravo@mail.com",
+      "success": true,
+      "messageId": "<c431a5db-b5db-de53-f214-1b0853b04874@gmail.com>",
+      "response": "250 2.0.0 OK  1755538957 ffacd0b85a97d-3c074879859sm355549f8f.3 - gsmtp"
+  },{
+      "to": "joshuadebravo@mail.com",
+      "success": true,
+      "messageId": "<c431a5db-b5db-de53-f214-1b0853b04874@gmail.com>",
+      "response": "250 2.0.0 OK  1755538957 ffacd0b85a97d-3c074879859sm355549f8f.3 - gsmtp"
+  },{
+      "to": "joshuadebravo@mail.com",
+      "success": true,
+      "messageId": "<c431a5db-b5db-de53-f214-1b0853b04874@gmail.com>",
+      "response": "250 2.0.0 OK  1755538957 ffacd0b85a97d-3c074879859sm355549f8f.3 - gsmtp"
+  },
+  ...
+  ]
+}
+```
+
+**Success (500):**
+
+```json
+{
+  "success": false,
+  "message": "Error sending message",
+}
+```
 
 ---
 

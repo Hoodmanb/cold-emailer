@@ -1,28 +1,39 @@
 const express = require("express");
 const emailRouter = express.Router();
+const templateModel = require("../models/Template.js")
 
 const sendEmail = require("../services/emailService");
 const { sendEmails } = require("../controller/email.js");
 
-// Route to send emails
-emailRouter.post("/send/bulk", async (req, res) => {
-  const { email } = req.body;
+// Route to send bulk emails
+emailRouter.post("/bulk", async (req, res) => {
+  const { email } = req;
+  const { emails, subject, body, attachment, templateId } = req.body
+  let template;
+  if (templateId) {
+    const templateObj = templateModel.findById({ templateId })
+    template = { subject: templateObj.subject, body: templateObj.body, attachment: templateObj.attachment || null }
+  } else {
+    template = { subject, body, attachment }
+  }
   try {
-    const result = await sendEmails(email, req.body.emails);
+    const results = await sendEmails(email, template, emails);
 
-    if (result.success) {
-      return res.status(200).json({ message: "All emails sent successfully!" });
+    if (results.success) {
+      return res.status(200).json({ results });
     } else {
-      return res.status(500).json({ message: result.message });
+      return res.status(500).json({ message: results.message });
     }
   } catch (error) {
     console.error("Error in /send/bulk:", error);
-    res.status(500).json({ message: "An error occurred", error });
+    res.status(500).json(error);
   }
 });
 
-emailRouter.post("/send", async (req, res) => {
-  const { to, subject, body, email } = req.body;
+// Route to send email
+emailRouter.post("/", async (req, res) => {
+  const { to, subject, body, attachment } = req.body;
+  const { email } = req
   try {
     let errorMessage;
     if (!to || !subject || !body) {
@@ -33,11 +44,12 @@ emailRouter.post("/send", async (req, res) => {
         .status(400)
         .json({ message: "missing required field", error: errorMessage });
     }
-    const result = await sendEmail({ email, to, subject, body });
-    res.status(200).json({ message: "email sent successfully" });
+    const result = await sendEmail({ email, to, subject, body, attachment });
+
+    res.status(200).json(result);
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: "error sending email", error });
+    res.status(500).json(error);
   }
 });
 

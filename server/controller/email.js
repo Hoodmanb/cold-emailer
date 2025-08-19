@@ -1,23 +1,31 @@
+// controllers/emailController.js
 const sendEmail = require("../services/emailService");
 
-async function sendEmails(email, recipients) {
+async function sendEmails(email, template, emails) {
   try {
-    const emailPromises = recipients.map((recipient, index) => {
-      if (!recipient.to || !recipient.subject || !recipient.body) {
-        throw new Error(`all fields are required`);
-      }
-      return sendEmail({
-        email,
-        to: recipient.to,
-        subject: recipient.subject,
-        body: recipient.body,
-      });
-    });
+    if (!template.subject || !template.body) {
+      throw new Error("missing required field");
+    }
 
-    await Promise.all(emailPromises);
-    return { success: true, message: "All emails sent successfully!" };
+    const emailPromises = emails.map((to) =>
+      sendEmail({
+        email,
+        to,
+        subject: template.subject,
+        body: template.body,
+        attachment: template.attachment || null,
+      })
+    );
+
+    const results = await Promise.all(emailPromises);
+
+    return {
+      success: true,
+      message: "Emails processed",
+      results,
+    };
   } catch (error) {
-    return { success: false, error };
+    return { success: false, message: error.message };
   }
 }
 
