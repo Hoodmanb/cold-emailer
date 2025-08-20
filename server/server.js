@@ -49,7 +49,7 @@ app.use(cors());
 connectDB();
 
 // ping my server every 10 min
-app.get("/api/ping", (req, res) => res.status(200).send("PONG"));
+app.get("/api/ping", (req, res) => { res.status(200).send("PONG") });
 
 // Worker
 app.get("/api/schedule/run", runSchedule);
@@ -70,5 +70,10 @@ app.use("/api/email", emailRouter);
 app.use("/api/category", categoryRouter);
 
 app.use("/api/schedule", scheduleRouter);
+
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).send("NOT OK");
+});
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
