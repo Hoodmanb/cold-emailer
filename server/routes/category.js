@@ -1,5 +1,7 @@
 // const express = require('express')
 // const categoryRouter = express.Router()
+// const express = require('express')
+// const categoryRouter = express.Router()
 
 // const controller = require('../controller/category.js')
 
@@ -225,6 +227,7 @@ categoryRouter.get("/", controller.get);
  *               message: Error fetching category by ID:
  *               error: {}
  */
-// categoryRouter.get("/{id}", controller.getOne);
+
 categoryRouter.get("/:id", controller.getOne);
+
 module.exports = categoryRouter;

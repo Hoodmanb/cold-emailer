@@ -25,6 +25,7 @@ const verifyToken = require("./midddleware/verifyToken.js");
 const runSchedule = require("./services/scheduler.js");
 
 const PORT = process.env.PORT || 5000;
+
 const path = require("path");
 // const swaggerDocument = YAML.load(path.join(__dirname, "swagger.yaml"));
 

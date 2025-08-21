@@ -30,7 +30,6 @@ const AddRecipient = () => {
       console.error('Error fetching categories:', error);
     }
   };
->>>>>>> c4175b54c3950c642b4ff01ec96161ade53796db
 
   const handleSubmit = async (e) => {
     e.preventDefault();
