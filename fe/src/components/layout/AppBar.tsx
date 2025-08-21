@@ -481,10 +481,12 @@ const Drawer: React.FC<MiniDrawerProps> = ({ children }) => {
               <ListItemButton
                 onClick={async () => {
                   const logout = await clearUser();
+                  console.log(logout)
                   if (logout === "successfully logged out") {
                     showSnackbar("successfully logged out", "success");
-                  }
+                  }else{
                   showSnackbar("errror logging out", "error");
+                  }
                 }}
                 sx={{
                   ...sectionStyles,

@@ -1,4 +1,5 @@
 "use client"
+import SendBulkEmail from "@/components/layout/SendBulkEmail";
 import SendSingleEmail from "@/components/layout/SendSingleEmail";
 import CustomButton from "@/components/ui/Button";
 import { useGlobalModal } from "@/components/ui/Modal";
@@ -34,8 +35,7 @@ const Dashboard = () => {
           icon={PlusIcon}
           iconColor="grey"
           onClick={() =>
-            // showModal(<AddRecipient type={"add"} setRefresh={setRefresh} />)
-            console.log("clicked")
+            showModal(<SendBulkEmail />)
           }
         />
       </Stack>

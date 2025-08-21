@@ -168,14 +168,14 @@ export const CreateCVValidationSchema = Yup.object().shape({
 });
 
 export const SendEmailSchema = Yup.object().shape({
-  to: Yup.string().required("recipient is required"),
+  to: Yup.string().email("not a valid email address").required("recipient is required"),
   subject: Yup.string().required("subject is required"),
   body: Yup.string().required("body is required"),
 
 });
 
 export const SendEmailWithSavedData = Yup.object().shape({
-  to: Yup.string().required("recipient is required"),
+  to: Yup.string().email("not a valid email address").required("recipient is required"),
   templateId: Yup.string().required("template is required"),
 });
 

@@ -36,26 +36,27 @@ emailRouter.post("/", async (req, res) => {
   const { email } = req
   let template;
   if (templateId) {
-    const templateObj = templateModel.findById({ templateId })
-    if (!templateId) {
+    const templateObj = await templateModel.findById( templateId )
+    if (!templateObj) {
       return res
         .status(404)
-        .json({ message: "template with this id not found" });
+        .json({ message: "template not found" });
     }
+    console.log("found the template", templateObj)
     template = { subject: templateObj.subject, body: templateObj.body, attachment: templateObj.attachment || null }
   } else {
     const { subject, body, attachment } = req.body;
     template = { subject, body, attachment }
   }
   try {
-    let errorMessage;
+    let errorMessage = {};
     if (!to || !template.subject || !template.body) {
       !to ? (errorMessage.to = "recipient is required") : "";
-      !subject ? (errorMessage.subject = "subject is required") : "";
-      !body ? (errorMessage.body = "body is required") : "";
+      !template.subject ? (errorMessage.subject = "subject is required") : "";
+      !template.body ? (errorMessage.body = "body is required") : "";
       return res
         .status(400)
-        .json({ message: "missing required field", error: errorMessage });
+        .json({ message: "missing required field", errors: errorMessage });
     }
     const result = await sendEmail({ email, to, subject: template.subject, body: template.body, attachment: template.attachment });
 

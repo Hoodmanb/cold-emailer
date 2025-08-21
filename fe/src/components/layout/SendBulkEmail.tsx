@@ -32,7 +32,7 @@ type OutputType = {
   value: string;
 };
 
-export default function SendSingleEmail() {
+export default function SendBulkEmail() {
   const { closeModal } = useGlobalModal();
   const { showSnackbar } = useSnackbar();
   const [templateList, setTemplateList] = useState<OutputType[]>([]);
