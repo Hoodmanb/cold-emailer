@@ -41,8 +41,7 @@ export default function SendBulkEmail() {
   const [checked, setChecked] = useState<boolean>(false);
 
   const transformCategory = (): OutputType[] => {
-    let lists;
-    lists = template
+    const lists = template
       ? template.map((item) => ({
           value: item._id,
           label: item.name,
