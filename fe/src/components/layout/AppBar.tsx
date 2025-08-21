@@ -7,7 +7,6 @@ import {
   useMediaQuery,
   Theme,
   ListItemIcon,
-  ListItemText,
   Collapse,
   Box,
   Divider,
@@ -18,13 +17,10 @@ import {
   ChevronDown,
   LogOut,
   ChevronUp,
-  ShoppingCart,
   Dot,
   LogIn,
   User2,
-  Calendar1,
   Calendar,
-  Mail,
   Activity,
   File,
 } from "lucide-react";
@@ -66,11 +62,11 @@ const LinkHeader: React.FC<LinksProps> = ({
   const getActiveStyle = (section: string) => {
     return pathname === section
       ? {
-          color: "black",
-          backgroundColor: "#0F172A1A",
-          borderRadius: "10px",
-          width: "90%",
-        }
+        color: "black",
+        backgroundColor: "#0F172A1A",
+        borderRadius: "10px",
+        width: "90%",
+      }
       : "";
   };
 
@@ -127,8 +123,6 @@ const LinkWithSubHeader: React.FC<LinkWithSubHeaderProps> = ({
   text0,
   text1,
   text2,
-  text3,
-  text4,
   icon: Icon,
   sectionStyles,
   toggleSection,
@@ -141,9 +135,9 @@ const LinkWithSubHeader: React.FC<LinkWithSubHeaderProps> = ({
   const getActiveStyle = (section: string) => {
     return pathname === section
       ? {
-          fontWeight: "bold",
-          backgroundColor: "#0F172A1A",
-        }
+        fontWeight: "bold",
+        backgroundColor: "#0F172A1A",
+      }
       : "";
   };
 
@@ -557,8 +551,8 @@ const Drawer: React.FC<MiniDrawerProps> = ({ children }) => {
             isDrawerOpen && !isSmallScreen
               ? "240px"
               : isSmallScreen
-              ? "0"
-              : "70px",
+                ? "0"
+                : "70px",
           overflowX: "hidden",
           overflowY: "auto",
         }}
@@ -572,14 +566,14 @@ const Drawer: React.FC<MiniDrawerProps> = ({ children }) => {
               isDrawerOpen && isBigScreen
                 ? "240px"
                 : isSmallScreen
-                ? "0"
-                : "70px",
+                  ? "0"
+                  : "70px",
             width:
               isDrawerOpen && !isSmallScreen
                 ? `calc(100% - 240px)`
                 : !isDrawerOpen && !isSmallScreen
-                ? `calc(100% - 70px)`
-                : "100%",
+                  ? `calc(100% - 70px)`
+                  : "100%",
             height: "70px",
             backgroundColor: "white",
             zIndex: 90,

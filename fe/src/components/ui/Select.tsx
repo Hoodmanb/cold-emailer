@@ -90,7 +90,7 @@ const MultiSelectChip: React.FC<MultiSelectChipProps> = ({
             }}
           >
             {selected.length > 0 ? (
-              selected.map((val) => <Chip key={val} label={val} />)
+              selected.map((val, index) => <Chip key={val + index} label={val} />)
             ) : placeholder ? (
               <Box
                 sx={{
