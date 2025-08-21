@@ -91,13 +91,14 @@ exports.create = async (req, res) => {
     const existingName = await Recipient.findOne({
       name: { $regex: `^${normalizedName}$`, $options: "i" },
     });
-    if (existingEmail || existingName || !existingCategory) {
+    if (existingEmail || existingName) {
       let errors = {};
       existingEmail ? (errors.email = "email already exist") : "";
       existingName ? (errors.name = "name already exist") : "";
-      !existingCategory ? (errors.category = "category not found") : "";
 
-      return res.status(400).json({ message: "field error", errors });
+      return res.status(409).json({ message: "field error", errors });
+    } if (!existingCategory) {
+      return res.status(404).json({ message: "Category not found", errors: { category: "category not found" } });
     }
     // Create a new recipient
     const newRecipient = await Recipient.create({

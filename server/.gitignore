@@ -11,3 +11,4 @@ package-lock.json
 scheduler.js
 generateSchedulesToAPI.js
 generateSecret.js
+test.js

@@ -6,7 +6,7 @@ const controller = require("../controller/attachment.js");
 
 attachmentRouter.post("/", verifyToken, controller.create);
 
-attachmentRouter.put("/:id", verifyToken, controller.update);
+attachmentRouter.patch("/:id", verifyToken, controller.update);
 
 attachmentRouter.delete("/:id", verifyToken, controller.delete);
 

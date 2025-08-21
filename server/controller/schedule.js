@@ -55,7 +55,7 @@ exports.create = async (req, res) => {
     };
 
     const schedule = await Schedule.create(scheduleData);
-    return res.status(201).json({ message: "Schedule created", schedule });
+    return res.status(200).json({ message: "Schedule created", schedule });
   } catch (error) {
     console.error("Error creating schedule:", error);
     return res.status(500).json({ message: "Internal Server Error", error });
@@ -64,7 +64,8 @@ exports.create = async (req, res) => {
 
 exports.addRecipient = async (req, res) => {
   const { id } = req.params;
-  const { email, userId } = req.body;
+  const { email } = req.body;
+  const { userId } = req;
 
   try {
     const scheduler = await Schedule.findById(id);
@@ -127,6 +128,24 @@ exports.get = async (req, res) => {
   }
 };
 
+exports.getOne = async (req, res) => {
+  try {
+    const { userId } = req;
+    const { id } = req.params;
+
+    const schedule = await Schedule.findOne({ _id: id, userId });
+
+    if (!schedule) {
+      return res.status(404).json({ message: "No schedule found" });
+    }
+
+    return res.json({ message: "retrieved successfully", data: schedule });
+  } catch (error) {
+    return res.status(500).json({ message: "Error fetching schedule", error });
+  }
+};
+
+
 exports.update = async (req, res) => {
   try {
     const { userId } = req.body;
@@ -139,7 +158,7 @@ exports.update = async (req, res) => {
     }
 
     await schedule.update(req.body);
-    return res.json({ message: "Updated", schedule });
+    return res.json({ message: "updated successfully", data: schedule });
   } catch (error) {
     return res.status(500).json({ message: "Error updating schedule", error });
   }
@@ -155,7 +174,7 @@ exports.delete = async (req, res) => {
         .json({ message: "you dont have access to this data" });
     }
     schedule.deleteOne();
-    return res.json({ message: "Deleted" });
+    return res.status(204);
   } catch (error) {
     return res.status(500).json({ message: "Error deleting schedule", error });
   }

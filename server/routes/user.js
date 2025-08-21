@@ -5,6 +5,6 @@ const controller = require("../controller/user");
 
 userRouter.post("/", controller.create);
 
-userRouter.put("/", controller.update);
+userRouter.patch("/", controller.update);
 
 module.exports = userRouter;
