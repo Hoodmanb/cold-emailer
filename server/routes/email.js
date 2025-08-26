@@ -68,3 +68,95 @@ emailRouter.post("/", async (req, res) => {
 });
 
 module.exports = emailRouter;
+
+
+
+// const express = require("express");
+// const emailRouter = express.Router();
+// const templateModel = require("../models/Template.js");
+
+// const sendEmail = require("../services/emailService");
+// const { sendEmails } = require("../controller/email.js");
+
+// // Route to send bulk emails
+// emailRouter.post("/bulk", async (req, res) => {
+//   try {
+//     const { emails, subject, body, attachment, templateId } = req.body;
+
+//     if (!emails || !Array.isArray(emails) || emails.length === 0) {
+//       return res.status(400).json({ message: "emails array is required" });
+//     }
+
+//     let template = { subject, body, attachment };
+
+//     if (templateId) {
+//       const templateObj = await templateModel.findById(templateId);
+//       if (!templateObj) {
+//         return res.status(404).json({ message: "Template not found" });
+//       }
+//       template = {
+//         subject: templateObj.subject,
+//         body: templateObj.body,
+//         attachment: templateObj.attachment || null,
+//       };
+//     }
+
+//     // Call controller function
+//     const results = await sendEmails(emails, template.subject, template.body);
+
+//     return res.status(200).json({
+//       message: "Bulk emails processed successfully",
+//       results,
+//     });
+//   } catch (error) {
+//     console.error("Error in /bulk route:", error);
+//     return res.status(500).json({ error: error.message });
+//   }
+// });
+
+// // Route to send single email
+// emailRouter.post("/", async (req, res) => {
+//   try {
+//     const { to, subject, body, attachment, templateId } = req.body;
+
+//     let template = { subject, body, attachment };
+
+//     if (templateId) {
+//       const templateObj = await templateModel.findById(templateId);
+//       if (!templateObj) {
+//         return res.status(404).json({ message: "Template not found" });
+//       }
+//       template = {
+//         subject: templateObj.subject,
+//         body: templateObj.body,
+//         attachment: templateObj.attachment || null,
+//       };
+//     }
+
+//     // Validate fields
+//     if (!to || !template.subject || !template.body) {
+//       return res.status(400).json({
+//         message: "Missing required fields",
+//         errors: {
+//           ...(to ? {} : { to: "Recipient is required" }),
+//           ...(template.subject ? {} : { subject: "Subject is required" }),
+//           ...(template.body ? {} : { body: "Body is required" }),
+//         },
+//       });
+//     }
+
+//     const result = await sendEmail({
+//       to,
+//       subject: template.subject,
+//       body: template.body,
+//       attachment: template.attachment,
+//     });
+
+//     return res.status(200).json(result);
+//   } catch (error) {
+//     console.error("Error in / route:", error);
+//     return res.status(500).json({ error: error.message });
+//   }
+// });
+
+// module.exports = emailRouter;

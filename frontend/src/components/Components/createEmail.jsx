@@ -42,7 +42,7 @@ const CreateEmail = () => {
     let response;
 
     if (recipients.length === 1) {
-      response = await api.post('/email/send', {
+      response = await api.post('/email/', {
         to: recipients[0],
         subject: formData.subject,
         body: formData.body,
@@ -63,7 +63,7 @@ const CreateEmail = () => {
 
       console.log("Payload to /send/bulk:", payload);
 
-      response = await api.post('/email/send/bulk', payload);
+      response = await api.post('/email/bulk', payload);
     }
 
     if (response.status === 200) {
