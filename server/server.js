@@ -22,8 +22,7 @@ const verifyToken = require("./midddleware/verifyToken.js");
 
 const runSchedule = require("./services/scheduler.js");
 
-const PORT = process.env.PORT || 5000;
-
+const PORT = process.env.PORT || 9000;
 const path = require("path");
 
 const app = express();
