@@ -1,5 +1,7 @@
 import axios from "axios";
 import useAuthStore from "../store/useAuthStore";
+import { showToast } from "../context/SnackbarContext";
+import { parseApiError, ApiError } from "../utils/parseApiError";
 
 const axiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:9000",
@@ -32,6 +34,16 @@ axiosInstance.interceptors.response.use(
     return response;
   },
   (error) => {
+    const cleanMsg = parseApiError(error);
+    const isAuthCheck = error.config?.url?.includes("/api/auth/me") || 
+                        error.config?.url?.includes("/api/auth/login") || 
+                        error.config?.url?.includes("/api/auth/signup");
+    const isSilent = isAuthCheck || error.config?.headers?.["X-Bypass-Global-Toast"] === "true";
+
+    if (!isSilent) {
+      showToast(cleanMsg, "error");
+    }
+
     if (error.response) {
       const { clearAuth } = useAuthStore.getState();
       
@@ -45,9 +57,8 @@ axiosInstance.interceptors.response.use(
           window.location.href = "/login";
         }
       }
-      return Promise.reject(error);
     }
-    return Promise.reject(error);
+    return Promise.reject(new ApiError(cleanMsg, error));
   }
 );
 

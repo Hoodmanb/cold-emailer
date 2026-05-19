@@ -100,7 +100,9 @@ app.use((err, req, res, next) => {
       ? err.status
       : typeof err.statusCode === 'number' && err.statusCode >= 400 && err.statusCode < 600
         ? err.statusCode
-        : 500;
+        : typeof res.statusCode === 'number' && res.statusCode >= 400 && res.statusCode < 600
+          ? res.statusCode
+          : 500;
 
   logger.error('💥 GLOBAL ERROR CAUGHT:', {
     ...toErrorMeta(err),

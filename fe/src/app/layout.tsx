@@ -7,6 +7,7 @@ import { GlobalModalProvider } from "@/components/ui/Modal.jsx";
 import Providers from "@/components/Providers";
 import FloatingProductivityWidget from "@/components/productivity/FloatingProductivityWidget";
 import ProductivityModals from "@/components/productivity/ProductivityModals";
+import SystemNoticeModal from "@/components/SystemNoticeModal";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -39,6 +40,7 @@ export default function RootLayout({
                 {children}
                 <FloatingProductivityWidget />
                 <ProductivityModals />
+                <SystemNoticeModal />
               </GlobalModalProvider>
             </AuthProvider>
           </SnackbarProvider>

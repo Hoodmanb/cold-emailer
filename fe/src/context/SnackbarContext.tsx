@@ -1,9 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import CustomizedSnackbars from "@/components/ui/SnackBar";
 
-type SnackbarType = "success" | "error" | "warning" | "info";
+export type SnackbarType = "success" | "error" | "warning" | "info";
 
 interface SnackbarContextProps {
   showSnackbar: (message: string, type: SnackbarType) => void;
@@ -20,6 +20,20 @@ export const useSnackbar = (): SnackbarContextProps => {
   return context;
 };
 
+// Hook alias for standard error system requirement
+export const useToast = useSnackbar;
+
+// Static toaster handler for non-React context calls (e.g. Axios interceptors)
+let globalShowSnackbar: ((message: string, type: SnackbarType) => void) | null = null;
+
+export const showToast = (message: string, type: SnackbarType) => {
+  if (globalShowSnackbar) {
+    globalShowSnackbar(message, type);
+  } else {
+    console.warn("[Toast] SnackbarProvider not initialized yet.", { message, type });
+  }
+};
+
 export const SnackbarProvider = ({ children }: { children: ReactNode }) => {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
@@ -30,6 +44,13 @@ export const SnackbarProvider = ({ children }: { children: ReactNode }) => {
     setType(severity);
     setOpen(true);
   };
+
+  useEffect(() => {
+    globalShowSnackbar = showSnackbar;
+    return () => {
+      globalShowSnackbar = null;
+    };
+  }, []);
 
   return (
     <SnackbarContext.Provider value={{ showSnackbar }}>
