@@ -1,0 +1,29 @@
+{
+  "id": "cold_email_modern",
+  "featureId": "email_generation",
+  "name": "Modern Cold Email",
+  "description": "A clean, highly readable email template.",
+  "formats": [
+    "html"
+  ],
+  "isDefault": true,
+  "slug": "cold-email-modern",
+  "category": "cold_email",
+  "theme": "modern",
+  "preview": "/templates/previews/cold-email-modern/preview.webp",
+  "version": 1,
+  "engine": "handlebars",
+  "premium": false,
+  "tags": [
+    "modern",
+    "cold_email"
+  ],
+  "supportedDocuments": [
+    "cold_email"
+  ],
+  "supports": {
+    "ats": false,
+    "multiPage": false,
+    "coverLetter": false
+  }
+}

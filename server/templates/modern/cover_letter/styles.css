@@ -1,0 +1,76 @@
+.letter-wrapper {
+  max-width: 760px;
+  margin: 0 auto;
+  line-height: var(--lh-relaxed);
+  font-size: 11pt;
+}
+
+.sender-block {
+  border-bottom: 1px solid var(--color-border-light);
+  padding-bottom: var(--spacing-4);
+  margin-bottom: var(--spacing-6);
+}
+
+.sender-name {
+  font-weight: 600;
+  font-size: 14pt;
+  color: var(--color-primary-900);
+}
+
+.sender-contact {
+  display: flex;
+  gap: var(--spacing-4);
+  font-size: 9.5pt;
+  color: var(--color-primary-600);
+  margin-top: var(--spacing-1);
+}
+
+.date-block {
+  color: var(--color-primary-600);
+  margin-bottom: var(--spacing-5);
+  font-size: 10.5pt;
+}
+
+.recipient-block {
+  margin-bottom: var(--spacing-5);
+}
+
+.recipient-name {
+  font-weight: 600;
+  color: var(--color-primary-900);
+}
+
+.recipient-title, .company-name {
+  color: var(--color-primary-700);
+}
+
+.salutation {
+  margin-bottom: var(--spacing-4);
+  color: var(--color-primary-900);
+}
+
+.subject-line {
+  margin-bottom: var(--spacing-4);
+  color: var(--color-primary-800);
+}
+
+.letter-body p {
+  margin-bottom: var(--spacing-4);
+  color: var(--color-primary-800);
+  text-align: justify;
+}
+
+.closing-block {
+  margin-top: var(--spacing-8);
+}
+
+.closing-line {
+  margin-bottom: var(--spacing-6);
+  color: var(--color-primary-900);
+}
+
+.signature {
+  font-weight: 600;
+  font-size: 12pt;
+  color: var(--color-primary-900);
+}

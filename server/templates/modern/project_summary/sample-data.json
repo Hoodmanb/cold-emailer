@@ -1,0 +1,22 @@
+{
+  "projectName": "Global Payment Gateway Migration",
+  "role": "Lead Systems Architect",
+  "duration": "March 2022 - November 2022",
+  "overview": "Spearheaded the complete migration of our legacy payment processing infrastructure to a modern, cloud-native architecture capable of handling 5x the previous transaction volume while achieving PCI-DSS Level 1 compliance.",
+  "challenges": [
+    "Legacy monolithic architecture suffered from frequent timeouts during peak usage hours.",
+    "Zero-downtime requirement for migration due to global 24/7 transaction processing.",
+    "Strict regulatory and compliance requirements across 14 different countries."
+  ],
+  "solutions": [
+    "Designed a microservices-based architecture using Node.js, Docker, and AWS ECS.",
+    "Implemented a dual-write database strategy during the transition phase to ensure data integrity without downtime.",
+    "Integrated automated security scanning and compliance checks into the CI/CD pipeline."
+  ],
+  "outcomes": [
+    "Successfully increased transaction throughput by 500%, eliminating peak-hour timeouts.",
+    "Reduced infrastructure costs by 22% through auto-scaling and resource optimization.",
+    "Achieved zero downtime during the final DNS cutover."
+  ],
+  "technologies": ["Node.js", "AWS ECS", "PostgreSQL", "Docker", "Terraform", "Redis", "Datadog"]
+}

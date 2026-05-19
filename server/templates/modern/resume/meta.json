@@ -1,0 +1,33 @@
+{
+  "id": "resume_modern_saas",
+  "featureId": "resume_generation",
+  "name": "Modern SaaS",
+  "description": "A split-layout design optimized for modern tech and SaaS roles.",
+  "formats": [
+    "html",
+    "pdf",
+    "docx"
+  ],
+  "isDefault": true,
+  "slug": "resume-modern-saas",
+  "category": "resume",
+  "theme": "modern",
+  "preview": "/templates/previews/resume-modern-saas/preview.webp",
+  "version": 1,
+  "engine": "handlebars",
+  "premium": false,
+  "tags": [
+    "modern",
+    "resume",
+    "ats-friendly",
+    "professional"
+  ],
+  "supportedDocuments": [
+    "resume"
+  ],
+  "supports": {
+    "ats": true,
+    "multiPage": true,
+    "coverLetter": false
+  }
+}

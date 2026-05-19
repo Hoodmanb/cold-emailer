@@ -1,0 +1,33 @@
+{
+  "id": "resume_corporate",
+  "featureId": "resume_generation",
+  "name": "Corporate Professional",
+  "description": "An elegant, traditional layout favored by corporate executives and consulting firms.",
+  "formats": [
+    "html",
+    "pdf",
+    "docx"
+  ],
+  "isDefault": false,
+  "slug": "resume-corporate",
+  "category": "resume",
+  "theme": "corporate",
+  "preview": "/templates/previews/resume-corporate/preview.webp",
+  "version": 1,
+  "engine": "handlebars",
+  "premium": false,
+  "tags": [
+    "corporate",
+    "resume",
+    "ats-friendly",
+    "professional"
+  ],
+  "supportedDocuments": [
+    "resume"
+  ],
+  "supports": {
+    "ats": true,
+    "multiPage": true,
+    "coverLetter": false
+  }
+}

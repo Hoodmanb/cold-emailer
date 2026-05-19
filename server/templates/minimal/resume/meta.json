@@ -1,0 +1,33 @@
+{
+  "id": "resume_minimal",
+  "featureId": "resume_generation",
+  "name": "Minimal Clean",
+  "description": "Ultra-clean layout emphasizing generous whitespace and lightweight typography.",
+  "formats": [
+    "html",
+    "pdf",
+    "docx"
+  ],
+  "isDefault": false,
+  "slug": "resume-minimal",
+  "category": "resume",
+  "theme": "minimal",
+  "preview": "/templates/previews/resume-minimal/preview.webp",
+  "version": 1,
+  "engine": "handlebars",
+  "premium": false,
+  "tags": [
+    "minimal",
+    "resume",
+    "ats-friendly",
+    "professional"
+  ],
+  "supportedDocuments": [
+    "resume"
+  ],
+  "supports": {
+    "ats": true,
+    "multiPage": true,
+    "coverLetter": false
+  }
+}

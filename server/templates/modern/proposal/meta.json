@@ -1,0 +1,31 @@
+{
+  "id": "proposal_modern",
+  "featureId": "advanced_doc_generation",
+  "name": "Modern Business Proposal",
+  "description": "A comprehensive proposal template with a cover page, structured sections, and a pricing table.",
+  "formats": [
+    "html",
+    "pdf",
+    "docx"
+  ],
+  "isDefault": true,
+  "slug": "proposal-modern",
+  "category": "proposal",
+  "theme": "modern",
+  "preview": "/templates/previews/proposal-modern/preview.webp",
+  "version": 1,
+  "engine": "handlebars",
+  "premium": false,
+  "tags": [
+    "modern",
+    "proposal"
+  ],
+  "supportedDocuments": [
+    "proposal"
+  ],
+  "supports": {
+    "ats": false,
+    "multiPage": true,
+    "coverLetter": false
+  }
+}

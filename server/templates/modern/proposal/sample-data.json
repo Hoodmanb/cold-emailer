@@ -1,0 +1,47 @@
+{
+  "title": "Cloud Infrastructure Migration Strategy",
+  "subtitle": "A comprehensive blueprint for scaling DataSphere operations.",
+  "clientName": "DataSphere Systems",
+  "authorName": "Alex Jenkins",
+  "authorTitle": "Principal Cloud Architect",
+  "date": "October 24, 2023",
+  "sections": [
+    {
+      "heading": "Executive Summary",
+      "paragraphs": [
+        "DataSphere Systems is currently experiencing growing pains with its on-premise infrastructure, leading to increased latency during peak hours and higher maintenance costs. This proposal outlines a strategic migration to a cloud-native AWS architecture designed to improve scalability, enhance security, and reduce operational overhead by an estimated 35%.",
+        "Our team will execute a phased migration over a 12-week period, ensuring zero downtime for critical user-facing applications."
+      ],
+      "bullets": []
+    },
+    {
+      "heading": "Proposed Solution",
+      "paragraphs": [
+        "We propose a three-phase approach to modernizing your infrastructure:"
+      ],
+      "bullets": [
+        "Phase 1: Architecture audit and AWS landing zone setup.",
+        "Phase 2: Containerization of legacy monoliths using Docker and Kubernetes.",
+        "Phase 3: Database migration to Amazon Aurora with read-replica scaling."
+      ]
+    }
+  ],
+  "pricing": [
+    {
+      "item": "Architecture Audit & Planning",
+      "description": "Comprehensive review of current systems and detailed AWS architecture design.",
+      "cost": "$15,000"
+    },
+    {
+      "item": "Migration Execution (Phase 2 & 3)",
+      "description": "Containerization, infrastructure as code (Terraform), and database migration.",
+      "cost": "$45,000"
+    },
+    {
+      "item": "Post-Migration Support (3 Months)",
+      "description": "24/7 monitoring, performance tuning, and team training.",
+      "cost": "$12,000"
+    }
+  ],
+  "totalInvestment": "$72,000"
+}

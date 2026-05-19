@@ -1,0 +1,31 @@
+{
+  "id": "project_summary_modern",
+  "featureId": "project_summary_generation",
+  "name": "Modern Project Summary",
+  "description": "A crisp overview of a project highlighting challenges, solutions, and impact.",
+  "formats": [
+    "html",
+    "pdf",
+    "docx"
+  ],
+  "isDefault": true,
+  "slug": "project-summary-modern",
+  "category": "project_summary",
+  "theme": "modern",
+  "preview": "/templates/previews/project-summary-modern/preview.webp",
+  "version": 1,
+  "engine": "handlebars",
+  "premium": false,
+  "tags": [
+    "modern",
+    "project_summary"
+  ],
+  "supportedDocuments": [
+    "project_summary"
+  ],
+  "supports": {
+    "ats": false,
+    "multiPage": false,
+    "coverLetter": false
+  }
+}

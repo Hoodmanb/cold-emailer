@@ -1,0 +1,71 @@
+{{#> layout/base_document title=(concat contact.name " - Resume") }}
+<div class="resume-wrapper">
+  
+  <header class="resume-header">
+    <h1>{{contact.name}}</h1>
+    <div class="contact-info">
+      {{#if contact.email}}<span>{{contact.email}}</span>{{/if}}
+      {{#if contact.phone}}<span>{{contact.phone}}</span>{{/if}}
+      {{#if contact.location}}<span>{{contact.location}}</span>{{/if}}
+      {{#if contact.linkedin}}<span>{{contact.linkedin}}</span>{{/if}}
+    </div>
+  </header>
+
+  {{#if summary}}
+  <section class="section summary-section">
+    <h2 class="section-title">Summary</h2>
+    <p>{{summary}}</p>
+  </section>
+  {{/if}}
+
+  {{#if experience.length}}
+  <section class="section exp-section">
+    <h2 class="section-title">Experience</h2>
+    {{#each experience}}
+      <div class="minimal-exp-block avoid-break-inside">
+        <div class="exp-left">
+          <span class="exp-date">{{startDate}} &ndash; {{#if endDate}}{{endDate}}{{else}}Present{{/if}}</span>
+        </div>
+        <div class="exp-right">
+          <div class="exp-title">{{title}} <span class="exp-company">at {{company}}</span></div>
+          {{#if bullets.length}}
+            <ul class="exp-bullets">
+              {{#each bullets}}
+                <li>{{this}}</li>
+              {{/each}}
+            </ul>
+          {{/if}}
+        </div>
+      </div>
+    {{/each}}
+  </section>
+  {{/if}}
+
+  {{#if education.length}}
+  <section class="section edu-section">
+    <h2 class="section-title">Education</h2>
+    {{#each education}}
+      <div class="minimal-edu-block avoid-break-inside">
+        <div class="edu-left"><span class="edu-year">{{year}}</span></div>
+        <div class="edu-right">
+          <div class="edu-degree">{{degree}}</div>
+          <div class="edu-institution">{{institution}}</div>
+        </div>
+      </div>
+    {{/each}}
+  </section>
+  {{/if}}
+
+  {{#if skills.length}}
+  <section class="section skills-section">
+    <h2 class="section-title">Skills</h2>
+    <div class="skills-list">
+      {{#each skills}}
+        <span class="skill-item">{{this}}</span>{{#unless @last}}<span class="skill-separator">,</span>{{/unless}}
+      {{/each}}
+    </div>
+  </section>
+  {{/if}}
+
+</div>
+{{/layout/base_document}}

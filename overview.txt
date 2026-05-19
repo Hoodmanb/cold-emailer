@@ -1,0 +1,15 @@
+Project title:
+CareerBot AI Job Automation Platform
+
+Summary:
+A production-grade, local-first career automation ecosystem built with Next.js and Node.js that leverages multi-model LLM integration to streamline the job application lifecycle. The platform automates resume tailoring, cover letter generation, and cold email outreach while enforcing data privacy through a custom atomic JSON persistence layer.
+
+Full description:
+CareerBot is a sophisticated Career Automation Platform designed to eliminate the friction of modern job searching through intelligent automation and privacy-centric architecture. Developed as a decoupled full-stack application, it features a high-performance Next.js frontend and a robust Express.js backend optimized for low-latency AI interactions and secure data management.
+
+The platform’s technical core is a multi-provider AI orchestration layer supporting OpenRouter, OpenAI, Gemini, and Claude. This engine powers the Job & ATS module, which enables multi-modal job intake—including automated screenshot parsing—to perform real-time gap analysis and generate optimized application materials. A custom-built persistence layer utilizes an atomic, scoped JSON-based repository pattern, ensuring multi-tenant data integrity and local-first reliability without the overhead of traditional RDBMS.
+
+Beyond document generation, CareerBot implements a professional Outreach Engine featuring secure SMTP configuration management, encrypted credential handling, and scheduled email automation. Engineering priorities include a dark-first design system built on Material UI for a premium executive experience, centralized state management via Zustand, and a standardized request context middleware for seamless auth propagation and audit logging.
+
+Technologies:
+Next.js, React, Node.js, Express.js, Material UI (MUI), Zustand, TanStack Query, JWT Authentication, bcryptjs, OpenRouter API, OpenAI, Anthropic Claude, Google Gemini, Axios, Lucide Icons, Atomic File Persistence, SMTP Protocol, RESTful API, TypeScript, JavaScript, dotenv, Formik, Yup.

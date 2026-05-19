@@ -1,0 +1,46 @@
+:root {
+  /* Colors */
+  --color-primary-900: #0f172a;
+  --color-primary-800: #1e293b;
+  --color-primary-700: #334155;
+  --color-primary-600: #475569;
+  --color-primary-500: #64748b;
+  --color-primary-400: #94a3b8;
+  
+  /* Accent Colors */
+  --color-accent-blue: #2563eb;
+  --color-accent-teal: #0d9488;
+  
+  /* Backgrounds & Borders */
+  --color-bg-white: #ffffff;
+  --color-bg-subtle: #f8fafc;
+  --color-border-light: #e2e8f0;
+  --color-border-medium: #cbd5e1;
+
+  /* Typography */
+  --font-sans: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+  --font-serif: 'Georgia', 'Merriweather', serif;
+  --font-mono: 'Menlo', 'Monaco', 'Courier New', monospace;
+
+  /* Spacing */
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-10: 40px;
+  --spacing-12: 48px;
+  --spacing-16: 64px;
+
+  /* Document Specific Spacing */
+  --doc-padding-x: 48px;
+  --doc-padding-y: 48px;
+  --section-gap: 24px;
+  
+  /* Line Heights */
+  --lh-tight: 1.25;
+  --lh-normal: 1.5;
+  --lh-relaxed: 1.75;
+}

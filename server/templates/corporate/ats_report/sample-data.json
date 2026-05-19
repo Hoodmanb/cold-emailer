@@ -1,0 +1,11 @@
+{
+  "score": 85,
+  "breakdown": {
+    "technicalSkills": 90,
+    "keywordMatch": 80,
+    "softSkills": 85
+  },
+  "matchedKeywords": ["Node.js", "React", "Kubernetes", "Microservices", "Docker", "System Design"],
+  "missingKeywords": ["GraphQL", "AWS Lambda", "CI/CD Pipeline"],
+  "recommendation": "Your resume is highly optimized for this role. To push the score above 90, consider explicitly mentioning your experience with CI/CD Pipelines and Serverless deployments (AWS Lambda) if applicable."
+}

@@ -1,0 +1,16 @@
+node_modules/
+.env
+.env.local
+server/storage/data/*.json
+server/logs/actions.json
+server/storage/uploads/
+cold-emailer/fe/.next/
+cold-emailer/fe/.env.local
+.DS_Store
+*.log
+*.sqlite
+*.sqlite3
+*.db
+server/storage/db/
+/server/db/*.json
+server/storage/*

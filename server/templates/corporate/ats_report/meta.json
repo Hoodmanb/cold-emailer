@@ -1,0 +1,30 @@
+{
+  "id": "ats_report_corporate",
+  "featureId": "ats_analysis",
+  "name": "Corporate ATS Analysis",
+  "description": "A professional analysis report for Applicant Tracking Systems.",
+  "formats": [
+    "html",
+    "pdf"
+  ],
+  "isDefault": true,
+  "slug": "ats-report-corporate",
+  "category": "ats_report",
+  "theme": "corporate",
+  "preview": "/templates/previews/ats-report-corporate/preview.webp",
+  "version": 1,
+  "engine": "handlebars",
+  "premium": false,
+  "tags": [
+    "corporate",
+    "ats_report"
+  ],
+  "supportedDocuments": [
+    "ats_report"
+  ],
+  "supports": {
+    "ats": true,
+    "multiPage": false,
+    "coverLetter": false
+  }
+}

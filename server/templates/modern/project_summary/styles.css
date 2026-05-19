@@ -1,0 +1,91 @@
+.summary-wrapper {
+  max-width: 100%;
+}
+
+.summary-header {
+  border-bottom: 2px solid var(--color-primary-800);
+  padding-bottom: var(--spacing-4);
+  margin-bottom: var(--spacing-6);
+}
+
+.project-title {
+  font-size: 20pt;
+  color: var(--color-primary-900);
+  margin-bottom: var(--spacing-2);
+}
+
+.project-meta {
+  display: flex;
+  gap: var(--spacing-4);
+  font-size: 11pt;
+  color: var(--color-primary-600);
+  font-weight: 500;
+}
+
+.role {
+  color: var(--color-accent-blue);
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--spacing-8);
+}
+
+.section {
+  margin-bottom: var(--spacing-6);
+}
+
+.section-title {
+  font-size: 11pt;
+  text-transform: uppercase;
+  color: var(--color-primary-500);
+  margin-bottom: var(--spacing-3);
+  letter-spacing: 0.05em;
+}
+
+.bullet-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.bullet-list li {
+  position: relative;
+  padding-left: var(--spacing-4);
+  margin-bottom: var(--spacing-3);
+  line-height: var(--lh-relaxed);
+}
+
+.bullet-list li::before {
+  content: '→';
+  position: absolute;
+  left: 0;
+  color: var(--color-accent-blue);
+  font-weight: bold;
+}
+
+.highlight-list li {
+  background: var(--color-bg-subtle);
+  padding: var(--spacing-3) var(--spacing-3) var(--spacing-3) var(--spacing-5);
+  border-left: 3px solid var(--color-accent-blue);
+  border-radius: 0 4px 4px 0;
+}
+
+.highlight-list li::before {
+  display: none;
+}
+
+.tech-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.tech-badge {
+  background: var(--color-border-light);
+  color: var(--color-primary-800);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 9pt;
+}

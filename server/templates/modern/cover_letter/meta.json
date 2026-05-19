@@ -1,0 +1,31 @@
+{
+  "id": "cover_letter_modern",
+  "featureId": "cover_letter_generation",
+  "name": "Modern Cover Letter",
+  "description": "A clean, elegantly spaced cover letter design.",
+  "formats": [
+    "html",
+    "pdf",
+    "docx"
+  ],
+  "isDefault": true,
+  "slug": "cover-letter-modern",
+  "category": "cover_letter",
+  "theme": "modern",
+  "preview": "/templates/previews/cover-letter-modern/preview.webp",
+  "version": 1,
+  "engine": "handlebars",
+  "premium": false,
+  "tags": [
+    "modern",
+    "cover_letter"
+  ],
+  "supportedDocuments": [
+    "cover_letter"
+  ],
+  "supports": {
+    "ats": false,
+    "multiPage": false,
+    "coverLetter": true
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "contact": {
+    "name": "Alex Jenkins",
+    "email": "alex.jenkins@example.com",
+    "phone": "+1 (555) 123-4567",
+    "location": "San Francisco, CA",
+    "linkedin": "linkedin.com/in/alexjenkins"
+  },
+  "summary": "Forward-thinking Senior Software Engineer with 8+ years of experience architecting scalable distributed systems and leading high-performance engineering teams. Proven track record of improving system performance by 40% and delivering mission-critical applications for enterprise clients.",
+  "experience": [
+    {
+      "title": "Senior Software Engineer",
+      "company": "TechFlow Innovations",
+      "location": "San Francisco, CA",
+      "startDate": "Jan 2020",
+      "endDate": "Present",
+      "bullets": [
+        "Architected a scalable microservices platform using Node.js and Kubernetes, supporting 50k+ concurrent users.",
+        "Reduced database query latency by 45% through aggressive caching and index optimization.",
+        "Mentored a team of 6 engineers, improving code review turnaround time by 30%"
+      ]
+    },
+    {
+      "title": "Software Engineer",
+      "company": "DataSphere Systems",
+      "location": "Seattle, WA",
+      "startDate": "Jun 2016",
+      "endDate": "Dec 2019",
+      "bullets": [
+        "Developed RESTful APIs processing over 1M requests per day with 99.99% uptime.",
+        "Implemented automated CI/CD pipelines, reducing deployment time from hours to minutes.",
+        "Collaborated with product teams to design and launch 3 new core features."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "degree": "B.S. Computer Science",
+      "institution": "University of Technology",
+      "year": "2016",
+      "gpa": "3.8"
+    }
+  ],
+  "skills": ["JavaScript", "TypeScript", "Node.js", "React", "Python", "Kubernetes", "Docker", "AWS", "PostgreSQL", "System Design"]
+}

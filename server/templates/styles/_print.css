@@ -1,0 +1,41 @@
+@media print {
+  @page {
+    size: A4;
+    margin: 0; /* Margins are handled by body padding */
+  }
+
+  html, body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    width: 210mm;
+    height: 297mm;
+  }
+
+  body {
+    padding: var(--doc-padding-y) var(--doc-padding-x);
+  }
+
+  /* Prevent page breaks inside critical elements */
+  .avoid-break-inside {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Always force page break before if necessary */
+  .page-break-before {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  /* Ensure headings stick to following paragraphs */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  /* Orphan / Widow protection (supported in some PDF engines) */
+  p, li {
+    orphans: 3;
+    widows: 3;
+  }
+}

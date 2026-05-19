@@ -1,0 +1,28 @@
+{
+  "name": "career-bot-server",
+  "version": "1.0.0",
+  "description": "Career Automation Platform — Express API server",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "docx": "^9.6.1",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "handlebars": "^4.7.9",
+    "jsonwebtoken": "^9.0.3",
+    "marked": "^18.0.3",
+    "multer": "^2.1.1",
+    "nodemailer": "^8.0.7",
+    "puppeteer": "^24.43.1",
+    "uuid": "^14.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}

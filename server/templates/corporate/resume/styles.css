@@ -1,0 +1,110 @@
+.resume-wrapper {
+  max-width: 100%;
+}
+
+.resume-header {
+  text-align: center;
+  margin-bottom: var(--spacing-6);
+}
+
+.resume-header h1 {
+  font-family: var(--font-serif);
+  font-size: 26pt;
+  color: var(--color-primary-900);
+  margin-bottom: var(--spacing-2);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.contact-info {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+  font-size: 10pt;
+  color: var(--color-primary-700);
+}
+
+.contact-info span:not(:last-child)::after {
+  content: " | ";
+  margin-left: var(--spacing-3);
+  color: var(--color-primary-400);
+}
+
+.section {
+  margin-bottom: var(--section-gap);
+}
+
+.section-title {
+  font-family: var(--font-serif);
+  font-size: 12pt;
+  text-transform: uppercase;
+  color: var(--color-primary-900);
+  border-bottom: 2px solid var(--color-primary-800);
+  padding-bottom: var(--spacing-1);
+  margin-bottom: var(--spacing-4);
+}
+
+.exp-block {
+  margin-bottom: var(--spacing-5);
+}
+
+.exp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: var(--spacing-1);
+}
+
+.exp-primary {
+  font-weight: 700;
+  font-size: 11pt;
+  color: var(--color-primary-900);
+}
+
+.exp-separator {
+  display: none;
+}
+
+.exp-company {
+  font-weight: 700;
+  font-style: italic;
+}
+
+.exp-meta {
+  font-size: 10pt;
+  color: var(--color-primary-800);
+}
+
+.exp-location {
+  margin-right: var(--spacing-2);
+}
+
+.exp-location::after {
+  content: " - ";
+}
+
+.skills-list {
+  text-align: center;
+  font-size: 10.5pt;
+  line-height: var(--lh-relaxed);
+}
+
+.skill-separator {
+  color: var(--color-primary-400);
+  margin: 0 var(--spacing-2);
+}
+
+.edu-block {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-3);
+}
+
+.edu-primary {
+  font-weight: 700;
+}
+
+.edu-meta {
+  text-align: right;
+}

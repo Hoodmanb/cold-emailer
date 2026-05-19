@@ -1,0 +1,40 @@
+{{#> layout/base_document title=(concat "Cover Letter - " senderName) }}
+<div class="letter-wrapper">
+  
+  <div class="sender-block">
+    <div class="sender-name">{{senderName}}</div>
+    <div class="sender-contact">
+      {{#if senderEmail}}<span>{{senderEmail}}</span>{{/if}}
+      {{#if senderPhone}}<span>{{senderPhone}}</span>{{/if}}
+    </div>
+  </div>
+
+  <div class="date-block">{{date}}</div>
+
+  <div class="recipient-block">
+    {{#if recipientName}}<div class="recipient-name">{{recipientName}}</div>{{/if}}
+    {{#if recipientTitle}}<div class="recipient-title">{{recipientTitle}}</div>{{/if}}
+    {{#if companyName}}<div class="company-name">{{companyName}}</div>{{/if}}
+  </div>
+
+  <div class="salutation">Dear {{#if recipientName}}{{recipientName}}{{else}}Hiring Manager{{/if}},</div>
+
+  {{#if jobTitle}}
+  <div class="subject-line">
+    <strong>Re: Application for {{jobTitle}}{{#if companyName}} at {{companyName}}{{/if}}</strong>
+  </div>
+  {{/if}}
+
+  <div class="letter-body">
+    {{#each paragraphs}}
+      <p>{{this}}</p>
+    {{/each}}
+  </div>
+
+  <div class="closing-block">
+    <div class="closing-line">{{closing}},</div>
+    <div class="signature">{{senderName}}</div>
+  </div>
+
+</div>
+{{/layout/base_document}}

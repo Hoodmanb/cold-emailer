@@ -1,0 +1,33 @@
+{
+  "id": "resume_executive",
+  "featureId": "resume_generation",
+  "name": "Executive Traditional",
+  "description": "A commanding design with a solid dark header, ideal for leadership roles.",
+  "formats": [
+    "html",
+    "pdf",
+    "docx"
+  ],
+  "isDefault": false,
+  "slug": "resume-executive",
+  "category": "resume",
+  "theme": "executive",
+  "preview": "/templates/previews/resume-executive/preview.webp",
+  "version": 1,
+  "engine": "handlebars",
+  "premium": false,
+  "tags": [
+    "executive",
+    "resume",
+    "ats-friendly",
+    "professional"
+  ],
+  "supportedDocuments": [
+    "resume"
+  ],
+  "supports": {
+    "ats": true,
+    "multiPage": true,
+    "coverLetter": false
+  }
+}
