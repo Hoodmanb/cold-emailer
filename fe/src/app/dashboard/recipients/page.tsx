@@ -1,7 +1,14 @@
 "use client";
 
 import CustomButton from "@/components/ui/Button";
-import { Box, Stack, Typography, Badge, IconButton, Button } from "@mui/material";
+import {
+  Box,
+  Stack,
+  Typography,
+  Badge,
+  IconButton,
+  Button,
+} from "@mui/material";
 import { EllipsisVertical, Plus, PlusIcon, User2 } from "lucide-react";
 import { useGlobalModal } from "@/components/ui/Modal.jsx";
 import AddRecipient from "@/components/layout/AddRecipient";
@@ -55,7 +62,8 @@ const Recipients = () => {
 
   return (
     <Stack>
-      {recipient && recipient?.length > 0 && (
+      {((categories && categories?.length > 0) ||
+        (recipient && recipient?.length > 0)) && (
         <Stack
           sx={{
             mb: "20px",
@@ -68,43 +76,46 @@ const Recipients = () => {
           }}
         >
           <Box>
-            <CustomButton
-              text="Add recipient"
-              icon={PlusIcon}
-              iconColor="grey"
-              onClick={() =>
-                showModal(<AddRecipient type={"add"} setRefresh={setRefresh} />)
-              }
-            />
-            <Button
-              variant="contained"
-              startIcon={<Plus size={18} />}
-              onClick={() =>
-                showModal(<AddCategory type={"add"} setRefresh={setRefresh} />)
-              }
-              sx={{ fontWeight: 700, minHeight: 44, width: { xs: "100%", sm: "auto" } }}
-            >
-              Add SMTP
-            </Button>
+            {categories && categories?.length > 0 && (
+              <Button
+                variant="contained"
+                startIcon={<Plus size={18} />}
+                onClick={() =>
+                  showModal(
+                    <AddCategory type={"add"} setRefresh={setRefresh} />,
+                  )
+                }
+                sx={{
+                  fontWeight: 700,
+                  minHeight: 44,
+                  width: { xs: "100%", sm: "auto" },
+                  borderRadius: 2.5,
+                }}
+              >
+                Add Category
+              </Button>
+            )}
           </Box>
           <Box>
-            <CustomButton
-              text="Add Category"
-              icon={PlusIcon}
-              iconColor="grey"
-              bgColor=""
-
-            />
-            <Button
-              variant="contained"
-              startIcon={<Plus size={18} />}
-              onClick={() =>
-                showModal(<AddCategory type={"add"} setRefresh={setRefresh} />)
-              }
-              sx={{ fontWeight: 700, minHeight: 44, width: { xs: "100%", sm: "auto" } }}
-            >
-              Add SMTP
-            </Button>
+            {recipient && recipient?.length > 0 && (
+              <Button
+                variant="contained"
+                startIcon={<PlusIcon size={18} />}
+                onClick={() =>
+                  showModal(
+                    <AddRecipient type={"add"} setRefresh={setRefresh} />,
+                  )
+                }
+                sx={{
+                  fontWeight: 700,
+                  minHeight: 44,
+                  width: { xs: "100%", sm: "auto" },
+                  borderRadius: 2.5,
+                }}
+              >
+                Add Recipient
+              </Button>
+            )}
           </Box>
         </Stack>
       )}
@@ -135,23 +146,20 @@ const Recipients = () => {
             Start by adding your first recipient to begin your email campaigns
           </Typography>
           <Box sx={{ width: "auto" }}>
-            <CustomButton
-              text="Add Your First Recipient"
-              icon={PlusIcon}
-              iconColor="grey"
-              onClick={() =>
-                showModal(<AddRecipient type={"add"} setRefresh={setRefresh} />)
-              }
-            />
             <Button
               variant="contained"
               startIcon={<Plus size={18} />}
               onClick={() =>
-                showModal(<AddCategory type={"add"} setRefresh={setRefresh} />)
+                showModal(<AddRecipient type={"add"} setRefresh={setRefresh} />)
               }
-              sx={{ fontWeight: 700, width: { xs: "100%", sm: "auto" } }}
+              sx={{
+                fontWeight: 700,
+                width: { xs: "100%", sm: "auto" },
+                borderRadius: 2.5,
+                minHeight: 44,
+              }}
             >
-              Add SMTP
+              Add Your First Recipient
             </Button>
           </Box>
         </Stack>
@@ -192,7 +200,7 @@ const Recipients = () => {
                                 type={"update"}
                                 categoryId={categor._id}
                                 setRefresh={setRefresh}
-                              />
+                              />,
                             ),
                         },
                         {
@@ -231,14 +239,21 @@ const Recipients = () => {
             No categories created yet
           </Typography>
           <Box sx={{ width: "auto" }}>
-            <CustomButton
-              text="Create Your First Category"
-              icon={PlusIcon}
-              iconColor="grey"
+            <Button
+              variant="contained"
+              startIcon={<Plus size={18} />}
               onClick={() =>
                 showModal(<AddCategory type={"add"} setRefresh={setRefresh} />)
               }
-            />
+              sx={{
+                fontWeight: 700,
+                width: { xs: "100%", sm: "auto" },
+                borderRadius: 2.5,
+                minHeight: 44,
+              }}
+            >
+              Create Your First Category
+            </Button>
           </Box>
         </Stack>
       )}

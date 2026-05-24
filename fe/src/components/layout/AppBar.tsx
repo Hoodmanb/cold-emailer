@@ -12,6 +12,7 @@ import {
   Typography,
   Drawer as MuiDrawer,
   useTheme,
+  Stack,
 } from "@mui/material";
 import {
   LayoutDashboard,
@@ -26,6 +27,7 @@ import {
   File,
   Settings,
   FileText,
+  MailIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -67,11 +69,11 @@ const LinkHeader: React.FC<LinksProps> = ({
   const getActiveStyle = (section: string) => {
     return pathname === section
       ? {
-        color: "black",
-        backgroundColor: "#0F172A1A",
-        borderRadius: "10px",
-        width: "90%",
-      }
+          color: "black",
+          backgroundColor: "#0F172A1A",
+          borderRadius: "10px",
+          width: "90%",
+        }
       : "";
   };
 
@@ -145,9 +147,9 @@ const LinkWithSubHeader: React.FC<LinkWithSubHeaderProps> = ({
   const getActiveStyle = (section: string) => {
     return pathname === section
       ? {
-        fontWeight: "bold",
-        backgroundColor: "#0F172A1A",
-      }
+          fontWeight: "bold",
+          backgroundColor: "#0F172A1A",
+        }
       : "";
   };
 
@@ -343,7 +345,7 @@ const Drawer: React.FC<MiniDrawerProps> = ({ children }) => {
   const navigationList = (
     labelsVisible: boolean,
     styles: React.CSSProperties,
-    dismiss?: () => void
+    dismiss?: () => void,
   ) => (
     <>
       <List sx={{ py: 0 }}>
@@ -560,9 +562,9 @@ const Drawer: React.FC<MiniDrawerProps> = ({ children }) => {
     <Box
       sx={{
         display: "flex",
-        pt: "20px",
+        pt: compact ? "30px" : "20px",
         justifyContent: "center",
-        height: "60px",
+        height: "70px",
       }}
     >
       <Box sx={{ position: "relative" }}>
@@ -575,7 +577,13 @@ const Drawer: React.FC<MiniDrawerProps> = ({ children }) => {
             fontSize: compact ? "1em" : "1.5em",
           }}
         >
-          {compact ? "Mailer" : " Cold Mailer"}
+          {compact ? (
+            "Mailer"
+          ) : (
+            <Stack direction="row" alignItems={"center"} gap="5px">
+              <MailIcon size="38px" color="#3b82f6" /> Cold Mailer
+            </Stack>
+          )}
         </Typography>
       </Box>
     </Box>
@@ -583,7 +591,8 @@ const Drawer: React.FC<MiniDrawerProps> = ({ children }) => {
 
   if (!mounted) return null;
 
-  const contentShift = isDesktop && isDrawerOpen ? "240px" : isDesktop ? "70px" : "0";
+  const contentShift =
+    isDesktop && isDrawerOpen ? "240px" : isDesktop ? "70px" : "0";
   const contentWidth =
     isDesktop && isDrawerOpen
       ? `calc(100% - 240px)`
@@ -661,6 +670,7 @@ const Drawer: React.FC<MiniDrawerProps> = ({ children }) => {
               flexDirection: "column",
               flex: 1,
               overflowY: "auto",
+              px: "20px",
             }}
           >
             {navigationList(true, sectionStylesExpanded, closeMobileNav)}

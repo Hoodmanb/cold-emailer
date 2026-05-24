@@ -1,7 +1,14 @@
 "use client";
 
 import CustomButton from "@/components/ui/Button";
-import { Box, Stack, Typography, Badge, IconButton } from "@mui/material";
+import {
+  Box,
+  Stack,
+  Typography,
+  Badge,
+  IconButton,
+  Button,
+} from "@mui/material";
 import { EllipsisVertical, PlusIcon, User2, Calendar } from "lucide-react";
 import { useGlobalModal } from "@/components/ui/Modal.jsx";
 import AddRecipient from "@/components/layout/AddRecipient";
@@ -77,64 +84,64 @@ const Recipients = () => {
             justifyContent: "flex-end",
           }}
         >
-          <Box sx={{minWidth:"100px"}}>
+          <Box sx={{ minWidth: "100px" }}>
             <CustomButton
               text="Create Schedule"
               icon={PlusIcon}
               iconColor="grey"
               onClick={() =>
                 showModal(
-                  <CreateSchedule type={"add"} setRefresh={setRefresh} />
+                  <CreateSchedule type={"add"} setRefresh={setRefresh} />,
                 )
               }
             />
           </Box>
         </Stack>
       )}
-      {!schedule ? // && schedule?.length > 0 ?
-        (
-
-          <SchedulesList />
-        ) : (
-          <Stack>
-            <Stack
-              sx={{
-                flexDirection: "column",
-                alignItems: "center",
-                p: "70px 0px",
-                border: "1px solid #0F172A1A",
-                borderRadius: "20px",
-              }}
+      {!schedule ? ( // && schedule?.length > 0 ?
+        <SchedulesList />
+      ) : (
+        <Stack>
+          <Stack
+            sx={{
+              flexDirection: "column",
+              alignItems: "center",
+              p: "70px 0px",
+              border: "1px solid #0F172A1A",
+              borderRadius: "20px",
+            }}
+          >
+            <Calendar size="3em" color="grey" />
+            <Typography mt="10px" variant="h6" fontWeight={600}>
+              No schedules yet
+            </Typography>
+            <Typography
+              width={"65%"}
+              textAlign="center"
+              mt="10px"
+              mb="15px"
+              variant="subtitle2"
+              color="grey"
             >
-              <Calendar size="3em" color="grey" />
-              <Typography mt="10px" variant="h6" fontWeight={600}>
-                No schedules yet
-              </Typography>
-              <Typography
-                width={"65%"}
-                textAlign="center"
-                mt="10px"
-                mb="15px"
-                variant="subtitle2"
-                color="grey"
+              Create your first email schedule to automate your campaigns
+            </Typography>
+            <Box sx={{ width: "auto" }}>
+              <Button
+                variant="contained"
+                onClick={() =>
+                  showModal(
+                    <CreateSchedule type={"add"} setRefresh={setRefresh} />,
+                  )
+                }
+                startIcon={<PlusIcon size={18} />}
+                sx={{ borderRadius: 2.5, fontWeight: 700, px: 3, py: 1.2 }}
               >
-                Create your first email schedule to automate your campaigns
-              </Typography>
-              <Box sx={{ width: "auto" }}>
-                <CustomButton
-                  text="Create Schedule"
-                  icon={PlusIcon}
-                  iconColor="grey"
-                  onClick={() =>
-                    showModal(
-                      <CreateSchedule type={"add"} setRefresh={setRefresh} />
-                    )
-                  }
-                />
-              </Box>
-            </Stack>
+                Create Schedule
+              </Button>
+            </Box>
           </Stack>
-        )}
+        </Stack>
+      )}
     </Stack>
   );
 };

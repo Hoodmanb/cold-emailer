@@ -1,4 +1,4 @@
-import { Stack, Box, Typography, IconButton } from "@mui/material";
+import { Stack, Box, Typography, IconButton, Button } from "@mui/material";
 import { useGlobalModal } from "../ui/Modal";
 import CustomTextField from "@/components/ui/TextField";
 import * as Yup from "yup";
@@ -27,10 +27,10 @@ export default function AddCategory({ type, categoryId, setRefresh }: prop) {
   const { category, refetchCategory } = useFetchSingleCategory(categoryId);
 
   useEffect(() => {
-      if (type === "update") {
-        refetchCategory(); // Only refetch if it's update
-      }
-    }, [type]);
+    if (type === "update") {
+      refetchCategory(); // Only refetch if it's update
+    }
+  }, [type]);
 
   return (
     <Stack
@@ -78,7 +78,7 @@ export default function AddCategory({ type, categoryId, setRefresh }: prop) {
           } else {
             showSnackbar(
               response.data.message || "an error occured, try again",
-              "error"
+              "error",
             );
           }
           setSubmitting(false);
@@ -110,22 +110,25 @@ export default function AddCategory({ type, categoryId, setRefresh }: prop) {
                 <ErrorText name="category" />
               </Box>
 
-              <Box
+              <Button
+                variant="contained"
+                // startIcon={<Plus size={18} />}
+                disabled={
+                  Object.values(values).some((val) => !val.trim()) ||
+                  Object.keys(errors).length > 0 ||
+                  isSubmitting
+                }
                 sx={{
+                  fontWeight: 700,
+                  minHeight: 44,
+                  borderRadius: 2.5,
                   width: "40%",
                   minWidth: "150px",
                   alignSelf: "end",
                 }}
               >
-                <CustomButton
-                  text={isSubmitting ? "Creating..." : "Create Recipient"}
-                  disabled={
-                    Object.values(values).some((val) => !val.trim()) ||
-                    Object.keys(errors).length > 0 ||
-                    isSubmitting
-                  }
-                />
-              </Box>
+                {isSubmitting ? "Creating..." : "Create Recipient"}
+              </Button>
             </Stack>
           </Form>
         )}

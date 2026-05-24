@@ -41,11 +41,7 @@ type OutputType = {
   value: string;
 };
 
-export default function CreateSchedule({
-  type,
-  scheduleID,
-  setRefresh,
-}: prop) {
+export default function CreateSchedule({ type, scheduleID, setRefresh }: prop) {
   const { closeModal } = useGlobalModal();
   const { showSnackbar } = useSnackbar();
   const [mounted, setMounted] = useState(false);
@@ -154,7 +150,7 @@ export default function CreateSchedule({
         }
         onSubmit={async (
           values,
-          { setSubmitting, resetForm, setFieldError }
+          { setSubmitting, resetForm, setFieldError },
         ) => {
           logger.debug(values);
           // const matchedCategory = categories?.find(
@@ -168,14 +164,11 @@ export default function CreateSchedule({
             type === "add"
               ? await axiosInstance.post("/api/schedule", values)
               : scheduleID
-                ? await axiosInstance.put(
-                  `/api/schedule/${scheduleID}`,
-                  values
-                )
+                ? await axiosInstance.put(`/api/schedule/${scheduleID}`, values)
                 : await axiosInstance.put(
-                  `/api/recipient/example$$##&&%%.gmail.com`,
-                  values
-                );
+                    `/api/recipient/example$$##&&%%.gmail.com`,
+                    values,
+                  );
           logger.debug(response.data);
           if (response.data.message === "created successfully") {
             showSnackbar(response.data.message, "success");
@@ -580,29 +573,38 @@ export default function CreateSchedule({
                   alignSelf: "end",
                 }}
               >
-                <CustomButton
-                  text={isSubmitting ? "Creating..." : "Create Recipient"}
+                <Button
+                  variant="contained"
+                  sx={{
+                    borderRadius: 2.5,
+                    fontWeight: 700,
+                    px: 3,
+                    py: 1.2,
+                    minHeight: 44,
+                  }}
                   disabled={
                     type === "add"
                       ? Object.entries(values)
-                        .filter(
-                          ([key]) =>
-                            ![
-                              "templateOne",
-                              "templateTwo",
-                              "templateThree",
-                            ].includes(key)
-                        )
-                        .some(
-                          ([, val]) =>
-                            (typeof val === "string" && !val.trim()) ||
-                            (Array.isArray(val) && val.length === 0)
-                        ) ||
-                      Object.keys(errors).length > 0 ||
-                      isSubmitting
+                          .filter(
+                            ([key]) =>
+                              ![
+                                "templateOne",
+                                "templateTwo",
+                                "templateThree",
+                              ].includes(key),
+                          )
+                          .some(
+                            ([, val]) =>
+                              (typeof val === "string" && !val.trim()) ||
+                              (Array.isArray(val) && val.length === 0),
+                          ) ||
+                        Object.keys(errors).length > 0 ||
+                        isSubmitting
                       : isSubmitting
                   }
-                />
+                >
+                  {isSubmitting ? "Creating..." : "Create Recipient"}
+                </Button>
               </Box>
             </Stack>
           </Form>

@@ -105,10 +105,10 @@ export default function AddRecipient({
         }
         onSubmit={async (
           values,
-          { setSubmitting, resetForm, setFieldError }
+          { setSubmitting, resetForm, setFieldError },
         ) => {
           const matchedCategory = categories?.find(
-            (cat) => cat.category === values.category
+            (cat) => cat.category === values.category,
           );
 
           if (matchedCategory) {
@@ -118,14 +118,14 @@ export default function AddRecipient({
             type === "add"
               ? await axiosInstance.post("/api/recipient", values)
               : recipientEmail
-              ? await axiosInstance.put(
-                  `/api/recipient/${recipientEmail}`,
-                  values
-                )
-              : await axiosInstance.put(
-                  `/api/recipient/example$$##&&%%.gmail.com`,
-                  values
-                );
+                ? await axiosInstance.put(
+                    `/api/recipient/${recipientEmail}`,
+                    values,
+                  )
+                : await axiosInstance.put(
+                    `/api/recipient/example$$##&&%%.gmail.com`,
+                    values,
+                  );
           logger.debug(response.data);
           if (response.data.message === "created successfully") {
             showSnackbar(response.data.message, "success");
@@ -219,26 +219,20 @@ export default function AddRecipient({
                 />
                 <ErrorText name="category" />
               </Box>
-              <Box
+              <Button
+                variant="contained"
                 sx={{
+                  fontWeight: 700,
+                  minHeight: 44,
+                  borderRadius: 2.5,
+                  margin: 0,
                   width: "40%",
                   minWidth: "150px",
                   alignSelf: "end",
                 }}
               >
-                <CustomButton
-                  text={isSubmitting ? "Creating..." : "Create Recipient"}
-                  disabled={
-                    type === "add"
-                      ? Object.entries(values)
-                          .filter(([key]) => key !== "category")
-                          .some(([, val]) => !val.trim()) ||
-                        Object.keys(errors).length > 0 ||
-                        isSubmitting
-                      : isSubmitting
-                  }
-                />
-              </Box>
+                {isSubmitting ? "Creating..." : "Create Recipient"}
+              </Button>
             </Stack>
           </Form>
         )}
