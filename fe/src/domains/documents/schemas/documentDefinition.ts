@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { sectionSchema } from './sectionTypes';
+import { sectionSchema } from './sectionSchema';
 
 export const documentSchema = z.object({
   id: z.string().uuid(),

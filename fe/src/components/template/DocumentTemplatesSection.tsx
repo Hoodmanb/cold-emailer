@@ -11,7 +11,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useGetSystemTemplates, SystemTemplate } from "@/hooks/queryHooks/systemTemplates";
 import { useRouter } from "next/navigation";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:9000";
+import { getApiBaseUrl, apiUrl } from "@/config/env";
+
+const API_URL = typeof window !== "undefined" ? getApiBaseUrl() || window.location.origin : apiUrl;
 
 // ─── Quick Filter Labels ────────────────────────────────────────────────────
 const QUICK_FILTERS = [

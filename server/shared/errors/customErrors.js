@@ -74,6 +74,21 @@ class WorkflowError extends AppError {
   }
 }
 
+class BillingAccessError extends AppError {
+  constructor(message = 'Billing access denied', errorCode = 'BILLING_ACCESS_DENIED') {
+    super(message, 403, errorCode);
+    this.type = 'billing_error';
+  }
+}
+
+class InsufficientCreditsError extends AppError {
+  constructor(message = 'Insufficient credits', details = {}) {
+    super(message, 402, 'INSUFFICIENT_CREDITS');
+    this.type = 'billing_error';
+    this.details = details;
+  }
+}
+
 module.exports = {
   AppError,
   AuthError,
@@ -83,4 +98,6 @@ module.exports = {
   PersistenceError,
   TransitionError,
   WorkflowError,
+  BillingAccessError,
+  InsufficientCreditsError,
 };

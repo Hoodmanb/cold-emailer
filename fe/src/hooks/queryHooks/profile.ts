@@ -8,6 +8,8 @@ export const profileQueryKeys = {
   models: ["ai", "models"] as const,
 };
 
+const EMPTY_ARRAY: any[] = [];
+
 export const useGetProfile = () => {
   const query = useQuery({
     queryKey: profileQueryKeys.profile,
@@ -21,7 +23,7 @@ export const useGetProfile = () => {
   });
 
   return {
-    profile: query.data || {},
+    profile: query.data,
     loading: query.isLoading,
     error: query.error instanceof Error ? query.error.message : null,
     refetch: query.refetch,
@@ -52,7 +54,7 @@ export const useProjects = () => {
   console.log(`[useProjects] Hook render | status: ${query.status} | fetchStatus: ${query.fetchStatus} | isFetching: ${query.isFetching}`);
 
   return {
-    data: query.data || [],
+    data: query.data || EMPTY_ARRAY,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     error: query.error,
@@ -144,7 +146,7 @@ export const useGetModels = () => {
   });
 
   return {
-    models: query.data || [],
+    models: query.data || EMPTY_ARRAY,
     loading: query.isLoading,
     refetch: query.refetch,
   };

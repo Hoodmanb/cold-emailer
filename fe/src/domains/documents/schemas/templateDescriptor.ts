@@ -1,13 +1,17 @@
 // src/domains/documents/schemas/templateDescriptor.ts
-export type TemplateDescriptor = {
-  id: string;
-  name: string;
-  version: string;
-  atsCompatible: boolean;
-  layout: {
-    columns: number;
-    spacing: "compact" | "comfortable";
-  };
-  allowedSections: string[]; // e.g., ["summary","experience","skill"]
-  previewImage?: string; // optional path to thumbnail
-};
+import { z } from "zod";
+
+export const templateDescriptorSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  version: z.string(),
+  atsCompatible: z.boolean(),
+  layout: z.object({
+    columns: z.number().int().positive(),
+    spacing: z.enum(["compact", "comfortable"]),
+  }),
+  allowedSections: z.array(z.string()),
+  previewImage: z.string().optional(),
+});
+
+export type TemplateDescriptor = z.infer<typeof templateDescriptorSchema>;

@@ -1,67 +1,63 @@
-import { logger } from "@/utils/logger";
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import axiosInstance from "../axios";
-type RecipientProp = {
+
+export type RecipientProp = {
   name: string;
   email: string;
   category: string;
   _id: string;
 };
-export const useGetRecipients = () => {
-  const [recipient, setRecipient] = useState<RecipientProp[]>();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<any>(null);
 
-  const fetchRecipient = async () => {
-    setLoading(true);
-    try {
-      const response = await axiosInstance("/api/recipient");
-      if (response.data?.message === "retrieved successfully") {
-        setRecipient(
-          (response.data.data || []).map((item: any) => ({
-            ...item,
-            _id: item.id || item._id,
-          }))
-        );
-      }
-    } catch (err) {
-      logger.error(err);
-      setError(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchRecipient();
-  }, []);
-
-  return { recipient, loading, error, refetch: fetchRecipient };
+export const recipientsQueryKeys = {
+  all: ["recipients"] as const,
+  single: (email?: string) => ["recipients", email || ""] as const,
 };
 
-export const useGetSingleRecipient = (email?:string) => {
-  const [singleRecipient, setSingleRecipient] = useState<RecipientProp>();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<any>(null);
+export const useGetRecipients = () => {
+  const query = useQuery({
+    queryKey: recipientsQueryKeys.all,
+    queryFn: async () => {
+      const response = await axiosInstance("/api/recipient");
+      if (response.data?.message === "retrieved successfully") {
+        return (response.data.data || []).map((item: any) => ({
+          ...item,
+          _id: item.id || item._id,
+        })) as RecipientProp[];
+      }
+      return [] as RecipientProp[];
+    },
+    retry: 2,
+    staleTime: 30_000,
+  });
 
-  const fetchSingleRecipient = async () => {
-    setLoading(true);
-    try {
+  return {
+    recipient: query.data,
+    loading: query.isLoading,
+    error: query.error instanceof Error ? query.error.message : null,
+    refetch: query.refetch,
+  };
+};
+
+export const useGetSingleRecipient = (email?: string) => {
+  const query = useQuery({
+    queryKey: recipientsQueryKeys.single(email),
+    queryFn: async () => {
+      if (!email) return undefined;
       const response = await axiosInstance(`/api/recipient/${email}`);
       if (response.data?.message === "retrieved successfully") {
-        setSingleRecipient(response.data.data);
+        return response.data.data as RecipientProp;
       }
-    } catch (err) {
-      logger.error(err);
-      setError(err);
-    } finally {
-      setLoading(false);
-    }
+      return undefined;
+    },
+    enabled: !!email,
+    retry: 2,
+    staleTime: 30_000,
+  });
+
+  return {
+    singleRecipient: query.data,
+    loading: query.isLoading,
+    error: query.error instanceof Error ? query.error.message : null,
+    refetch: query.refetch,
   };
-
-  useEffect(() => {
-    fetchSingleRecipient();
-  }, []);
-
-  return { singleRecipient, loading, error, refetch: fetchSingleRecipient };
 };

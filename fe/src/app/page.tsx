@@ -33,6 +33,7 @@ export default function LandingPage() {
           <Stack direction="row" spacing={2} alignItems="center">
             <Button color="inherit" sx={{ display: { xs: 'none', sm: 'block' }, textTransform: 'none' }}>Features</Button>
             <Button color="inherit" sx={{ display: { xs: 'none', sm: 'block' }, textTransform: 'none' }}>How it Works</Button>
+            <Button color="inherit" sx={{ display: { xs: 'none', sm: 'block' }, textTransform: 'none' }} onClick={() => router.push('/pricing')}>Pricing</Button>
             <Button variant="contained" color="primary" onClick={() => router.push('/dashboard')} sx={{ borderRadius: 2, textTransform: 'none' }}>
               Dashboard
             </Button>

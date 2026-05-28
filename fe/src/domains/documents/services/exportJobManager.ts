@@ -4,7 +4,7 @@ import { join } from "path";
 import { createHash } from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import { Document } from "../schemas/documentDefinition";
-import { DocumentStoreState, useDocumentStore } from "../store/useDocumentStore";
+import { useDocumentStore } from "../store/useDocumentStore";
 
 /** Artifact metadata persisted to artifacts/index.json */
 export type ArtifactMeta = {
@@ -146,16 +146,11 @@ async function renderDocument(doc: Document, type: "pdf" | "docx"): Promise<Buff
   return Buffer.from("PK\x03\x04", "binary");
 }
 
-/** Retrieve a document from the JSON DB – using the existing repository layer */
+/** Retrieve a document from the in-memory store */
 async function fetchDocumentById(id: string): Promise<Document | null> {
-  // The repository is located at src/repositories/documentRepository.js (or .ts). We'll import lazily.
-  try {
-    const { getDocumentById } = await import("../../repositories/documentRepository.js");
-    const raw = await getDocumentById(id);
-    return raw as Document;
-  } catch {
-    return null;
-  }
+  const { document } = useDocumentStore.getState();
+  if (document?.id === id) return document;
+  return null;
 }
 
 /** Export utilities for external use */

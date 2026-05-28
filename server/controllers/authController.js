@@ -1,11 +1,14 @@
 const bcrypt = require("bcryptjs");
 const { v4: uuidv4 } = require("uuid");
 const { findUserByEmail, findUserById, createUser } = require("../repositories/userRepository");
+const { defaultBillingFields } = require("../repositories/billingUserRepository");
 const { signToken } = require("../utils/token");
 const { successResponse } = require("../utils/response");
 const { AuthError } = require("../shared/errors/customErrors");
 
 function sanitizeUser(user) {
+  const billingService = require("../services/billing/billingService");
+  const billing = billingService.getBillingSummary(user.id);
   return {
     id: user.id,
     email: user.email,
@@ -13,6 +16,11 @@ function sanitizeUser(user) {
     userVersion: user.userVersion || 1,
     createdAt: user.createdAt,
     role: user.role || "user",
+    billingType: billing.billingType,
+    credits: billing.credits,
+    gatewayAccess: billing.gatewayAccess,
+    hasAccess: billing.hasAccess,
+    starredTemplates: Array.isArray(user.starredTemplates) ? user.starredTemplates : [],
   };
 }
 
@@ -41,6 +49,7 @@ const signup = async (req, res) => {
     email,
     passwordHash,
     createdAt: new Date().toISOString(),
+    ...defaultBillingFields({ grandfathered: false }),
   };
   
   const created = createUser(user);

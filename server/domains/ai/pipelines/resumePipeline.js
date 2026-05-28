@@ -12,10 +12,12 @@ const RESUME_FALLBACK =
   '[Draft unavailable] AI resume generation failed. Your job and profile data are saved. Please retry when the AI provider is available.';
 
 const { resolveTailoringConfig } = require('../core/tailoringConfig');
+const { resolvePipelineTemplate } = require('../core/templateContext');
 
 const executeResumePipeline = async (job, profile, config, options = {}) => {
   try {
     const tailoring = resolveTailoringConfig(options.tailoringLevel, 0.4);
+    const { promptSuffix: templateSuffix, postProcess } = resolvePipelineTemplate(options, 'resume');
     const promptTemplate = promptRegistry.resolvePrompt('resume_generation');
     const userPrompt = promptRegistry.render(promptTemplate, {
       job_description: wrapUntrustedBlock('JOB_DESCRIPTION', job.rawDescription || JSON.stringify(job.parsedData)),
@@ -28,12 +30,12 @@ const executeResumePipeline = async (job, profile, config, options = {}) => {
       temperature: tailoring.temperature,
       max_tokens: 2500,
       messages: [
-        { role: 'system', content: `${PROSE_DATA_GUARDRAIL} You are an expert ATS resume writer. Output only the resume text.${tailoring.promptSuffix}` },
+        { role: 'system', content: `${PROSE_DATA_GUARDRAIL} You are an expert ATS resume writer. Output only the resume text.${tailoring.promptSuffix}${templateSuffix}` },
         { role: 'user', content: userPrompt },
       ],
     });
 
-    return cleanProse(raw);
+    return postProcess(cleanProse(raw));
   } catch (err) {
     console.warn('[resume-pipeline] AI generation failed:', err.message);
     return RESUME_FALLBACK;

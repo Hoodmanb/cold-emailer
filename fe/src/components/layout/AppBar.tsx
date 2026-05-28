@@ -280,6 +280,7 @@ const Drawer: React.FC<MiniDrawerProps> = ({ children }) => {
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const router = useRouter();
   const user = useAuthStore((state) => state.user?.name);
+  const userRole = useAuthStore((state) => state.user?.role);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const { showSnackbar } = useSnackbar();
   const auth = useAuth() as any;
@@ -459,6 +460,17 @@ const Drawer: React.FC<MiniDrawerProps> = ({ children }) => {
         />
 
         <LinkHeader
+          text="billing"
+          text1="Billing"
+          icon={FileText}
+          link="/dashboard/billing"
+          handleSectionSelect={handleSectionSelect}
+          sectionStyles={styles}
+          isDrawerOpen={labelsVisible}
+          onNavClick={dismiss}
+        />
+
+        <LinkHeader
           text="settings"
           text1="Settings"
           icon={Settings}
@@ -490,6 +502,19 @@ const Drawer: React.FC<MiniDrawerProps> = ({ children }) => {
           isDrawerOpen={labelsVisible}
           onNavClick={dismiss}
         />
+
+        {userRole === "admin" && (
+          <LinkHeader
+            text="admin"
+            text1="Admin"
+            icon={Settings}
+            link="/dashboard/admin"
+            handleSectionSelect={handleSectionSelect}
+            sectionStyles={styles}
+            isDrawerOpen={labelsVisible}
+            onNavClick={dismiss}
+          />
+        )}
       </List>
       <Box
         sx={{

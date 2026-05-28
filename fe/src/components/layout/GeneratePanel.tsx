@@ -12,14 +12,17 @@ import {
 } from "lucide-react";
 import {
   useRunATS, useGenerateSelected,
-  type DocumentType, type DocumentFormat, type AtsResult, type PerDocFormats,
+  type DocumentType, type DocumentFormat, type AtsResult, type PerDocFormats, type PerDocTemplateIds,
 } from "@/hooks/queryHooks/workflow";
+import TemplateSelector from "@/components/templates/TemplateSelector";
 import type { TailoringLevel } from "@/types";
 import { useSnackbar } from "@/context/SnackbarContext";
 import { downloadAuthenticatedFile } from "@/utils/downloadUtils";
 import DocumentEditModal from "@/components/documents/DocumentEditModal";
 import TailoringSlider from "@/components/documents/TailoringSlider";
 import axiosInstance from "@/hooks/axios";
+import { useBillingStatus } from "@/hooks/queryHooks/billing";
+import useAuthStore from "@/store/useAuthStore";
 
 interface GeneratePanelProps {
   jobId: string;
@@ -44,6 +47,27 @@ const DOC_OPTIONS: { type: DocumentType; label: string; icon: React.ReactNode; d
   { type: "email", label: "Cold Email", icon: <Mail size={16} />, description: "Outreach email draft" },
 ];
 
+const TAILORING_MULTIPLIERS: Record<TailoringLevel, number> = {
+  conservative: 1,
+  balanced: 1.2,
+  aggressive: 1.5,
+};
+
+const FEATURE_BASE_COSTS: Partial<Record<DocumentType, number>> = {
+  resume: 5,
+  "professional-cv": 8,
+  "cover-letter": 4,
+  email: 4,
+};
+
+function estimateSelectionCost(types: DocumentType[], level: TailoringLevel) {
+  const multiplier = TAILORING_MULTIPLIERS[level] ?? 1;
+  return types.reduce((sum, type) => {
+    const base = FEATURE_BASE_COSTS[type] ?? 1;
+    return sum + Math.max(1, Math.ceil(base * multiplier));
+  }, 0);
+}
+
 const DEFAULT_FORMATS: PerDocFormats = {
   resume: "pdf",
   "professional-cv": "docx",
@@ -67,6 +91,10 @@ function ScoreBar({ score }: { score: number }) {
 
 export default function GeneratePanel({ jobId, onComplete }: GeneratePanelProps) {
   const { showSnackbar } = useSnackbar();
+  const { data: billing } = useBillingStatus();
+  const authUser = useAuthStore((s) => s.user);
+  const isTokenUser = (billing?.billingType || authUser?.billingType) === "token";
+  const creditBalance = billing?.credits ?? authUser?.credits ?? 0;
   const { runAts } = useRunATS();
   const { generate, loading: genLoading } = useGenerateSelected();
 
@@ -74,6 +102,7 @@ export default function GeneratePanel({ jobId, onComplete }: GeneratePanelProps)
   const [ats, setAts] = useState<AtsResult | null>(null);
   const [selectedTypes, setSelectedTypes] = useState<DocumentType[]>(["resume", "cover-letter"]);
   const [docFormats, setDocFormats] = useState<PerDocFormats>({ ...DEFAULT_FORMATS });
+  const [templateIds, setTemplateIds] = useState<PerDocTemplateIds>({});
   const [tailoringLevel, setTailoringLevel] = useState<TailoringLevel>("balanced");
   const [errorMsg, setErrorMsg] = useState("");
   const [generatedDocs, setGeneratedDocs] = useState<GeneratedDoc[]>([]);
@@ -114,7 +143,7 @@ export default function GeneratePanel({ jobId, onComplete }: GeneratePanelProps)
       const formats: PerDocFormats = {};
       selectedTypes.forEach((t) => { formats[t] = docFormats[t] || "pdf"; });
 
-      const result = await generate(jobId, selectedTypes, formats, tailoringLevel);
+      const result = await generate(jobId, selectedTypes, formats, tailoringLevel, undefined, templateIds);
       const docs: GeneratedDoc[] = [];
       if (result.resume) docs.push({ ...result.resume, format: formats.resume || "pdf" });
       if (result.professionalCv) docs.push({ ...result.professionalCv, format: formats["professional-cv"] || "pdf" });
@@ -257,6 +286,38 @@ export default function GeneratePanel({ jobId, onComplete }: GeneratePanelProps)
                       ))}
                     </Stack>
                   </Box>
+
+                  {selectedTypes.length > 0 && (
+                    <Box>
+                      <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
+                        Templates (Optional)
+                      </Typography>
+                      <Stack gap={2} sx={{ mt: 1 }}>
+                        {selectedTypes.map((type) => {
+                          const label = DOC_OPTIONS.find((d) => d.type === type)?.label || type;
+                          return (
+                            <Box key={type}>
+                              <Typography variant="body2" fontWeight={700} sx={{ mb: 1 }}>{label}</Typography>
+                              <TemplateSelector
+                                compact
+                                documentType={type}
+                                value={templateIds[type] ?? null}
+                                onChange={(id) => setTemplateIds((prev) => ({ ...prev, [type]: id }))}
+                              />
+                            </Box>
+                          );
+                        })}
+                      </Stack>
+                    </Box>
+                  )}
+
+                  {isTokenUser && selectedTypes.length > 0 && (
+                    <Alert severity={creditBalance < estimateSelectionCost(selectedTypes, tailoringLevel) ? "warning" : "info"} sx={{ borderRadius: 2 }}>
+                      Estimated cost: <strong>{estimateSelectionCost(selectedTypes, tailoringLevel)} credits</strong>
+                      {" · "}Balance after: <strong>{Math.max(0, creditBalance - estimateSelectionCost(selectedTypes, tailoringLevel))}</strong>
+                      {" · "}Current: <strong>{creditBalance}</strong>
+                    </Alert>
+                  )}
 
                   <Button variant="contained" startIcon={<ChevronRight size={16} />} onClick={handleGenerate} disabled={!selectedTypes.length || genLoading} fullWidth sx={{ fontWeight: 700, py: 1.5, borderRadius: 3 }}>
                     Generate {selectedTypes.length} Document{selectedTypes.length !== 1 ? "s" : ""}

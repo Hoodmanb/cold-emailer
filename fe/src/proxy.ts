@@ -1,25 +1,26 @@
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/signup", "/"];
+const AUTH_ENTRY_PATHS = ["/login", "/signup"];
 
-export function middleware(req) {
+export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   if (pathname.startsWith("/_next") || pathname.startsWith("/api") || pathname.includes(".")) {
     return NextResponse.next();
   }
 
   const token = req.cookies.get("auth_token")?.value;
-  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   const isDashboard = pathname === "/dashboard" || pathname.startsWith("/dashboard/");
 
-  // Only enforce cookie auth on dashboard routes to avoid server-side flicker on other pages.
+  // Only enforce cookie auth on dashboard routes (matches legacy middleware behavior).
   if (isDashboard && !token) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  if (token && (pathname === "/login" || pathname === "/signup")) {
+  const isAuthEntry = AUTH_ENTRY_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  if (token && isAuthEntry) {
     const url = req.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);

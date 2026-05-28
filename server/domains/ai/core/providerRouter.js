@@ -8,6 +8,8 @@ const geminiClient = require('../../../services/ai/providers/geminiClient');
 const openrouterClient = require('../../../services/ai/providers/openrouterClient');
 const { getDecryptedKey } = require('../../../repositories/aiRepository');
 const { ExternalApiError } = require('../../../shared/errors/customErrors');
+const { getBillingExecutionMode } = require('../../../middleware/requestContext');
+const { resolveSystemApiKey } = require('../../../services/billing/systemProviderKeys');
 const {
   getProviderEndpoint,
   mapAxiosToExternalApiError,
@@ -15,6 +17,10 @@ const {
 
 function resolveProviderApiKey(providerName) {
   const name = String(providerName || '').trim().toLowerCase();
+  if (getBillingExecutionMode() === 'token') {
+    const systemKey = resolveSystemApiKey(name);
+    if (systemKey) return systemKey;
+  }
   const stored = getDecryptedKey(name);
   if (stored) return stored;
   return null;

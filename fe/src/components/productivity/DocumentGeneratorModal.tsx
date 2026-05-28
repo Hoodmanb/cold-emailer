@@ -49,6 +49,7 @@ import { useSnackbar } from "@/context/SnackbarContext";
 import { useQueryClient } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
 import { downloadAuthenticatedFile } from "@/utils/downloadUtils";
+import TemplateSelector from "@/components/templates/TemplateSelector";
 
 type ResumeTemplateMeta = { id: string; label: string; description?: string; file?: string; isDefault?: boolean };
 
@@ -166,6 +167,7 @@ export default function DocumentGeneratorModal() {
   const [audience, setAudience] = useState("Recruiter");
   const [customInstructions, setCustomInstructions] = useState("");
   const [format, setFormat] = useState("pdf");
+  const [templateId, setTemplateId] = useState<string | null>(null);
 
   const [generating, setGenerating] = useState(false);
   const [generatedDoc, setGeneratedDoc] = useState<any>(null);
@@ -184,6 +186,7 @@ export default function DocumentGeneratorModal() {
       setSelectedSkills([]);
       setGeneratedDoc(null);
       setResumeTemplateId("random");
+      setTemplateId(null);
       setLastResumeBlob(null);
       setLastResumeFilename("");
       return;
@@ -191,6 +194,9 @@ export default function DocumentGeneratorModal() {
     if (modalData?.docType) {
       setDocType(modalData.docType);
       if (modalData.preselect) setActiveStep(0);
+    }
+    if (modalData?.templateId) {
+      setTemplateId(String(modalData.templateId));
     }
     let cancelled = false;
     (async () => {
@@ -212,6 +218,11 @@ export default function DocumentGeneratorModal() {
 
   const handleGenerate = async () => {
     console.log("[GENERATOR] Starting generation process...");
+
+    if (!profile) {
+      showSnackbar("Profile details not loaded yet. Please wait.", "warning");
+      return;
+    }
 
     // Validation
     if (!docType) {
@@ -299,6 +310,7 @@ export default function DocumentGeneratorModal() {
         templateStyle: style,
         additionalInstructions: customInstructions,
         format,
+        templateId: templateId || undefined,
       };
 
       console.log("[GENERATOR] Sending request to /api/documents/generate-advanced", payload);
@@ -332,9 +344,26 @@ export default function DocumentGeneratorModal() {
     openModal("mail", { attachments: [generatedDoc] });
   };
 
-  const steps = ["Select Type", "Select Data", "Refine Style", "Generate"];
+  const steps = ["Select Type", "Select Template", "Select Data", "Refine Style", "Generate"];
 
   if (!isOpen) return null;
+
+  if (loadingProfile || !profile) {
+    return (
+      <Dialog
+        open={isOpen}
+        onClose={closeModal}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 4 } }}
+      >
+        <DialogContent sx={{ p: 6, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+          <CircularProgress size={32} />
+          <Typography variant="body2" color="text.secondary">Loading profile context...</Typography>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog
@@ -403,6 +432,23 @@ export default function DocumentGeneratorModal() {
           )}
 
           {activeStep === 1 && (
+            <Stack gap={2}>
+              <Typography variant="subtitle2" fontWeight={800}>
+                Choose a document template (optional)
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Templates guide AI structure and formatting. Skip to use the default generation flow.
+              </Typography>
+              <TemplateSelector
+                documentType={docType}
+                value={templateId}
+                onChange={(id) => setTemplateId(id)}
+                showTypeFilter
+              />
+            </Stack>
+          )}
+
+          {activeStep === 2 && (
             <Stack gap={4}>
               {/* Contact Info Toggles */}
               <Box>
@@ -553,7 +599,7 @@ export default function DocumentGeneratorModal() {
             </Stack>
           )}
 
-          {activeStep === 2 && (
+          {activeStep === 3 && (
             <Grid container spacing={4}>
               <Grid size={{ xs: 12, md: 7 }}>
                 <Stack gap={4}>
@@ -707,7 +753,7 @@ export default function DocumentGeneratorModal() {
             </Grid>
           )}
 
-          {activeStep === 3 && generatedDoc && (
+          {activeStep === 4 && generatedDoc && (
             <Fade in>
               <Box>
                 <Paper variant="outlined" sx={{ p: 4, borderRadius: 3, mb: 3, boxShadow: "0 10px 40px rgba(0,0,0,0.05)" }}>
@@ -775,7 +821,7 @@ export default function DocumentGeneratorModal() {
             Back
           </Button>
 
-          {activeStep < 2 ? (
+          {activeStep < 3 ? (
             <Button
               variant="contained"
               endIcon={<ChevronRight />}
@@ -784,7 +830,7 @@ export default function DocumentGeneratorModal() {
             >
               Continue
             </Button>
-          ) : activeStep === 2 ? (
+          ) : activeStep === 3 ? (
             <Button
               variant="contained"
               color="primary"

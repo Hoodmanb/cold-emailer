@@ -9,11 +9,17 @@ import { syncAuthCookie } from "@/utils/authSession";
 
 const AuthContext = createContext(null);
 
-const PUBLIC_PATHS = ["/login", "/signup"];
+const PUBLIC_PATHS = ["/login", "/signup", "/pricing", "/"];
+/** Authenticated users are redirected away from these entry routes only. */
+const AUTH_ENTRY_PATHS = ["/login", "/signup"];
 const ME_TIMEOUT_MS = 8000;
 
 function isPublicPath(pathname) {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
+function isAuthEntryPath(pathname) {
+  return AUTH_ENTRY_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
 function isAuthFailure(error) {
@@ -101,8 +107,8 @@ export default function AuthProvider({ children }) {
       return;
     }
 
-    if (isAuthenticated && isPublic) {
-      console.log("[Auth] Redirect → /dashboard (authenticated public route)");
+    if (isAuthenticated && isAuthEntryPath(pathname)) {
+      console.log("[Auth] Redirect → /dashboard (authenticated auth entry route)");
       router.replace("/dashboard");
     }
   }, [pathname, isAuthenticated, hasHydrated, isInitializingAuth, router]);
@@ -160,6 +166,23 @@ export default function AuthProvider({ children }) {
     return (
       <AuthContext.Provider value={value}>
         <AuthInitializingScreen />
+      </AuthContext.Provider>
+    );
+  }
+
+  const isPublic = isPublicPath(pathname);
+  if (!isAuthenticated && !isPublic) {
+    return (
+      <AuthContext.Provider value={value}>
+        <AuthInitializingScreen label="Redirecting..." />
+      </AuthContext.Provider>
+    );
+  }
+
+  if (isAuthenticated && isAuthEntryPath(pathname)) {
+    return (
+      <AuthContext.Provider value={value}>
+        <AuthInitializingScreen label="Redirecting..." />
       </AuthContext.Provider>
     );
   }

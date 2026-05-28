@@ -7,6 +7,8 @@ const { resolveFeatureConfig } = require('../../repositories/aiRepository');
 const { resolveProviderApiKey } = require('../../domains/ai/core/providerRouter');
 const { AI_FEATURES } = require('../ai/featureConfigs');
 const { ExternalApiError } = require('../../shared/errors/customErrors');
+const { getBillingExecutionMode } = require('../../middleware/requestContext');
+const { assertSystemProviderReady } = require('../billing/systemProviderKeys');
 
 const FEATURE_IDS = new Set(AI_FEATURES.map((f) => f.id));
 
@@ -59,6 +61,17 @@ function validateFeatureConfig(featureId) {
 }
 
 function assertFeatureReady(featureId) {
+  if (getBillingExecutionMode() === 'token') {
+    const system = assertSystemProviderReady();
+    return {
+      valid: true,
+      featureId,
+      provider: system.provider,
+      model: system.model,
+      config: resolveFeatureConfig(featureId),
+    };
+  }
+
   const result = validateFeatureConfig(featureId);
   if (!result.valid) {
     throw new ExternalApiError(

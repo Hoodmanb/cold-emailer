@@ -6,6 +6,7 @@ const ARRAY_FILES = [
   "jobs.json",
   "emails.json",
   "templates.json",
+  "documentTemplates.json",
   "audit.json",
   "auditLogs.json",
   "recipients.json",
@@ -15,6 +16,8 @@ const ARRAY_FILES = [
   "categories.json",
   "schedules.json",
   "artifacts.json",
+  "creditPacks.json",
+  "transactions.json",
 ];
 
 const OBJECT_FILES = [
@@ -22,9 +25,10 @@ const OBJECT_FILES = [
   "settings.json",
   "ai-configs.json",
   "chats.json",
+  "gatewaySettings.json",
 ];
 
-const GLOBAL_FILES = new Set(["users.json"]);
+const GLOBAL_FILES = new Set(["users.json", "gatewaySettings.json", "creditPacks.json", "transactions.json"]);
 
 function isPlainObject(value) {
   return value && typeof value === "object" && !Array.isArray(value);

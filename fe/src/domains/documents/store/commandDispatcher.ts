@@ -1,6 +1,7 @@
 // src/domains/documents/store/commandDispatcher.ts
 import { EventEmitter } from "events";
-import { Document, DocumentSection } from "../schemas/documentDefinition";
+import { Document } from "../schemas/documentDefinition";
+import { DocumentSection } from "../schemas/sectionTypes";
 import { DocumentStoreState, useDocumentStore } from "./useDocumentStore";
 
 /**

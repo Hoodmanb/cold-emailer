@@ -1,5 +1,4 @@
-import { logger } from "@/utils/logger";
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import axiosInstance from "../axios";
 
 export type SystemTemplateSupport = {
@@ -24,29 +23,25 @@ export type SystemTemplate = {
   supports: SystemTemplateSupport;
 };
 
+export const systemTemplatesQueryKeys = {
+  all: ["system-templates"] as const,
+};
+
 export const useGetSystemTemplates = () => {
-  const [templates, setTemplates] = useState<SystemTemplate[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<any>(null);
-
-  const fetchTemplates = async () => {
-    setLoading(true);
-    try {
+  const query = useQuery({
+    queryKey: systemTemplatesQueryKeys.all,
+    queryFn: async () => {
       const response = await axiosInstance("/api/system-templates");
-      if (response.data?.data) {
-        setTemplates(response.data.data);
-      }
-    } catch (err) {
-      logger.error(err);
-      setError(err);
-    } finally {
-      setLoading(false);
-    }
+      return (response.data?.data || []) as SystemTemplate[];
+    },
+    retry: 2,
+    staleTime: 30_000,
+  });
+
+  return {
+    templates: query.data || [],
+    loading: query.isLoading,
+    error: query.error instanceof Error ? query.error.message : null,
+    refetch: query.refetch,
   };
-
-  useEffect(() => {
-    fetchTemplates();
-  }, []);
-
-  return { templates, loading, error, refetch: fetchTemplates };
 };

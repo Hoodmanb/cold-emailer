@@ -40,6 +40,8 @@ function buildDocumentPayload(input = {}) {
     status: input.status || 'draft',
     editedManually: Boolean(input.editedManually),
     tailoringLevel: input.tailoringLevel || 'balanced',
+    templateId: input.templateId || undefined,
+    templateName: input.templateName || undefined,
     metadata: input.metadata && typeof input.metadata === 'object' ? input.metadata : {},
     exportHistory: Array.isArray(input.exportHistory) ? input.exportHistory : [],
   };

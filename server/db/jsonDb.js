@@ -24,7 +24,10 @@ const DEFAULT_FILES = {
   "uploads.json": [],
   "schedules.json": [],
   "categories.json": [],
-  "artifacts.json": []
+  "artifacts.json": [],
+  "creditPacks.json": [],
+  "transactions.json": [],
+  "gatewaySettings.json": {}
 };
 
 if (!fs.existsSync(DB_DIR)) {

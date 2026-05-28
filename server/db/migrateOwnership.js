@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { filePath, DB_DIR, safeRead, atomicWrite } = require("./jsonDb");
 
-const GLOBAL_FILES = new Set(["users.json"]);
+const GLOBAL_FILES = new Set(["users.json", "gatewaySettings.json", "creditPacks.json", "transactions.json"]);
 
 function readJsonSafe(absPath, fallback) {
   try {

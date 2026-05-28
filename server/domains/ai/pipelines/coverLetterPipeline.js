@@ -12,10 +12,12 @@ const COVER_LETTER_FALLBACK =
   '[Draft unavailable] AI cover letter generation failed. Please retry when the AI provider is available.';
 
 const { resolveTailoringConfig } = require('../core/tailoringConfig');
+const { resolvePipelineTemplate } = require('../core/templateContext');
 
 const executeCoverLetterPipeline = async (job, profile, config, options = {}) => {
   try {
     const tailoring = resolveTailoringConfig(options.tailoringLevel, 0.6);
+    const { promptSuffix: templateSuffix, postProcess } = resolvePipelineTemplate(options, 'cover-letter');
     const promptTemplate = promptRegistry.resolvePrompt('cover_letter_generation');
     const userPrompt = promptRegistry.render(promptTemplate, {
       job_title: job.title || 'the position',
@@ -30,12 +32,12 @@ const executeCoverLetterPipeline = async (job, profile, config, options = {}) =>
       temperature: tailoring.temperature,
       max_tokens: 900,
       messages: [
-        { role: 'system', content: `${PROSE_DATA_GUARDRAIL} You are an expert career coach. Output only the cover letter text.${tailoring.promptSuffix}` },
+        { role: 'system', content: `${PROSE_DATA_GUARDRAIL} You are an expert career coach. Output only the cover letter text.${tailoring.promptSuffix}${templateSuffix}` },
         { role: 'user', content: userPrompt },
       ],
     });
 
-    return cleanProse(raw);
+    return postProcess(cleanProse(raw));
   } catch (err) {
     console.warn('[cover-letter-pipeline] AI generation failed:', err.message);
     return COVER_LETTER_FALLBACK;

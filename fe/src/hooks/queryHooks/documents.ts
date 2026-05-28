@@ -1,39 +1,47 @@
-import { useState, useEffect, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axiosInstance from "../axios";
 import type { Document } from "@/types";
 
-export const useGetDocuments = (jobId?: string) => {
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [loading, setLoading] = useState(false);
+export const documentsQueryKeys = {
+  all: (jobId?: string) => ["documents", jobId || "all"] as const,
+};
 
-  const fetchDocuments = useCallback(async () => {
-    setLoading(true);
-    try {
+export const useGetDocuments = (jobId?: string) => {
+  const query = useQuery({
+    queryKey: documentsQueryKeys.all(jobId),
+    queryFn: async () => {
       const url = jobId ? `/api/documents?jobId=${jobId}` : "/api/documents";
       const res = await axiosInstance.get(url);
-      if (res.data?.message === "retrieved successfully") setDocuments(res.data.data);
-    } finally {
-      setLoading(false);
-    }
-  }, [jobId]);
+      if (res.data?.message === "retrieved successfully") {
+        return res.data.data as Document[];
+      }
+      return [] as Document[];
+    },
+    retry: 2,
+    staleTime: 30_000,
+  });
 
-  useEffect(() => { fetchDocuments(); }, [fetchDocuments]);
-
-  return { documents, loading, refetch: fetchDocuments };
+  return {
+    documents: query.data || [],
+    loading: query.isLoading,
+    refetch: query.refetch,
+  };
 };
 
 export const useApproveDocument = () => {
-  const [loading, setLoading] = useState(false);
-
-  const approve = async (id: string) => {
-    setLoading(true);
-    try {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: async (id: string) => {
       const res = await axiosInstance.post(`/api/documents/${id}/approve`);
       return res.data;
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["documents"] });
+    },
+  });
 
-  return { approve, loading };
+  return {
+    approve: mutation.mutateAsync,
+    loading: mutation.isPending,
+  };
 };

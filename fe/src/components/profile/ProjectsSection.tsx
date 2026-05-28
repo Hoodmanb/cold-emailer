@@ -307,7 +307,7 @@ export const ProjectsSection = React.forwardRef<ProjectsSectionHandle>((_, ref) 
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.6 }}>{p.summary}</Typography>
 
                     <Stack direction="row" gap={0.75} flexWrap="wrap" sx={{ mb: 2 }}>
-                      {(p.technologies || []).map((t) => (
+                      {(p.technologies || []).map((t: string) => (
                         <Chip
                           key={t}
                           label={t}

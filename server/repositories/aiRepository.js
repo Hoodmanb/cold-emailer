@@ -69,6 +69,11 @@ const resolveFeatureConfig = (featureId) => {
   if (!FEATURE_IDS.has(normalizedFeatureId)) {
     throw new Error(`Invalid feature ID: ${normalizedFeatureId || "<empty>"}`);
   }
+  const { getBillingExecutionMode } = require("../middleware/requestContext");
+  if (getBillingExecutionMode() === "token") {
+    const { getSystemFeatureConfig } = require("../services/billing/systemProviderKeys");
+    return getSystemFeatureConfig(normalizedFeatureId);
+  }
   const settings = getAiSettings();
   return normalizeFeatureConfig(normalizedFeatureId, settings.featureMap[normalizedFeatureId]);
 };

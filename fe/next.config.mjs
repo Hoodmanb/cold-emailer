@@ -1,9 +1,15 @@
 /** @type {import('next').NextConfig} */
+const backendUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9000').replace(/\/$/, '');
+
 const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${backendUrl}/api/:path*`,
+      },
+    ];
   },
-  optimizeFonts: false,
 };
 
 export default nextConfig;

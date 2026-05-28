@@ -1,6 +1,7 @@
 import { useState } from "react";
 import axiosInstance from "../axios";
 import type { WorkflowResult, DocumentFormat, TailoringLevel } from "@/types";
+import type { PerDocTemplateIds } from "@/types/documentTemplate";
 
 export type DocumentType = "resume" | "professional-cv" | "cover-letter" | "email";
 export type { DocumentFormat, TailoringLevel };
@@ -40,6 +41,7 @@ export interface GenerateSelectedResult {
 }
 
 export type PerDocFormats = Partial<Record<DocumentType, DocumentFormat>>;
+export type { PerDocTemplateIds };
 
 // ── Full auto-workflow (legacy — keep for backward compat) ───────────────────
 export const useRunWorkflow = () => {
@@ -109,7 +111,8 @@ export const useGenerateSelected = () => {
     types: DocumentType[],
     formats: PerDocFormats = {},
     tailoringLevel: TailoringLevel = "balanced",
-    recipientData?: object
+    recipientData?: object,
+    templateIds: PerDocTemplateIds = {}
   ): Promise<GenerateSelectedResult> => {
     setLoading(true);
     setError(null);
@@ -120,6 +123,7 @@ export const useGenerateSelected = () => {
         formats,
         tailoringLevel,
         recipientData,
+        templateIds,
       });
       if (res.data?.success) {
         setResult(res.data.data);
@@ -141,16 +145,22 @@ export const useGenerateSelected = () => {
 // ── Regenerate single document ───────────────────────────────────────────────
 export const useRegenerate = () => {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const regenerate = async (jobId: string, type: DocumentType) => {
     setLoading(true);
+    setError(null);
     try {
       const res = await axiosInstance.post("/api/workflow/regenerate", { jobId, type });
       return res.data.data;
+    } catch (err: any) {
+      const msg = err.message || "Regeneration failed";
+      setError(msg);
+      throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  return { regenerate, loading };
+  return { regenerate, loading, error };
 };

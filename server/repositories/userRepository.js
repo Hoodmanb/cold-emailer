@@ -27,6 +27,7 @@ const findUserById = (id) => {
 const createUser = (userData) => {
   const newUser = {
     ...userData,
+    starredTemplates: Array.isArray(userData.starredTemplates) ? userData.starredTemplates : [],
     userVersion: 1,
     updatedAt: new Date().toISOString(),
   };
@@ -61,6 +62,7 @@ const PURGEABLE_SCOPED_FILES = [
   "jobs.json",
   "emails.json",
   "templates.json",
+  "documentTemplates.json",
   "recipients.json",
   "smtp.json",
   "ai-configs.json",

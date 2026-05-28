@@ -241,7 +241,18 @@ const DocumentsPage = () => {
                         </Box>
                         <Box sx={{ minWidth: 0 }}>
                           <Typography variant="body2" fontWeight={700} noWrap>{doc.title || TYPE_LABELS[doc.type] || doc.type}</Typography>
-                          {doc.editedManually && <Chip label="Edited" size="small" color="warning" variant="outlined" sx={{ fontSize: "0.6rem", height: 16, mt: 0.25 }} />}
+                          <Stack direction="row" gap={0.5} flexWrap="wrap" sx={{ mt: 0.25 }}>
+                            {doc.editedManually && <Chip label="Edited" size="small" color="warning" variant="outlined" sx={{ fontSize: "0.6rem", height: 16 }} />}
+                            {(doc.templateName || doc.metadata?.templateName) && (
+                              <Chip
+                                label={doc.templateName || doc.metadata?.templateName}
+                                size="small"
+                                color="info"
+                                variant="outlined"
+                                sx={{ fontSize: "0.6rem", height: 16 }}
+                              />
+                            )}
+                          </Stack>
                         </Box>
                       </Stack>
                     </TableCell>

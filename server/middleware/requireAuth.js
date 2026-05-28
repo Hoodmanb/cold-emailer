@@ -17,11 +17,17 @@ function authFailure(res, message, errorCode = "AUTH_ERROR") {
 }
 
 async function requireAuth(req, res, next) {
+  console.log(`[AUTH] Incoming request: ${req.method} ${req.originalUrl}`);
+  // console.log(`[AUTH] Authorization header: ${authHeader}`);
   const authHeader = req.headers.authorization || "";
+
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+
   if (!token) {
+    console.log('[AUTH] No token provided');
     return authFailure(res, "Authentication required", "AUTH_REQUIRED");
   }
+  console.log(`[AUTH] Token extracted: ${token.slice(0, 10)}...`);
 
   try {
     const payload = jwt.verify(token, JWT_SECRET);
@@ -61,8 +67,8 @@ async function requireAuth(req, res, next) {
     debugLog("AUTH HYDRATION", { email: req.user.email, id: req.user.id, version: req.user.userVersion });
 
     return next();
-  } catch (_err) {
-    debugLog("AUTH FAILED", { error: _err.message });
+  } catch (err) {
+    console.log("❌ AUTH FAILED HARD:", err.message);
     return authFailure(res, "Invalid or expired authentication token", "AUTH_TOKEN_EXPIRED");
   }
 }

@@ -7,4 +7,7 @@ module.exports = {
   openRouterApiKey: process.env.OPENROUTER_API_KEY,
   port: process.env.PORT || 9000,
   logLevel: process.env.LOG_LEVEL || 'medium',
+  paystackSecretKey: process.env.PAYSTACK_SECRET_KEY,
+  paystackPublicKey: process.env.PAYSTACK_PUBLIC_KEY,
+  adminEmail: process.env.ADMIN_EMAIL,
 };

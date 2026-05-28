@@ -6,6 +6,7 @@ import { MenuIcon, User2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
 import useAuthStore from "@/store/useAuthStore";
+import BillingStatusChip from "@/components/billing/BillingStatusChip";
 
 interface TopBarProps {
   toggleDrawer: () => void;
@@ -46,6 +47,10 @@ export default function TopBar({ toggleDrawer, isDrawerOpen, isMobile }: TopBarP
         return "SMTP Configs";
       case "/dashboard/audit":
         return "Audit Log";
+      case "/dashboard/billing":
+        return "Billing";
+      case "/dashboard/admin":
+        return "Admin";
       default:
         break;
     }
@@ -84,7 +89,9 @@ export default function TopBar({ toggleDrawer, isDrawerOpen, isMobile }: TopBarP
         )}
       </Box>
       {user && (
-        <Tooltip title={name} arrow placement="bottom-end">
+        <Stack direction="row" alignItems="center" spacing={1.5}>
+          <BillingStatusChip />
+          <Tooltip title={name} arrow placement="bottom-end">
           <Box
             onClick={() => router.push("/dashboard/profile")}
             sx={{
@@ -130,6 +137,7 @@ export default function TopBar({ toggleDrawer, isDrawerOpen, isMobile }: TopBarP
             </Avatar>
           </Box>
         </Tooltip>
+        </Stack>
       )}
     </Stack>
   );

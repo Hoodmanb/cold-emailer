@@ -1,12 +1,14 @@
+import { getApiBaseUrl } from "@/config/env";
+
 /**
- * Absolute API URLs for artifacts (use for <img src>, <iframe src>, window.open).
- * Keeps Base64 decoding on the server only.
+ * API base for artifacts (use for <img src>, <iframe src>, window.open).
+ * In the browser uses same-origin `/api/*` via Next.js rewrites.
  */
 export function getArtifactApiBase(): string {
-  return (
-    (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL) ||
-    "http://localhost:9000"
-  );
+  const base = getApiBaseUrl();
+  if (base) return base;
+  if (typeof window !== "undefined") return window.location.origin;
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:9000";
 }
 
 export function artifactPreviewUrl(id: string): string {

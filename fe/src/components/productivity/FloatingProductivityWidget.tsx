@@ -2,18 +2,18 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, useMotionValue } from "framer-motion";
-import { 
-  MessageSquare, 
-  Send, 
-  FileText, 
-  Plus, 
+import {
+  MessageSquare,
+  Send,
+  FileText,
+  Plus,
   X,
   Zap,
   Award,
 } from "lucide-react";
-import { 
-  Box, 
-  Tooltip, 
+import {
+  Box,
+  Tooltip,
   IconButton,
   useTheme,
   Paper,
@@ -38,7 +38,7 @@ export default function FloatingProductivityWidget() {
     if (saved) {
       try {
         setPos(JSON.parse(saved));
-      } catch (e) {}
+      } catch (e) { }
     }
     setHydrated(true);
   }, []);
@@ -52,10 +52,10 @@ export default function FloatingProductivityWidget() {
   const toggleOpen = () => setIsOpen(!isOpen);
 
   const actions = [
-    { 
-      id: "assistant", 
-      icon: <Zap size={22} />, 
-      label: "AI Assistant", 
+    {
+      id: "assistant",
+      icon: <Zap size={22} />,
+      label: "AI Assistant",
       color: theme.palette.primary.main,
       onClick: (e: any) => {
         e.stopPropagation();
@@ -63,10 +63,10 @@ export default function FloatingProductivityWidget() {
         setIsOpen(false);
       }
     },
-    { 
-      id: "mail", 
-      icon: <Send size={22} />, 
-      label: "Send Mail", 
+    {
+      id: "mail",
+      icon: <Send size={22} />,
+      label: "Send Mail",
       color: "#10b981", // Emerald
       onClick: (e: any) => {
         e.stopPropagation();
@@ -74,21 +74,10 @@ export default function FloatingProductivityWidget() {
         setIsOpen(false);
       }
     },
-    { 
-      id: "professional-cv", 
-      icon: <Award size={22} />, 
-      label: "Professional CV", 
-      color: "#8b5cf6",
-      onClick: (e: any) => {
-        e.stopPropagation();
-        openModal("generator", { docType: "professional-cv", preselect: true });
-        setIsOpen(false);
-      }
-    },
-    { 
-      id: "generator", 
-      icon: <FileText size={22} />, 
-      label: "Generate Doc", 
+    {
+      id: "generator",
+      icon: <FileText size={22} />,
+      label: "Generate Doc",
       color: "#f59e0b", // Amber
       onClick: (e: any) => {
         e.stopPropagation();
@@ -167,10 +156,10 @@ export default function FloatingProductivityWidget() {
               sx={{ gap: 2, mb: 1 }}
             >
               {actions.map((action) => (
-                <Tooltip 
-                  key={action.id} 
-                  title={action.label} 
-                  placement="left" 
+                <Tooltip
+                  key={action.id}
+                  title={action.label}
+                  placement="left"
                   arrow
                   slotProps={{
                     popper: {

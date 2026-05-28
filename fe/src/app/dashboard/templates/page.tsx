@@ -7,11 +7,14 @@ import { Mail, FileText } from "lucide-react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import EmailTemplatesSection from "@/components/template/EmailTemplatesSection";
 import DocumentTemplatesSection from "@/components/template/DocumentTemplatesSection";
+import DesignTemplatesSection from "@/components/template/DesignTemplatesSection";
+import { Sparkles } from "lucide-react";
 
 // ─── Tab Config ───────────────────────────────────────────────────────────────
 const TABS = [
   { id: "email", label: "Email Templates", icon: Mail },
-  { id: "document", label: "Document Templates", icon: FileText },
+  { id: "document", label: "Layout Templates", icon: FileText },
+  { id: "design", label: "AI Design Templates", icon: Sparkles },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -100,7 +103,7 @@ export default function TemplatesPage() {
   // Derive active tab from ?tab= query param, default to "email"
   const paramTab = searchParams.get("tab") as TabId | null;
   const [activeTab, setActiveTab] = useState<TabId>(
-    paramTab === "document" ? "document" : "email"
+    paramTab === "document" ? "document" : paramTab === "design" ? "design" : "email"
   );
 
   // Keep URL in sync when tab changes
@@ -113,7 +116,7 @@ export default function TemplatesPage() {
 
   // Sync if user navigates directly with ?tab=
   useEffect(() => {
-    if (paramTab === "document" || paramTab === "email") {
+    if (paramTab === "document" || paramTab === "email" || paramTab === "design") {
       setActiveTab(paramTab);
     }
   }, [paramTab]);
@@ -152,7 +155,7 @@ export default function TemplatesPage() {
           >
             <EmailTemplatesSection />
           </motion.div>
-        ) : (
+        ) : activeTab === "document" ? (
           <motion.div
             key="document"
             initial={{ opacity: 0, x: 16 }}
@@ -161,6 +164,16 @@ export default function TemplatesPage() {
             transition={{ duration: 0.22, ease: "easeOut" }}
           >
             <DocumentTemplatesSection />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="design"
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -16 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+          >
+            <DesignTemplatesSection />
           </motion.div>
         )}
       </AnimatePresence>

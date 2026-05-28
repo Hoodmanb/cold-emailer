@@ -10,6 +10,14 @@ interface User {
   name: string;
   userVersion: number;
   role: string;
+  billingType?: "gateway" | "token";
+  credits?: number;
+  gatewayAccess?: {
+    isActive: boolean;
+    expiresAt: string | null;
+    daysRemaining?: number | null;
+  };
+  hasAccess?: boolean;
 }
 
 interface AppState {

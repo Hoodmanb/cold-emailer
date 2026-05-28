@@ -8,6 +8,8 @@ const {
   AIProviderError,
   PersistenceError,
   AppError,
+  BillingAccessError,
+  InsufficientCreditsError,
 } = require('../shared/errors/customErrors');
 
 function classifyError(err) {
@@ -56,6 +58,35 @@ function classifyError(err) {
       message: 'Database operation failed',
       error: 'Database operation failed',
       errorCode: err.errorCode || 'PERSISTENCE_ERROR',
+    };
+  }
+
+  if (
+    err.errorCode === 'INSUFFICIENT_CREDITS' ||
+    err instanceof InsufficientCreditsError
+  ) {
+    return {
+      status: 402,
+      type: 'billing_error',
+      message: err.message || 'Insufficient credits',
+      error: err.message || 'Insufficient credits',
+      errorCode: 'INSUFFICIENT_CREDITS',
+      details: err.details || undefined,
+    };
+  }
+
+  if (
+    err.type === 'billing_error' ||
+    err instanceof BillingAccessError ||
+    err.errorCode === 'GATEWAY_EXPIRED' ||
+    err.errorCode === 'BILLING_ACCESS_DENIED'
+  ) {
+    return {
+      status: err.statusCode || 403,
+      type: 'billing_error',
+      message: err.message || 'Billing access denied',
+      error: err.message || 'Billing access denied',
+      errorCode: err.errorCode || 'BILLING_ACCESS_DENIED',
     };
   }
 
@@ -132,6 +163,7 @@ function errorHandler(err, req, res, next) {
     type: classified.type,
     errors: classified.errors,
     errorCode: classified.errorCode,
+    details: classified.details,
   });
 }
 

@@ -1,7 +1,7 @@
 // src/domains/documents/store/useDocumentStore.ts
-import create from 'zustand';
+import { create } from 'zustand';
 import { Document } from '../schemas/documentDefinition';
-import { devtools, persist } from 'zustand/middleware';
+import { devtools, persist, createJSONStorage } from 'zustand/middleware';
 
 export type DocumentStoreState = {
   document: Document | null;
@@ -21,7 +21,7 @@ export const useDocumentStore = create<DocumentStoreState>()(
         markDirty: () => set({ isDirty: true }),
         resetDirty: () => set({ isDirty: false }),
       }),
-      { name: 'document-store', getStorage: () => localStorage }
+      { name: 'document-store', storage: createJSONStorage(() => localStorage) }
     ),
     { name: 'DocumentStore' }
   )

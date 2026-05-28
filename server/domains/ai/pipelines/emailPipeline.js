@@ -12,10 +12,12 @@ const EMAIL_FALLBACK =
   'SUBJECT: Application Follow-up\nBODY:\n[Draft unavailable] AI email generation failed. Please retry when the AI provider is available.';
 
 const { resolveTailoringConfig } = require('../core/tailoringConfig');
+const { resolvePipelineTemplate } = require('../core/templateContext');
 
 const executeEmailPipeline = async (job, profile, recipientData = {}, config, options = {}) => {
   try {
     const tailoring = resolveTailoringConfig(options.tailoringLevel, 0.7);
+    const { promptSuffix: templateSuffix, postProcess } = resolvePipelineTemplate(options, 'email');
     const promptTemplate = promptRegistry.resolvePrompt('email_generation');
     const userPrompt = promptRegistry.render(promptTemplate, {
       job_title: job?.title || 'the position',
@@ -32,12 +34,12 @@ const executeEmailPipeline = async (job, profile, recipientData = {}, config, op
       temperature: tailoring.temperature,
       max_tokens: 700,
       messages: [
-        { role: 'system', content: `${PROSE_DATA_GUARDRAIL} You are a cold outreach expert. Output only email with subject and body.${tailoring.promptSuffix}` },
+        { role: 'system', content: `${PROSE_DATA_GUARDRAIL} You are a cold outreach expert. Output only email with subject and body.${tailoring.promptSuffix}${templateSuffix}` },
         { role: 'user', content: userPrompt },
       ],
     });
 
-    return cleanProse(raw);
+    return postProcess(cleanProse(raw));
   } catch (err) {
     console.warn('[email-pipeline] AI generation failed:', err.message);
     return EMAIL_FALLBACK;

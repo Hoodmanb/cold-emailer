@@ -11,79 +11,99 @@ const { executeEmailPipeline } = require('../domains/ai/pipelines/emailPipeline'
 const { executeImageExtractionPipeline } = require('../domains/ai/pipelines/imageExtractionPipeline');
 const { executeProfessionalCvFromProfile, executeProfessionalCvPipeline } = require('../domains/ai/pipelines/professionalCvPipeline');
 const { assertFeatureReady } = require('./ai/providerValidation');
+const billingService = require('./billing/billingService');
+const { getCurrentUserId } = require('../middleware/requestContext');
 
-const generateResume = async (job, profile, options = {}) => {
-  assertFeatureReady('resume_generation');
-  const config = resolveFeatureConfig('resume_generation');
-  return executeResumePipeline(job, profile, config, options);
-};
-
-const generateProfessionalCv = async (jobOrProfile, profileOrOptions = {}, options = {}) => {
-  assertFeatureReady('professional_cv_generation');
-  const config = resolveFeatureConfig('professional_cv_generation');
-  // Support both (profile, options) and (job, profile, options) signatures
-  if (jobOrProfile && (jobOrProfile.rawDescription || jobOrProfile.parsedData || jobOrProfile.title)) {
-    return executeProfessionalCvPipeline(jobOrProfile, profileOrOptions, config, options);
+async function withBilling(featureId, options, fn) {
+  const userId = getCurrentUserId();
+  if (!userId) {
+    assertFeatureReady(featureId);
+    return fn();
   }
-  return executeProfessionalCvFromProfile(jobOrProfile, profileOrOptions, config);
-};
+  const prep = billingService.assertCanExecuteAI(userId, featureId, options);
+  try {
+    assertFeatureReady(featureId);
+    const result = await fn();
+    billingService.completeAIExecution(userId, featureId, options, prep);
+    return result;
+  } catch (err) {
+    billingService.completeAIExecution(userId, featureId, options, { ...prep, charged: false, cost: 0 });
+    throw err;
+  }
+}
 
-const generateCoverLetter = async (job, profile, options = {}) => {
-  assertFeatureReady('cover_letter_generation');
-  const config = resolveFeatureConfig('cover_letter_generation');
-  return executeCoverLetterPipeline(job, profile, config, options);
-};
+const generateResume = async (job, profile, options = {}) =>
+  withBilling('resume_generation', options, async () => {
+    const config = resolveFeatureConfig('resume_generation');
+    return executeResumePipeline(job, profile, config, options);
+  });
 
-const generateEmail = async (job, profile, recipientData = {}, options = {}) => {
-  assertFeatureReady('email_generation');
-  const config = resolveFeatureConfig('email_generation');
-  return executeEmailPipeline(job, profile, recipientData, config, options);
-};
+const generateProfessionalCv = async (jobOrProfile, profileOrOptions = {}, options = {}) =>
+  withBilling('professional_cv_generation', options, async () => {
+    const config = resolveFeatureConfig('professional_cv_generation');
+    if (jobOrProfile && (jobOrProfile.rawDescription || jobOrProfile.parsedData || jobOrProfile.title)) {
+      return executeProfessionalCvPipeline(jobOrProfile, profileOrOptions, config, options);
+    }
+    return executeProfessionalCvFromProfile(jobOrProfile, profileOrOptions, config);
+  });
 
-const analyzeATS = async (job, profile) => {
-  assertFeatureReady('ats_analysis');
-  const config = resolveFeatureConfig('ats_analysis');
-  return executeAtsPipelineSafe(job, profile, config);
-};
+const generateCoverLetter = async (job, profile, options = {}) =>
+  withBilling('cover_letter_generation', options, async () => {
+    const config = resolveFeatureConfig('cover_letter_generation');
+    return executeCoverLetterPipeline(job, profile, config, options);
+  });
 
-const extractJobFromImage = async (base64Image, mimeType, forcedModel = null) => {
-  assertFeatureReady('job_extraction_image');
-  const resolvedConfig = resolveFeatureConfig('job_extraction_image');
-  const config = {
-    provider: resolvedConfig.provider,
-    model: forcedModel || resolvedConfig.model
-  };
-  return executeImageExtractionPipeline(base64Image, mimeType, config);
-};
+const generateEmail = async (job, profile, recipientData = {}, options = {}) =>
+  withBilling('email_generation', options, async () => {
+    const config = resolveFeatureConfig('email_generation');
+    return executeEmailPipeline(job, profile, recipientData, config, options);
+  });
 
-// Generic generate fallback
+const analyzeATS = async (job, profile) =>
+  withBilling('ats_analysis', {}, async () => {
+    const config = resolveFeatureConfig('ats_analysis');
+    return executeAtsPipelineSafe(job, profile, config);
+  });
+
+const extractJobFromImage = async (base64Image, mimeType, forcedModel = null) =>
+  withBilling('job_extraction_image', {}, async () => {
+    const resolvedConfig = resolveFeatureConfig('job_extraction_image');
+    const config = {
+      provider: resolvedConfig.provider,
+      model: forcedModel || resolvedConfig.model,
+    };
+    return executeImageExtractionPipeline(base64Image, mimeType, config);
+  });
+
 const generateForFeature = async ({ featureId, prompt, messages, options = {} }) => {
   const normalizedFeatureId = String(featureId || "").trim();
   if (!normalizedFeatureId) {
     throw new Error("featureId is required for AI generation");
   }
 
-  const { config } = assertFeatureReady(normalizedFeatureId);
-  const { resolveProvider } = require('../domains/ai/core/providerRouter');
-  const provider = resolveProvider(config.provider);
+  return withBilling(normalizedFeatureId, options, async () => {
+    const { config } = assertFeatureReady(normalizedFeatureId);
+    const { resolveProvider } = require('../domains/ai/core/providerRouter');
+    const provider = resolveProvider(config.provider);
 
-  let finalMessages = messages;
-  if (!Array.isArray(messages) || !messages.length) {
-    let content = String(prompt || '');
-    if (!content) {
-      content = resolveActivePrompt(normalizedFeatureId);
+    let finalMessages = messages;
+    if (!Array.isArray(messages) || !messages.length) {
+      let content = String(prompt || '');
+      if (!content) {
+        content = resolveActivePrompt(normalizedFeatureId);
+      }
+      finalMessages = [{ role: 'user', content }];
     }
-    finalMessages = [{ role: 'user', content }];
-  }
 
-  const raw = await provider({
-    model: config.model,
-    messages: finalMessages,
-    temperature: options.temperature ?? 0.5,
-    max_tokens: options.max_tokens ?? 1000
+    const raw = await provider({
+      model: config.model,
+      messages: finalMessages,
+      temperature: options.temperature ?? 0.5,
+      max_tokens: options.max_tokens ?? 1000,
+    });
+
+    return { success: true, data: raw };
   });
-
-  return { success: true, data: raw };
 };
 
 const chatForFeature = async ({ featureId = 'chatbot_assistant', messages, options = {} }) => {

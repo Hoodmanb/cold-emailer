@@ -29,6 +29,29 @@ const { log, ACTION_TYPES } = require('../../logs/auditLogger');
 const { ExternalApiError } = require('../../shared/errors/customErrors');
 const { normalizeTailoringLevel } = require('../../domains/ai/core/tailoringConfig');
 const { normalizeFormat } = require('../document/documentPersistenceService');
+const templateService = require('../templates/templateService');
+
+function resolveTemplateIdForType(templateIds, type) {
+  if (!templateIds || typeof templateIds !== 'object') return null;
+  const id = templateIds[type];
+  return id ? String(id) : null;
+}
+
+function buildTemplateFields(templateId, documentType) {
+  if (!templateId) return {};
+  const template = templateService.resolveTemplateForGeneration(templateId, documentType);
+  if (!template) return {};
+  return {
+    templateId: template.id,
+    templateName: template.name,
+    metadata: { templateId: template.id, templateName: template.name },
+  };
+}
+
+function buildAiOptions(baseOptions, templateId, documentType) {
+  if (!templateId) return baseOptions;
+  return { ...baseOptions, templateId };
+}
 
 const runAiStep = async (stepName, fn, fallbackValue) => {
   try {
@@ -388,6 +411,7 @@ const generateSelectedDocuments = async ({
   format = 'pdf',
   tailoringLevel = 'balanced',
   recipientData = {},
+  templateIds = {},
 }) => {
   const startTime = Date.now();
   const job = jobRepo.getJob(jobId);
@@ -417,8 +441,10 @@ const generateSelectedDocuments = async ({
     if (validTypes.includes('resume')) {
       const cfg = aiService.resolveFeatureConfig('resume_generation');
       const typeFormat = resolveTypeFormat('resume');
+      const resumeTemplateId = resolveTemplateIdForType(templateIds, 'resume');
+      const resumeTemplateFields = buildTemplateFields(resumeTemplateId, 'resume');
       const content = await runAiStep('resume_generation', () =>
-        aiService.generateResume({ ...job, parsedData }, profile, aiOptions)
+        aiService.generateResume({ ...job, parsedData }, profile, buildAiOptions(aiOptions, resumeTemplateId, 'resume'))
       );
       const doc = documentRegistry.createDocument({
         jobId,
@@ -434,6 +460,10 @@ const generateSelectedDocuments = async ({
         tailoringLevel: safeTailoring,
         title: `Resume — ${job.title} at ${job.company}`,
         source: 'workflow',
+        ...resumeTemplateFields,
+        metadata: {
+          ...(resumeTemplateFields.metadata || {}),
+        },
       });
       jobRepo.linkDocument(jobId, doc.id);
       log(ACTION_TYPES.AI_GENERATED, { module: 'resume', jobId, entityId: doc.id, entityType: 'document', model: cfg.model, details: 'Resume draft generated (selective)' });
@@ -443,8 +473,10 @@ const generateSelectedDocuments = async ({
     if (validTypes.includes('professional-cv')) {
       const cfg = aiService.resolveFeatureConfig('professional_cv_generation');
       const typeFormat = resolveTypeFormat('professional-cv');
+      const cvTemplateId = resolveTemplateIdForType(templateIds, 'professional-cv');
+      const cvTemplateFields = buildTemplateFields(cvTemplateId, 'professional-cv');
       const content = await runAiStep('professional_cv_generation', () =>
-        aiService.generateProfessionalCv({ ...job, parsedData }, profile, aiOptions)
+        aiService.generateProfessionalCv({ ...job, parsedData }, profile, buildAiOptions(aiOptions, cvTemplateId, 'professional-cv'))
       );
       const doc = documentRegistry.createDocument({
         jobId,
@@ -460,6 +492,10 @@ const generateSelectedDocuments = async ({
         tailoringLevel: safeTailoring,
         source: 'workflow',
         title: `Professional CV — ${job.title} at ${job.company}`,
+        ...cvTemplateFields,
+        metadata: {
+          ...(cvTemplateFields.metadata || {}),
+        },
       });
       jobRepo.linkDocument(jobId, doc.id);
       log(ACTION_TYPES.AI_GENERATED, { module: 'professional-cv', jobId, entityId: doc.id, entityType: 'document', model: cfg.model, details: 'Professional CV generated (selective)' });
@@ -469,8 +505,10 @@ const generateSelectedDocuments = async ({
     if (validTypes.includes('cover-letter')) {
       const cfg = aiService.resolveFeatureConfig('cover_letter_generation');
       const typeFormat = resolveTypeFormat('cover-letter');
+      const clTemplateId = resolveTemplateIdForType(templateIds, 'cover-letter');
+      const clTemplateFields = buildTemplateFields(clTemplateId, 'cover-letter');
       const content = await runAiStep('cover_letter_generation', () =>
-        aiService.generateCoverLetter({ ...job, parsedData }, profile, aiOptions)
+        aiService.generateCoverLetter({ ...job, parsedData }, profile, buildAiOptions(aiOptions, clTemplateId, 'cover-letter'))
       );
       const doc = documentRegistry.createDocument({
         jobId,
@@ -486,6 +524,10 @@ const generateSelectedDocuments = async ({
         tailoringLevel: safeTailoring,
         title: `Cover Letter — ${job.title} at ${job.company}`,
         source: 'workflow',
+        ...clTemplateFields,
+        metadata: {
+          ...(clTemplateFields.metadata || {}),
+        },
       });
       jobRepo.linkDocument(jobId, doc.id);
       log(ACTION_TYPES.AI_GENERATED, { module: 'cover-letter', jobId, entityId: doc.id, entityType: 'document', model: cfg.model, details: 'Cover letter draft generated (selective)' });
@@ -495,8 +537,10 @@ const generateSelectedDocuments = async ({
     if (validTypes.includes('email')) {
       const cfg = aiService.resolveFeatureConfig('email_generation');
       const typeFormat = resolveTypeFormat('email');
+      const emailTemplateId = resolveTemplateIdForType(templateIds, 'email');
+      const emailTemplateFields = buildTemplateFields(emailTemplateId, 'email');
       const emailContent = await runAiStep('email_generation', () =>
-        aiService.generateEmail({ ...job, parsedData }, profile, recipientData, aiOptions)
+        aiService.generateEmail({ ...job, parsedData }, profile, recipientData, buildAiOptions(aiOptions, emailTemplateId, 'email'))
       );
       const subjectMatch = emailContent.match(/SUBJECT:\s*(.+)/i);
       const bodyMatch = emailContent.match(/BODY:\s*([\s\S]+)/i);
@@ -523,7 +567,9 @@ const generateSelectedDocuments = async ({
         model: cfg.model,
         tailoringLevel: safeTailoring,
         title: `Cold Email — ${job.title} at ${job.company}`,
-        metadata: { emailId: emailRecord.id, subject: emailSubject },
+        metadata: { emailId: emailRecord.id, subject: emailSubject, ...(emailTemplateFields.metadata || {}) },
+        templateId: emailTemplateFields.templateId,
+        templateName: emailTemplateFields.templateName,
         source: 'workflow',
       });
       jobRepo.linkDocument(jobId, emailDoc.id);

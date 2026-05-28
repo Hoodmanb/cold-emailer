@@ -41,8 +41,16 @@ export function CollapsibleSection({
       }}
     >
       <Box 
-        component="button"
+        component="div"
+        role="button"
+        tabIndex={0}
         onClick={() => setExpanded(!expanded)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setExpanded(!expanded);
+          }
+        }}
         sx={{ 
           width: "100%",
           display: "flex", 

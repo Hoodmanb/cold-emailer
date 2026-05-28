@@ -161,7 +161,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
                     key={doc.id}
                     document={doc}
                     onApprove={handleApproveDoc}
-                    onRegenerate={() => handleRegen(doc.type)}
+                    onRegenerate={() => handleRegen(doc.type as "resume" | "cover-letter" | "email")}
                   />
                 ))
               )}

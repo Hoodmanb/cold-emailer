@@ -58,7 +58,7 @@ const runAts = async (req, res, next) => {
 
 const generateSelected = async (req, res, next) => {
   try {
-    const { jobId, types, format, formats, tailoringLevel, recipientData } = req.body;
+    const { jobId, types, format, formats, tailoringLevel, recipientData, templateIds } = req.body;
     if (!jobId) return res.status(400).json({ success: false, message: 'jobId is required' });
     if (!Array.isArray(types) || types.length === 0) {
       return res.status(400).json({ success: false, message: 'types must be a non-empty array' });
@@ -81,6 +81,7 @@ const generateSelected = async (req, res, next) => {
       formats: formats && typeof formats === 'object' ? formats : {},
       tailoringLevel,
       recipientData,
+      templateIds: templateIds && typeof templateIds === 'object' ? templateIds : {},
     });
     if (result?.success === false) {
       return res.status(502).json({

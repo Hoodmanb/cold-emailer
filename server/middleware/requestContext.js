@@ -21,8 +21,30 @@ function getCurrentUserId() {
   return uid;
 }
 
+function setBillingExecutionMode(mode) {
+  const store = storage.getStore();
+  if (store) {
+    store.billingExecutionMode = mode || null;
+  }
+}
+
+function getBillingExecutionMode() {
+  const store = storage.getStore();
+  return store?.billingExecutionMode || null;
+}
+
+function clearBillingExecutionMode() {
+  const store = storage.getStore();
+  if (store) {
+    store.billingExecutionMode = null;
+  }
+}
+
 module.exports = {
   runWithRequestContext,
   setCurrentUserId,
   getCurrentUserId,
+  setBillingExecutionMode,
+  getBillingExecutionMode,
+  clearBillingExecutionMode,
 };

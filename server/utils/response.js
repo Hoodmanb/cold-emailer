@@ -28,7 +28,7 @@ function successResponse(res, { status = 200, message, data = {}, meta } = {}) {
 /**
  * @param {import('express').Response} res
  */
-function errorResponse(res, { status = 500, message, error, type, errors, errorCode } = {}) {
+function errorResponse(res, { status = 500, message, error, type, errors, errorCode, details } = {}) {
   const safeMessage = message || "Something went wrong. Please try again later";
   const payload = {
     success: false,
@@ -38,6 +38,7 @@ function errorResponse(res, { status = 500, message, error, type, errors, errorC
   if (type) payload.type = type;
   if (Array.isArray(errors) && errors.length) payload.errors = errors;
   if (errorCode) payload.errorCode = errorCode;
+  if (details !== undefined) payload.details = details;
   return res.status(status).json(payload);
 }
 

@@ -8,6 +8,8 @@ const documentEngine = require('../services/document/documentEngine');
 const { castToModel } = require('../services/document/models');
 const { validate } = require('../services/document/validator');
 const { listResumeTemplates } = require('../services/document/resumeTemplateRegistry');
+const templateService = require('../services/templates/templateService');
+const { resolvePipelineTemplate } = require('../domains/ai/core/templateContext');
 const {
   getEditableContent,
   normalizeFormat,
@@ -172,16 +174,22 @@ const generateAdvanced = async (req, res, next) => {
       format = 'pdf',
       jobId,
       tailoringLevel = 'balanced',
+      templateId,
     } = req.body;
 
     const featureId = resolveFeatureIdForDocType(docType);
     const documentType = resolveDocumentType(docType);
     const safeFormat = normalizeFormat(format, 'pdf');
     let content = '';
+    const template = templateId
+      ? templateService.resolveTemplateForGeneration(templateId, documentType)
+      : null;
+    const aiOptions = { tailoringLevel, templateId: template?.id || templateId || undefined };
 
     if (featureId === 'professional_cv_generation') {
-      content = await aiService.generateProfessionalCv(userData || {}, { tailoringLevel });
+      content = await aiService.generateProfessionalCv(userData || {}, aiOptions);
     } else if (featureId === 'resume_generation') {
+      const { promptSuffix: templateSuffix, postProcess } = resolvePipelineTemplate(aiOptions, 'resume');
       const promptRegistry = require('../domains/ai/core/promptRegistry');
       const promptTemplate = promptRegistry.resolvePrompt('resume_generation');
       const rendered = promptRegistry.render(promptTemplate, {
@@ -190,10 +198,29 @@ const generateAdvanced = async (req, res, next) => {
       });
       const result = await aiService.generateForFeature({
         featureId: 'resume_generation',
-        prompt: rendered,
+        prompt: `${rendered}${templateSuffix}`,
         options: { temperature: 0.4, max_tokens: 2500 },
       });
-      content = typeof result?.data === 'string' ? result.data : String(result?.data || '');
+      const raw = typeof result?.data === 'string' ? result.data : String(result?.data || '');
+      content = postProcess(raw);
+    } else if (featureId === 'cover_letter_generation') {
+      const { promptSuffix: templateSuffix, postProcess } = resolvePipelineTemplate(aiOptions, 'cover-letter');
+      const prompt = [
+        `Generate a cover letter document.`,
+        targetAudience ? `Target audience: ${targetAudience}` : '',
+        templateStyle ? `Style: ${templateStyle}` : '',
+        additionalInstructions ? `Instructions: ${additionalInstructions}` : '',
+        userData ? `User data:\n${JSON.stringify(userData, null, 2)}` : '',
+        templateSuffix,
+      ].filter(Boolean).join('\n\n');
+
+      const result = await aiService.generateForFeature({
+        featureId: 'cover_letter_generation',
+        prompt,
+        options: { temperature: 0.5, max_tokens: 2500 },
+      });
+      const raw = typeof result?.data === 'string' ? result.data : String(result?.data || '');
+      content = postProcess(raw);
     } else {
       const prompt = [
         `Generate a ${docType} document.`,
@@ -226,7 +253,9 @@ const generateAdvanced = async (req, res, next) => {
       tailoringLevel,
       source: 'advanced-generation',
       title: `${docType || documentType} — ${userData?.name || 'Document'}`,
-      metadata: { featureId, targetAudience, templateStyle },
+      templateId: template?.id,
+      templateName: template?.name,
+      metadata: { featureId, targetAudience, templateStyle, templateId: template?.id, templateName: template?.name },
     });
 
     log(ACTION_TYPES.DOCUMENT_GENERATED, {
@@ -251,12 +280,17 @@ const generateProfessionalCv = async (req, res, next) => {
       format = 'pdf',
       tailoringLevel = 'balanced',
       title,
+      templateId,
     } = req.body;
 
     const safeFormat = normalizeFormat(format, 'pdf');
+    const template = templateId
+      ? templateService.resolveTemplateForGeneration(templateId, 'professional-cv')
+      : null;
+    const aiOptions = { tailoringLevel, templateId: template?.id || templateId || undefined };
     const content = jobContext
-      ? await aiService.generateProfessionalCv(jobContext, profile || {}, { tailoringLevel })
-      : await aiService.generateProfessionalCv(profile || {}, { tailoringLevel });
+      ? await aiService.generateProfessionalCv(jobContext, profile || {}, aiOptions)
+      : await aiService.generateProfessionalCv(profile || {}, aiOptions);
 
     const cfg = aiService.resolveFeatureConfig('professional_cv_generation');
     const doc = documentRegistry.createDocument({
@@ -273,7 +307,9 @@ const generateProfessionalCv = async (req, res, next) => {
       tailoringLevel,
       source: 'widget',
       title: title || `Professional CV — ${profile?.name || 'Document'}`,
-      metadata: { featureId: 'professional_cv_generation' },
+      templateId: template?.id,
+      templateName: template?.name,
+      metadata: { featureId: 'professional_cv_generation', templateId: template?.id, templateName: template?.name },
     });
 
     log(ACTION_TYPES.DOCUMENT_GENERATED, {

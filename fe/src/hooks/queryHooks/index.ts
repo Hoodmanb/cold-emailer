@@ -11,3 +11,5 @@ export * from "./workflow";
 export * from "./audit";
 export * from "./dashboard";
 export * from "./suggestions";
+export * from "./billing";
+export * from "./documentTemplates";

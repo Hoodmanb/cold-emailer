@@ -3,9 +3,11 @@ import useAuthStore from "../store/useAuthStore";
 import { showToast } from "../context/SnackbarContext";
 import { parseApiError, ApiError } from "../utils/parseApiError";
 import { logLogoutTrigger } from "../utils/authSession";
+import { getApiBaseUrl } from "../config/env";
 
 const axiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:9000",
+  baseURL: getApiBaseUrl(),
+  timeout: 30_000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -60,7 +62,16 @@ axiosInstance.interceptors.response.use(
     if (error.response && typeof window !== "undefined") {
       const responseData = error.response.data || {};
       const errorType = responseData.type;
+      const errorCode = responseData.errorCode;
       const status = error.response.status;
+
+      if (errorCode === "INSUFFICIENT_CREDITS" || status === 402) {
+        window.dispatchEvent(
+          new CustomEvent("billing:insufficient-credits", {
+            detail: responseData.details || {},
+          })
+        );
+      }
 
       if (shouldForceLogout(status, requestUrl, errorType)) {
         logLogoutTrigger(
