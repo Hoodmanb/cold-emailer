@@ -10,6 +10,8 @@ router.patch('/ai/feature-config/:featureId', ctrl.updateFeatureConfigHandler);
 router.get('/ai/models', ctrl.getModelsHandler);
 router.post('/ai/feature-generate', ctrl.featureGenerateHandler);
 router.post('/ai/chat', ctrl.chatHandler);
+router.post('/ai/test-connection', ctrl.testConnectionHandler);
+router.get('/ai/validate-feature/:featureId', ctrl.validateFeatureHandler);
 router.get('/ai/chat/latest', ctrl.getLatestChatSessionHandler);
 router.get('/ai/chat/:sessionId', ctrl.getChatSessionHandler);
 

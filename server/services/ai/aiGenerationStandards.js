@@ -20,6 +20,7 @@ const FEATURE_COST_PROFILES = {
   ats_analysis: { profile: COST_PROFILE.LOW, avgInputTokens: 3500, avgOutputTokens: 450 },
   job_extraction_image: { profile: COST_PROFILE.HIGH, avgInputTokens: 2500, avgOutputTokens: 900 },
   resume_generation: { profile: COST_PROFILE.MEDIUM, avgInputTokens: 4500, avgOutputTokens: 1800 },
+  professional_cv_generation: { profile: COST_PROFILE.HIGH, avgInputTokens: 5500, avgOutputTokens: 3500 },
   cover_letter_generation: { profile: COST_PROFILE.MEDIUM, avgInputTokens: 4000, avgOutputTokens: 650 },
   email_generation: { profile: COST_PROFILE.LOW, avgInputTokens: 2000, avgOutputTokens: 400 },
   chatbot_assistant: { profile: COST_PROFILE.LOW, avgInputTokens: 1200, avgOutputTokens: 600 },

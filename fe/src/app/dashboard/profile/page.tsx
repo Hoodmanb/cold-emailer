@@ -303,7 +303,14 @@ export default function ProfilePage() {
               count={experience.length}
               onAdd={() => expRef.current?.openNew()}
             >
-              <ExperienceSection ref={expRef} experience={experience} onChange={setExperience} />
+              <ExperienceSection
+                ref={expRef}
+                experience={experience}
+                onChange={setExperience}
+                onSynced={async () => {
+                  await refetch();
+                }}
+              />
             </CollapsibleSection>
 
             <CollapsibleSection

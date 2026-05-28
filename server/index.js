@@ -7,7 +7,7 @@ const cors = require('cors');
 const { isProd, openRouterApiKey, port, logLevel } = require('./config/env');
 const logger = require('./utils/logger');
 const { errorResponse } = require('./utils/response');
-const { toErrorMeta } = require('./utils/safeError');
+const { errorHandler } = require('./middleware/errorHandler');
 const { runWithRequestContext } = require('./middleware/requestContext');
 const { requireAuth } = require('./middleware/requireAuth');
 const { runOwnershipMigration } = require('./db/migrateOwnership');
@@ -80,45 +80,7 @@ app.use('/api/system-templates', requireAuth, require('./routes/systemTemplates'
 app.use('/templates/previews', express.static(path.join(__dirname, 'templates/previews')));
 
 // ─── Error Handler ────────────────────────────────────────────────────────────
-app.use((err, req, res, next) => {
-  if (res.headersSent) {
-    return next(err);
-  }
-
-  if (err && err.name === 'MulterError') {
-    err.status = 400;
-    err.message = err.code === 'LIMIT_FILE_SIZE' ? 'Screenshot size must be 5MB or less' : 'Invalid upload request';
-    err.errorCode = err.code || 'UPLOAD_VALIDATION_FAILED';
-  }
-  if (err && err.message === 'Only image files are allowed') {
-    err.status = 400;
-    err.errorCode = 'INVALID_IMAGE_FORMAT';
-  }
-
-  const status =
-    typeof err.status === 'number' && err.status >= 400 && err.status < 600
-      ? err.status
-      : typeof err.statusCode === 'number' && err.statusCode >= 400 && err.statusCode < 600
-        ? err.statusCode
-        : typeof res.statusCode === 'number' && res.statusCode >= 400 && res.statusCode < 600
-          ? res.statusCode
-          : 500;
-
-  logger.error('💥 GLOBAL ERROR CAUGHT:', {
-    ...toErrorMeta(err),
-    url: req.url,
-    method: req.method,
-    requestId: req.headers['x-request-id'] || undefined,
-    status,
-  });
-
-  return errorResponse(res, {
-    status,
-    message: status >= 500 ? 'Something went wrong. Please try again later' : err.message,
-    errors: Array.isArray(err.errors) ? err.errors : undefined,
-    errorCode: err.errorCode || undefined,
-  });
-});
+app.use(errorHandler);
 
 // ─── 404 Handler ─────────────────────────────────────────────────────────────
 app.use((req, res) => {

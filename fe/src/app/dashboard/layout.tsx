@@ -1,6 +1,7 @@
 "use client";
 
 import Drawer from "@/components/layout/AppBar";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import React from "react";
 
 export default function DashboardLayout({
@@ -8,5 +9,9 @@ export default function DashboardLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <Drawer>{children}</Drawer>;
+  return (
+    <ProtectedRoute>
+      <Drawer>{children}</Drawer>
+    </ProtectedRoute>
+  );
 }

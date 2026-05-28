@@ -1,7 +1,14 @@
-const fileStore = require("../utils/fileStore");
+/**
+ * Hardened Scoped Profile Repository
+ * Enforces career profile schema structures while preserving default shapes.
+ */
+const BaseRepository = require('../infrastructure/db/BaseRepository');
+const SCHEMAS = require('../shared/validators/schemas');
 const projectRepo = require("./projectRepository");
+const fileStore = require("../utils/fileStore");
 
 const FILENAME = "profiles.json";
+const profileRepo = new BaseRepository(FILENAME, SCHEMAS.profile);
 
 const DEFAULT_PROFILE = {
   name: "",
@@ -16,24 +23,31 @@ const DEFAULT_PROFILE = {
   education: [],
   skills: [],
   certificates: [],
-  certifications: [], // Keeping for backward compatibility if any
+  certifications: [], // Keeping for backward compatibility
   links: { github: "", linkedin: "", portfolio: "" },
 };
 
 const getProfile = () => {
-  const profile = fileStore.read(FILENAME);
+  const profile = profileRepo.readAll();
   const projects = projectRepo.getAllProjects();
   return { ...DEFAULT_PROFILE, ...profile, projects };
 };
 
 const updateProfile = (data) => {
+  if (!data || typeof data !== "object") {
+    throw new Error("Profile update payload must be an object");
+  }
   const current = getProfile();
-  // Filter out projects from the data object as they are stored in projects.json
   const { projects, ...cleanData } = data;
   const next = { ...current, ...cleanData };
-  // We also don't want to persist projects inside profiles.json anymore to avoid duplication
   delete next.projects;
-  return fileStore.write(FILENAME, next);
+
+  if (SCHEMAS.profile) {
+    SCHEMAS.profile.validate(next);
+  }
+
+  fileStore.write(FILENAME, next);
+  return getProfile();
 };
 
 module.exports = {

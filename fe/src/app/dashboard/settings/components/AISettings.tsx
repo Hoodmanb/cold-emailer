@@ -17,6 +17,8 @@ import {
 import axiosInstance from "@/hooks/axios";
 import { useSnackbar } from "@/context/SnackbarContext";
 import type { AIProviderModel, AISettingsData } from "@/types";
+import FeatureHelpPopover from "@/components/settings/FeatureHelpPopover";
+import { AlertCircle } from "lucide-react";
 
 type FeatureDraftRow = {
   id?: string;
@@ -70,12 +72,16 @@ function FeatureConfigCard({
       <CardContent sx={{ p: 3 }}>
         <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} gap={2} sx={{ mb: 3 }}>
           <Box>
-            <Typography variant="subtitle1" fontWeight={800}>
-              {feature.name}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {feature.description}
-            </Typography>
+            <Stack direction="row" alignItems="center" gap={0.5}>
+              <Typography variant="subtitle1" fontWeight={800}>{feature.name}</Typography>
+              <FeatureHelpPopover featureId={feature.id} />
+            </Stack>
+            <Typography variant="caption" color="text.secondary">{feature.description}</Typography>
+            {!providerConfigured && (
+              <Typography variant="caption" color="warning.main" fontWeight={700} sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.5 }}>
+                <AlertCircle size={12} /> Add API key for {row.provider} in Settings
+              </Typography>
+            )}
           </Box>
 
           <Stack direction="row" gap={1.5} flexWrap="wrap" alignItems="center">
@@ -126,9 +132,12 @@ function FeatureConfigCard({
 
         <Box sx={{ p: 2, bgcolor: "action.hover", borderRadius: 3, border: "1px solid", borderColor: "divider" }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
-            <Typography variant="caption" fontWeight={800} color="text.secondary" sx={{ letterSpacing: 1 }}>
-              PROMPT INSTRUCTIONS
-            </Typography>
+            <Stack direction="row" alignItems="center" gap={0.5}>
+              <Typography variant="caption" fontWeight={800} color="text.secondary" sx={{ letterSpacing: 1 }}>
+                PROMPT INSTRUCTIONS
+              </Typography>
+              <FeatureHelpPopover featureId={feature.id} size={14} />
+            </Stack>
             <Stack direction="row" alignItems="center" gap={1}>
               <Typography variant="caption" fontWeight={700} color={row.useCustomPrompt ? "primary.main" : "text.secondary"}>
                 {row.useCustomPrompt ? "CUSTOM" : "DEFAULT"}
@@ -316,6 +325,21 @@ export default function AISettings({
     return new Set(entries.filter((x) => x.isActive).map((x) => x.provider));
   }, [settings]);
 
+  const [testingProvider, setTestingProvider] = useState<string | null>(null);
+
+  const testConnection = async (provider: string) => {
+    setTestingProvider(provider);
+    try {
+      const res = await axiosInstance.post("/api/settings/ai/test-connection", { provider });
+      if (res.data?.success) showSnackbar(res.data.message, "success");
+      else showSnackbar(res.data?.message || "Connection failed", "error");
+    } catch (err: any) {
+      showSnackbar(err?.response?.data?.message || "Connection test failed", "error");
+    } finally {
+      setTestingProvider(null);
+    }
+  };
+
   const upsertKey = async () => {
     if (!formApiKey.trim()) return showSnackbar("API key is required", "error");
     setSavingKey(true);
@@ -462,22 +486,33 @@ export default function AISettings({
                   severity={key.isActive ? "success" : "info"}
                   sx={{ borderRadius: 2, alignItems: "center" }}
                   action={
-                    <Button
-                      size="small"
-                      color="error"
-                      sx={{ minHeight: 32 }}
-                      onClick={async () => {
-                        const res = await axiosInstance.delete(`/api/settings/ai/keys/${encodeURIComponent(key.provider)}`);
-                        if (res.data?.success) {
-                          showSnackbar("Credential deleted", "success");
-                          await fetchSettings(false);
-                        } else {
-                          showSnackbar(res.data?.message || "Failed to remove key", "error");
-                        }
-                      }}
-                    >
-                      Delete
-                    </Button>
+                    <Stack direction="row" gap={0.5}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        disabled={testingProvider === key.provider}
+                        onClick={() => testConnection(key.provider)}
+                        sx={{ minHeight: 32 }}
+                      >
+                        {testingProvider === key.provider ? "Testing..." : "Test"}
+                      </Button>
+                      <Button
+                        size="small"
+                        color="error"
+                        sx={{ minHeight: 32 }}
+                        onClick={async () => {
+                          const res = await axiosInstance.delete(`/api/settings/ai/keys/${encodeURIComponent(key.provider)}`);
+                          if (res.data?.success) {
+                            showSnackbar("Credential deleted", "success");
+                            await fetchSettings(false);
+                          } else {
+                            showSnackbar(res.data?.message || "Failed to remove key", "error");
+                          }
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </Stack>
                   }
                 >
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
@@ -486,9 +521,9 @@ export default function AISettings({
                 </Alert>
               ))}
               {(settings?.apiKeys || []).length === 0 && (
-                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic", textAlign: "center", py: 2 }}>
-                  No provider credentials stored yet. Add an API key above to enable AI features.
-                </Typography>
+                <Alert severity="warning" sx={{ borderRadius: 2 }}>
+                  No provider credentials stored. AI features will not work until you add an API key above.
+                </Alert>
               )}
             </Stack>
           </Stack>

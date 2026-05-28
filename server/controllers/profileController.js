@@ -26,12 +26,17 @@ const getProfileHandler = (req, res) =>
   });
 
 const updateProfileHandler = (req, res) => {
-  const updated = updateProfile(normalizeProfilePayload(req.body));
+  if (!req.body || typeof req.body !== "object") {
+    const err = new Error("Profile payload must be a JSON object");
+    err.status = 400;
+    throw err;
+  }
+  updateProfile(normalizeProfilePayload(req.body));
   log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: "Career profile updated" });
   return successResponse(res, {
     status: 200,
     message: "Profile updated successfully",
-    data: updated,
+    data: getProfile(),
   });
 };
 
@@ -210,6 +215,89 @@ const deleteCertificateHandler = (req, res) => {
   });
 };
 
+const updateSkillHandler = (req, res) => {
+  const { skillId } = req.params;
+  if (!skillId) {
+    const err = new Error("Skill ID is required");
+    err.status = 400;
+    throw err;
+  }
+
+  const name = String(req.body?.name || "").trim();
+  if (!name) {
+    const err = new Error("Skill name is required");
+    err.status = 400;
+    throw err;
+  }
+
+  const profile = getProfile();
+  const skills = (profile.skills || []).map((s) =>
+    String(s.id) === String(skillId) ? { ...s, name } : s
+  );
+
+  const { normalizeSkillRecords } = require("../utils/profileNormalize");
+  const normalized = normalizeSkillRecords(skills);
+  const updatedSkill = normalized.find((s) => String(s.id) === String(skillId));
+  if (!updatedSkill) {
+    const err = new Error("Skill not found");
+    err.status = 404;
+    throw err;
+  }
+
+  updateProfile({ skills: normalized });
+
+  log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: `Skill updated: ${name}` });
+  return successResponse(res, {
+    status: 200,
+    message: "Skill updated successfully",
+    data: updatedSkill,
+  });
+};
+
+const getEmailConfigHandler = (_req, res) => {
+  const profile = getProfile();
+  return successResponse(res, {
+    status: 200,
+    message: "Email config retrieved successfully",
+    data: {
+      senderName: profile.name || "",
+      senderEmail: profile.email || "",
+      phoneNumber: profile.phoneNumber || "",
+    },
+  });
+};
+
+const updateEmailConfig = (req, res) => {
+  const body = req.body && typeof req.body === "object" ? req.body : {};
+  const updates = {};
+
+  if (body.senderName !== undefined) updates.name = String(body.senderName || "").trim();
+  if (body.senderEmail !== undefined) updates.email = String(body.senderEmail || "").trim();
+  if (body.phoneNumber !== undefined) updates.phoneNumber = String(body.phoneNumber || "").trim();
+  if (body.name !== undefined) updates.name = String(body.name || "").trim();
+  if (body.email !== undefined) updates.email = String(body.email || "").trim();
+
+  if (!Object.keys(updates).length) {
+    const err = new Error("No email config fields provided");
+    err.status = 400;
+    throw err;
+  }
+
+  updateProfile(normalizeProfilePayload(updates));
+  log(ACTION_TYPES.EMAIL_CONFIG_UPDATED, { module: "profile", details: "Email sender config updated" });
+
+  const profile = getProfile();
+  return successResponse(res, {
+    status: 200,
+    message: "Email config updated successfully",
+    data: {
+      senderName: profile.name || "",
+      senderEmail: profile.email || "",
+      phoneNumber: profile.phoneNumber || "",
+    },
+  });
+};
+
 const deleteSkillHandler = (req, res) => {
   const { skillId } = req.params;
   const profile = getProfile();
@@ -276,6 +364,7 @@ module.exports = {
   uploadScreenshotHandler,
   getSkillsHandler,
   createSkillHandler,
+  updateSkillHandler,
   deleteSkillHandler,
   getCertificatesHandler,
   createCertificateHandler,
@@ -283,5 +372,7 @@ module.exports = {
   deleteCertificateHandler,
   getPreferencesHandler,
   updatePreferences: updatePreferencesHandler,
+  getEmailConfigHandler,
+  updateEmailConfig,
   deleteAccountHandler,
 };

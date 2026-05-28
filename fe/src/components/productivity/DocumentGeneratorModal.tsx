@@ -46,6 +46,7 @@ import { useProductivity } from "@/context/ProductivityContext";
 import { useGetProfile } from "@/hooks/queryHooks";
 import axiosInstance from "@/hooks/axios";
 import { useSnackbar } from "@/context/SnackbarContext";
+import { useQueryClient } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
 import { downloadAuthenticatedFile } from "@/utils/downloadUtils";
 
@@ -75,10 +76,10 @@ function buildResumeExportModel(
           ? e.achievements.map(String)
           : e.description
             ? String(e.description)
-                .split(/\n+/)
-                .map((s: string) => s.trim())
-                .filter(Boolean)
-                .slice(0, 14)
+              .split(/\n+/)
+              .map((s: string) => s.trim())
+              .filter(Boolean)
+              .slice(0, 14)
             : [];
       return {
         title: e.title || "",
@@ -130,7 +131,7 @@ function buildResumeExportModel(
 
 const DOC_TYPES = [
   { id: "resume", label: "Professional Resume", icon: <FileText />, desc: "ATS-optimized standard resume" },
-  { id: "cv", label: "Academic CV", icon: <FileText />, desc: "Detailed academic/research focus" },
+  { id: "professional-cv", label: "Professional CV", icon: <Award />, desc: "Detailed multi-page professional CV" },
   { id: "cover-letter", label: "Cover Letter", icon: <Mail />, desc: "Targeted application letter" },
   { id: "portfolio", label: "Visual Portfolio", icon: <Layout />, desc: "Showcase projects and skills" },
   { id: "case-study", label: "Project Case Study", icon: <FolderKanban />, desc: "Deep dive into one project" },
@@ -142,10 +143,11 @@ const STYLES = ["Modern", "Minimalist", "Creative", "Corporate", "Technical"];
 const AUDIENCES = ["Recruiter", "Technical Manager", "CEO/Founder", "Potential Client", "General"];
 
 export default function DocumentGeneratorModal() {
-  const { activeModal, closeModal, openModal } = useProductivity();
+  const { activeModal, closeModal, openModal, modalData } = useProductivity();
   const isOpen = activeModal === "generator";
   const { profile, loading: loadingProfile } = useGetProfile();
   const { showSnackbar } = useSnackbar();
+  const queryClient = useQueryClient();
 
   const [activeStep, setActiveStep] = useState(0);
   const [docType, setDocType] = useState("");
@@ -186,6 +188,10 @@ export default function DocumentGeneratorModal() {
       setLastResumeFilename("");
       return;
     }
+    if (modalData?.docType) {
+      setDocType(modalData.docType);
+      if (modalData.preselect) setActiveStep(0);
+    }
     let cancelled = false;
     (async () => {
       try {
@@ -200,13 +206,13 @@ export default function DocumentGeneratorModal() {
     return () => {
       cancelled = true;
     };
-  }, [isOpen]);
+  }, [isOpen, modalData?.docType]);
   const handleNext = () => setActiveStep((prev) => prev + 1);
   const handleBack = () => setActiveStep((prev) => prev - 1);
 
   const handleGenerate = async () => {
     console.log("[GENERATOR] Starting generation process...");
-    
+
     // Validation
     if (!docType) {
       showSnackbar("Please select a document type first.", "warning");
@@ -255,9 +261,8 @@ export default function DocumentGeneratorModal() {
         setGeneratedDoc({
           id: "resume-export",
           type: "resume",
-          content: `Your **${format.toUpperCase()}** was generated using ${
-            resumeTemplateId === "random" ? "a **random** layout" : `layout **${resumeTemplateId}**`
-          } and downloaded to your device.`,
+          content: `Your **${format.toUpperCase()}** was generated using ${resumeTemplateId === "random" ? "a **random** layout" : `layout **${resumeTemplateId}**`
+            } and downloaded to your device.`,
           templatedResume: true,
         });
         showSnackbar("Resume downloaded", "success");
@@ -304,15 +309,20 @@ export default function DocumentGeneratorModal() {
 
       if (res.data?.success) {
         setGeneratedDoc(res.data.data);
-        showSnackbar("Document generated successfully!", "success");
+        queryClient.invalidateQueries({ queryKey: ["documents"] });
+        showSnackbar("Document generated and saved to Documents!", "success");
         handleNext();
       } else {
         throw new Error(res.data?.message || "Generation failed on server");
       }
     } catch (err: any) {
       console.error("[GENERATOR] Error:", err);
-      const msg = err.response?.data?.message || err.message || "Generation failed. Please check your AI settings.";
-      showSnackbar(msg, "error");
+      const msg = err.response?.data?.message || err.response?.data?.error || err.message || "Generation failed. Configure API keys in Settings.";
+      if (msg.toLowerCase().includes("api key") || msg.toLowerCase().includes("settings")) {
+        showSnackbar(`${msg} Go to Settings → AI Workflows.`, "error");
+      } else {
+        showSnackbar(msg, "error");
+      }
     } finally {
       setGenerating(false);
     }

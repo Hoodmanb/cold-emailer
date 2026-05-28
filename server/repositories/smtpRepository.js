@@ -1,10 +1,16 @@
-const fileStore = require("../utils/fileStore");
+/**
+ * Hardened SMTP Repository
+ * Handles AES-256-CBC encryption hooks and standardizes on BaseRepository operations.
+ */
+const BaseRepository = require('../infrastructure/db/BaseRepository');
 const { encrypt, decrypt } = require("../utils/encryption");
+const fileStore = require("../utils/fileStore");
 
 const FILENAME = "smtp.json";
+const smtpRepo = new BaseRepository(FILENAME);
 
 const getAllSmtps = () => {
-  const raw = fileStore.read(FILENAME);
+  const raw = smtpRepo.readAll();
   if (!Array.isArray(raw)) return [];
   return raw
     .filter((s) => s && typeof s === "object")
@@ -63,7 +69,7 @@ const createSmtp = (data) => {
     lastVerifiedAt: null,
   };
 
-  const record = fileStore.append(FILENAME, newSmtp);
+  const record = smtpRepo.create(newSmtp);
 
   if (isDefault) {
     setDefaultSmtp(record.id);
@@ -73,16 +79,18 @@ const createSmtp = (data) => {
 };
 
 const updateSmtp = (id, updates) => {
-  const result = fileStore.update(FILENAME, (s) => String(s.id) === String(id), () => {
-    const next = { ...updates };
-    if (next.appPassword && !next.iv) {
-      const { encryptedPassword, iv } = encrypt(next.appPassword);
+  const result = smtpRepo.update(id, updates);
+
+  fileStore.update(FILENAME, (s) => String(s.id) === String(id), (s) => {
+    const next = {};
+    if (updates.appPassword && !updates.iv) {
+      const { encryptedPassword, iv } = encrypt(updates.appPassword);
       next.appPassword = encryptedPassword;
       next.iv = iv;
     }
-    if (next.email !== undefined) next.email = String(next.email || "").trim().toLowerCase();
-    if (next.host !== undefined) next.host = String(next.host || "").trim();
-    if (next.port !== undefined) next.port = Number(next.port) || 587;
+    if (updates.email !== undefined) next.email = String(updates.email || "").trim().toLowerCase();
+    if (updates.host !== undefined) next.host = String(updates.host || "").trim();
+    if (updates.port !== undefined) next.port = Number(updates.port) || 587;
     return next;
   });
 
@@ -90,11 +98,11 @@ const updateSmtp = (id, updates) => {
     setDefaultSmtp(id);
   }
 
-  return result;
+  return getSmtpById(id);
 };
 
 const deleteSmtp = (id) => {
-  return fileStore.remove(FILENAME, (s) => String(s.id) === String(id));
+  return smtpRepo.delete(id);
 };
 
 const setDefaultSmtp = (id) => {

@@ -158,26 +158,41 @@ function isValidUrl(value) {
 
 function normalizeExperience(experience) {
   if (!Array.isArray(experience)) return [];
-  return experience.map((exp) => {
-    if (!exp || typeof exp !== 'object') return null;
-    const companyLinks = Array.isArray(exp.companyLinks)
-      ? exp.companyLinks
-          .filter((l) => isValidUrl(l?.url))
-          .map((l) => ({
-            label: String(l.label || '').trim(),
-            url: String(l.url).trim(),
-          }))
-          .slice(0, 2)
-      : [];
+  return experience
+    .map((exp) => {
+      if (!exp || typeof exp !== "object") return null;
 
-    return {
-      ...exp,
-      id: exp.id || uuidv4(),
-      title: String(exp.title || '').trim(),
-      company: String(exp.company || '').trim(),
-      companyLinks,
-    };
-  }).filter(Boolean);
+      const title = String(exp.title || "").trim();
+      const company = String(exp.company || "").trim();
+      if (!title || !company) return null;
+
+      const companyLinks = Array.isArray(exp.companyLinks)
+        ? exp.companyLinks
+            .filter((l) => l && typeof l === "object" && isValidUrl(l.url))
+            .map((l) => ({
+              label: String(l.label || "").trim(),
+              url: String(l.url).trim(),
+            }))
+            .slice(0, 2)
+        : [];
+
+      const achievements = Array.isArray(exp.achievements)
+        ? exp.achievements.map((a) => String(a || "").trim()).filter(Boolean)
+        : [];
+
+      return {
+        id: exp.id && String(exp.id).trim() ? String(exp.id).trim() : uuidv4(),
+        title,
+        company,
+        startDate: String(exp.startDate || "").trim(),
+        endDate: String(exp.endDate || "").trim(),
+        current: exp.current === true,
+        description: String(exp.description || "").trim(),
+        achievements,
+        companyLinks,
+      };
+    })
+    .filter(Boolean);
 }
 
 function normalizeCertificates(certificates) {
@@ -202,11 +217,12 @@ function normalizeCertificates(certificates) {
  */
 function normalizeProfilePayload(body) {
   if (!body || typeof body !== 'object') return body;
-  const { skills, projects, experience, certificates, githubUrl, linkedinUrl, phoneNumber, ...rest } = body;
+  const { skills, projects, experience, workExperience, certificates, githubUrl, linkedinUrl, phoneNumber, ...rest } = body;
   const next = { ...rest };
   if (skills !== undefined) next.skills = normalizeSkillRecords(skills);
   if (projects !== undefined) next.projects = normalizeProjects(projects);
-  if (experience !== undefined) next.experience = normalizeExperience(experience);
+  const exp = experience !== undefined ? experience : workExperience;
+  if (exp !== undefined) next.experience = normalizeExperience(exp);
   if (certificates !== undefined) next.certificates = normalizeCertificates(certificates);
 
   if (githubUrl !== undefined) next.githubUrl = isValidUrl(githubUrl) ? String(githubUrl).trim() : "";
@@ -221,5 +237,7 @@ module.exports = {
   normalizeProjects,
   normalizeSkillsInput,
   normalizeSkillRecords,
+  normalizeExperience,
+  normalizeCertificates,
   normalizeProfilePayload,
 };

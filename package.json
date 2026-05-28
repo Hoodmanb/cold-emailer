@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "concurrently --names \"SERVER,CLIENT\" --prefix-colors \"cyan,magenta\" \"npm run dev:server\" \"npm run dev:fe\"",
     "dev:server": "cd server && npm run dev",
-    "dev:fe": "cd cold-emailer/fe && npm run dev",
-    "install:all": "npm install && cd server && npm install && cd ../cold-emailer/fe && npm install",
-    "build:fe": "cd cold-emailer/fe && npm run build"
+    "dev:fe": "cd fe && npm run dev",
+    "install:all": "npm install && cd server && npm install && cd ../fe && npm install",
+    "build:fe": "cd fe && npm run build"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

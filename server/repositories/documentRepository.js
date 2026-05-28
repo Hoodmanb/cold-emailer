@@ -1,50 +1,68 @@
-const { v4: uuidv4 } = require('uuid');
-const fileStore = require("../utils/fileStore")
+/**
+ * Hardened Scoped Document Repository
+ * Dual-layer document model: editableContent (source of truth) + export metadata.
+ */
+const BaseRepository = require('../infrastructure/db/BaseRepository');
+const {
+  buildDocumentPayload,
+  applyContentUpdate,
+  hydrateDocument,
+} = require('../services/document/documentPersistenceService');
 
 const FILE = 'documents.json';
+const docRepo = new BaseRepository(FILE);
 
-/**
- * Document types: 'resume' | 'cover-letter'
- * Statuses: 'draft' | 'approved' | 'archived'
- */
-
-const listDocuments = (jobId) =>
-  fileStore.readWhere(FILE, jobId ? (d) => String(d.jobId) === String(jobId) : null);
-
-// const getDocument = (id) => findOne(FILE, (d) => d.id === id);
-const getDocument = (id) => listDocuments().find((d) => String(d.id) === String(id)) || null;
-
-const saveDocument = (docData) => {
-  const doc = {
-    id: uuidv4(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    jobId: null,
-    type: 'resume', // 'resume' | 'cover-letter'
-    content: '',
-    model: '',
-    status: 'draft', // DRAFT MODE: all AI output starts as draft
-    editedManually: false,
-    ...docData,
-  };
-  return fileStore.append(FILE, doc);
+const listDocuments = (jobId) => {
+  const all = docRepo.readAll().map(hydrateDocument);
+  return jobId ? all.filter((d) => String(d.jobId) === String(jobId)) : all;
 };
 
-const updateDocument = (id, updates) =>
-  fileStore.update(FILE, (d) => d.id === id, () => ({
-    ...updates,
-    updatedAt: new Date().toISOString(),
-    editedManually: updates.content !== undefined ? true : undefined,
-  }));
+const getDocument = (id) => {
+  const doc = docRepo.readById(id);
+  return doc ? hydrateDocument(doc) : null;
+};
 
-const approveDocument = (id) =>
-  fileStore.update(FILE, (d) => d.id === id, () => ({
+const saveDocument = (docData) => {
+  const payload = buildDocumentPayload(docData);
+  const created = docRepo.create(payload);
+  return hydrateDocument(created);
+};
+
+const updateDocument = (id, updates) => {
+  const existing = docRepo.readById(id);
+  if (!existing) return null;
+  const normalized = applyContentUpdate(existing, updates);
+  const updated = docRepo.update(id, normalized);
+  return hydrateDocument(updated);
+};
+
+const approveDocument = (id) => {
+  const updated = docRepo.update(id, {
     status: 'approved',
     approvedAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }));
+  });
+  return hydrateDocument(updated);
+};
 
-const deleteDocument = (id) => fileStore.remove(FILE, (d) => d.id === id);
+const deleteDocument = (id) => docRepo.delete(id);
+
+const duplicateDocument = (id) => {
+  const existing = docRepo.readById(id);
+  if (!existing) return null;
+  const hydrated = hydrateDocument(existing);
+  const copy = docRepo.create({
+    ...hydrated,
+    id: undefined,
+    title: `${hydrated.title || hydrated.type} (Copy)`,
+    status: 'draft',
+    editedManually: hydrated.editedManually,
+    approvedAt: undefined,
+    exportHistory: [],
+    createdAt: undefined,
+    updatedAt: undefined,
+  });
+  return hydrateDocument(copy);
+};
 
 module.exports = {
   listDocuments,
@@ -53,4 +71,5 @@ module.exports = {
   updateDocument,
   approveDocument,
   deleteDocument,
+  duplicateDocument,
 };

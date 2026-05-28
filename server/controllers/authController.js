@@ -3,6 +3,7 @@ const { v4: uuidv4 } = require("uuid");
 const { findUserByEmail, findUserById, createUser } = require("../repositories/userRepository");
 const { signToken } = require("../utils/token");
 const { successResponse } = require("../utils/response");
+const { AuthError } = require("../shared/errors/customErrors");
 
 function sanitizeUser(user) {
   return {
@@ -64,14 +65,12 @@ const login = async (req, res) => {
 
   const user = findUserByEmail(email);
   if (!user) {
-    res.status(401);
-    throw new Error("Invalid credentials");
+    throw new AuthError("Invalid credentials", "AUTH_INVALID_CREDENTIALS");
   }
 
   const ok = await bcrypt.compare(password, String(user.passwordHash || ""));
   if (!ok) {
-    res.status(401);
-    throw new Error("Invalid credentials");
+    throw new AuthError("Invalid credentials", "AUTH_INVALID_CREDENTIALS");
   }
 
   const token = signToken(user);

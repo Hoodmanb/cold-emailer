@@ -64,6 +64,24 @@ function normalizeFeatureConfig(featureId, value) {
   };
 }
 
+const resolveFeatureConfig = (featureId) => {
+  const normalizedFeatureId = String(featureId || "").trim();
+  if (!FEATURE_IDS.has(normalizedFeatureId)) {
+    throw new Error(`Invalid feature ID: ${normalizedFeatureId || "<empty>"}`);
+  }
+  const settings = getAiSettings();
+  return normalizeFeatureConfig(normalizedFeatureId, settings.featureMap[normalizedFeatureId]);
+};
+
+const resolveActivePrompt = (featureId) => {
+  const normalizedFeatureId = String(featureId || "").trim();
+  if (!FEATURE_IDS.has(normalizedFeatureId)) {
+    throw new Error(`Invalid feature ID: ${normalizedFeatureId || "<empty>"}`);
+  }
+  const { resolvePrompt } = require("../domains/ai/core/promptRegistry");
+  return resolvePrompt(normalizedFeatureId);
+};
+
 const updateFeatureConfig = (featureId, updates) => {
   const normalizedFeatureId = String(featureId || "").trim();
   if (!FEATURE_IDS.has(normalizedFeatureId)) {
@@ -175,6 +193,8 @@ const updateFeatureMap = (featureMap) => {
 module.exports = {
   getAiSettings,
   saveAiSettings,
+  resolveFeatureConfig,
+  resolveActivePrompt,
   updateFeatureConfig,
   upsertApiKey,
   deleteApiKey,

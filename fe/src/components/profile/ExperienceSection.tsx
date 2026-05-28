@@ -16,24 +16,36 @@ import {
   Checkbox,
   FormControlLabel,
   Divider,
+  CircularProgress,
 } from "@mui/material";
-import { Briefcase, Pencil, Plus, Trash2, Calendar, Link as LinkIcon, ExternalLink } from "lucide-react";
+import { Briefcase, Pencil, Plus, Trash2, Calendar, ExternalLink } from "lucide-react";
 import type { WorkExperience } from "@/types";
 import { v4 as uuidv4 } from "uuid";
+import axiosInstance from "@/hooks/axios";
+import { useSnackbar } from "@/context/SnackbarContext";
 
 type ExperienceSectionProps = {
   experience: WorkExperience[];
   onChange: (experience: WorkExperience[]) => void;
+  onSynced?: () => Promise<void>;
 };
+
+function isOk(res: { status: number; data?: { success?: boolean; message?: string } }) {
+  if (res.status < 200 || res.status >= 300) return false;
+  if (res.data?.success === false) return false;
+  return true;
+}
 
 export interface ExperienceSectionHandle {
   openNew: () => void;
 }
 
 export const ExperienceSection = React.forwardRef<ExperienceSectionHandle, ExperienceSectionProps>(
-  ({ experience, onChange }, ref) => {
+  ({ experience, onChange, onSynced }, ref) => {
+    const { showSnackbar } = useSnackbar();
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [busy, setBusy] = useState(false);
     const [form, setForm] = useState<Partial<WorkExperience>>({
       title: "",
       company: "",
@@ -47,6 +59,27 @@ export const ExperienceSection = React.forwardRef<ExperienceSectionHandle, Exper
     React.useImperativeHandle(ref, () => ({
       openNew,
     }));
+
+    const persistExperience = async (nextExperience: WorkExperience[]) => {
+      setBusy(true);
+      try {
+        const res = await axiosInstance.put("/api/profile", { experience: nextExperience });
+        if (!isOk(res)) {
+          showSnackbar(res.data?.message || "Failed to save work experience", "error");
+          await onSynced?.();
+          return false;
+        }
+        await onSynced?.();
+        return true;
+      } catch (e) {
+        console.error(e);
+        showSnackbar("Failed to save work experience", "error");
+        await onSynced?.();
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    };
 
     const openNew = () => {
       setForm({
@@ -68,29 +101,36 @@ export const ExperienceSection = React.forwardRef<ExperienceSectionHandle, Exper
       setDialogOpen(true);
     };
 
-    const handleSave = () => {
-      if (!form.title || !form.company) return;
+    const handleSave = async () => {
+      if (!form.title || !form.company || busy) return;
 
       const updatedExp = {
         ...form,
+        achievements: Array.isArray(form.achievements) ? form.achievements : [],
         companyLinks: (form.companyLinks || []).filter((l) => l.url.trim()),
       };
 
-      if (editingId) {
-        onChange(
-          experience.map((exp) =>
+      const nextExperience = editingId
+        ? experience.map((exp) =>
             exp.id === editingId ? ({ ...exp, ...updatedExp } as WorkExperience) : exp
           )
-        );
-      } else {
-        onChange([...experience, { ...updatedExp, id: uuidv4() } as WorkExperience]);
+        : [...experience, { ...updatedExp, id: uuidv4() } as WorkExperience];
+
+      onChange(nextExperience);
+      const ok = await persistExperience(nextExperience);
+      if (ok) {
+        showSnackbar(editingId ? "Work experience updated" : "Work experience added", "success");
+        setDialogOpen(false);
       }
-      setDialogOpen(false);
     };
 
-    const handleDelete = (id: string) => {
-      if (confirm("Delete this work experience?")) {
-        onChange(experience.filter((exp) => exp.id !== id));
+    const handleDelete = async (id: string) => {
+      if (!confirm("Delete this work experience?") || busy) return;
+      const nextExperience = experience.filter((exp) => exp.id !== id);
+      onChange(nextExperience);
+      const ok = await persistExperience(nextExperience);
+      if (ok) {
+        showSnackbar("Work experience removed", "success");
       }
     };
 
@@ -192,10 +232,10 @@ export const ExperienceSection = React.forwardRef<ExperienceSectionHandle, Exper
                     </Box>
                   </Stack>
                   <Stack direction="row" gap={0.5}>
-                    <IconButton size="small" onClick={() => openEdit(exp)} sx={{ borderRadius: 2 }}>
+                    <IconButton size="small" onClick={() => openEdit(exp)} sx={{ borderRadius: 2 }} disabled={busy}>
                       <Pencil size={18} />
                     </IconButton>
-                    <IconButton size="small" color="error" onClick={() => handleDelete(exp.id)} sx={{ borderRadius: 2 }}>
+                    <IconButton size="small" color="error" onClick={() => handleDelete(exp.id)} sx={{ borderRadius: 2 }} disabled={busy}>
                       <Trash2 size={18} />
                     </IconButton>
                   </Stack>
@@ -338,10 +378,11 @@ export const ExperienceSection = React.forwardRef<ExperienceSectionHandle, Exper
             <Button
               variant="contained"
               onClick={handleSave}
-              disabled={!form.title || !form.company}
+              disabled={!form.title || !form.company || busy}
+              startIcon={busy ? <CircularProgress size={16} color="inherit" /> : undefined}
               sx={{ borderRadius: 2.5, fontWeight: 700, px: 3 }}
             >
-              Save Experience
+              {busy ? "Saving..." : "Save Experience"}
             </Button>
           </DialogActions>
         </Dialog>

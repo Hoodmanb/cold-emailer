@@ -42,19 +42,38 @@ export interface Job {
 
 // ─── Document Types ───────────────────────────────────────────────────────────
 
-export type DocumentType = "resume" | "cover-letter";
+export type DocumentType = "resume" | "professional-cv" | "cover-letter" | "email";
 export type DocumentStatus = "draft" | "approved" | "archived";
+export type DocumentFormat = "pdf" | "docx" | "txt";
+export type TailoringLevel = "conservative" | "balanced" | "aggressive";
+export type ContentSource = "ai" | "manual" | "structured";
+
+export interface ExportHistoryEntry {
+  format: DocumentFormat;
+  exportedAt: string;
+}
 
 export interface Document {
   id: string;
   createdAt: string;
   updatedAt: string;
   jobId: string | null;
-  type: DocumentType;
+  generatedFromJobId?: string | null;
+  type: DocumentType | string;
+  title?: string;
+  /** Canonical editable source */
+  editableContent?: string;
+  /** Backward-compatible mirror of editableContent */
   content: string;
+  contentSource?: ContentSource;
+  format?: DocumentFormat | string;
+  exportFormat?: DocumentFormat | string;
   model: string;
   status: DocumentStatus;
   editedManually: boolean;
+  tailoringLevel?: TailoringLevel;
+  metadata?: Record<string, unknown>;
+  exportHistory?: ExportHistoryEntry[];
   approvedAt?: string;
 }
 

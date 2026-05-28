@@ -28,11 +28,14 @@ function successResponse(res, { status = 200, message, data = {}, meta } = {}) {
 /**
  * @param {import('express').Response} res
  */
-function errorResponse(res, { status = 500, message, errors, errorCode } = {}) {
+function errorResponse(res, { status = 500, message, error, type, errors, errorCode } = {}) {
+  const safeMessage = message || "Something went wrong. Please try again later";
   const payload = {
     success: false,
-    message: message || "Something went wrong. Please try again later",
+    message: safeMessage,
+    error: error || safeMessage,
   };
+  if (type) payload.type = type;
   if (Array.isArray(errors) && errors.length) payload.errors = errors;
   if (errorCode) payload.errorCode = errorCode;
   return res.status(status).json(payload);

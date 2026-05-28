@@ -1,57 +1,76 @@
-const fileStore = require("../utils/fileStore");
-const { v4: uuidv4 } = require('uuid');
+/**
+ * Hardened Scoped Email Repository
+ * Wraps base persistence with strict FSM transition assertions
+ * and request structure schema validation.
+ */
+const BaseRepository = require('../infrastructure/db/BaseRepository');
+const SCHEMAS = require('../shared/validators/schemas');
+const { EMAIL_TRANSITIONS, TransitionService } = require('../shared/constants/transitions');
 
 const FILE = 'emails.json';
+const emailRepo = new BaseRepository(FILE, SCHEMAS.email);
 
-/**
- * Email statuses: 'draft' | 'approved' | 'sending' | 'sent' | 'failed'
- */
+const listEmails = ({ jobId } = {}) => {
+  const all = emailRepo.readAll();
+  return jobId ? all.filter((e) => String(e.jobId) === String(jobId)) : all;
+};
 
-const listEmails = ({ jobId } = {}) =>
-  fileStore.readWhere(FILE, jobId ? (e) => String(e.jobId) === String(jobId) : null);
-
-const getEmail = (id) => listEmails().find((e) => String(e.id) === String(id)) || null;
+const getEmail = (id) => emailRepo.readById(id);
 
 const saveEmail = (emailData) => {
-  const email = {
-    id: uuidv4(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+  const payload = {
     jobId: null,
     to: '',
     subject: '',
     body: '',
     model: '',
-    status: 'draft', // DRAFT MODE: all AI emails start as drafts
+    status: 'draft',
     editedManually: false,
     scores: { personalization: 0, relevance: 0, tone: 0 },
     sentAt: null,
     ...emailData,
   };
-  return fileStore.append(FILE, email);
+  return emailRepo.create(payload);
 };
 
-const updateEmail = (id, updates) =>
-  fileStore.update(FILE, (e) => e.id === id, () => ({
-    ...updates,
-    updatedAt: new Date().toISOString(),
-  }));
+const updateEmail = (id, updates) => {
+  const current = getEmail(id);
+  if (!current) throw new Error(`Email draft with ID '${id}' was not found.`);
 
-const approveEmail = (id) =>
-  fileStore.update(FILE, (e) => e.id === id, () => ({
+  // Enforce central Finite State Machine validation if status mutation is requested
+  if (updates.status && updates.status !== current.status) {
+    TransitionService.enforceTransition(id, current.status, updates.status, EMAIL_TRANSITIONS);
+  }
+
+  return emailRepo.update(id, updates);
+};
+
+const approveEmail = (id) => {
+  const current = getEmail(id);
+  if (!current) throw new Error(`Email with ID '${id}' was not found.`);
+
+  TransitionService.enforceTransition(id, current.status, 'approved', EMAIL_TRANSITIONS);
+
+  return emailRepo.update(id, {
     status: 'approved',
     approvedAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }));
+  });
+};
 
-const markSent = (id, result) =>
-  fileStore.update(FILE, (e) => e.id === id, () => ({
-    status: result.success ? 'sent' : 'failed',
+const markSent = (id, result) => {
+  const current = getEmail(id);
+  if (!current) throw new Error(`Email with ID '${id}' was not found.`);
+
+  const targetStatus = result.success ? 'sent' : 'failed';
+  TransitionService.enforceTransition(id, current.status, targetStatus, EMAIL_TRANSITIONS);
+
+  return emailRepo.update(id, {
+    status: targetStatus,
     sentAt: new Date().toISOString(),
     sendResult: result,
-    updatedAt: new Date().toISOString(),
-  }));
+  });
+};
 
-const deleteEmail = (id) => fileStore.remove(FILE, (e) => e.id === id);
+const deleteEmail = (id) => emailRepo.delete(id);
 
 module.exports = { listEmails, getEmail, saveEmail, updateEmail, approveEmail, markSent, deleteEmail };

@@ -48,6 +48,14 @@ export function parseApiError(error: any): string {
         backendMsg = data.message || data.error || "";
       }
 
+      if (data?.type === "external_api_error") {
+        return data.error || data.message || "External service temporarily unavailable";
+      }
+
+      if (data?.type === "database_error") {
+        return "Something went wrong. Please try again";
+      }
+
       if (typeof backendMsg === "string" && backendMsg.trim()) {
         const normalized = backendMsg.trim().toLowerCase();
 

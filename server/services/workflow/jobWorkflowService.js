@@ -23,9 +23,22 @@ const { scoreATS } = require('../../modules/job/atsEngine');
 const aiService = require('../aiService');
 const { scoreEmail } = require('../../modules/email/emailScorer');
 const jobRepo = require('../../repositories/jobRepository');
-const documentRepo = require('../../repositories/documentRepository');
+const documentRegistry = require('../document/documentRegistry');
 const emailRepo = require('../../repositories/emailRepository');
 const { log, ACTION_TYPES } = require('../../logs/auditLogger');
+const { ExternalApiError } = require('../../shared/errors/customErrors');
+const { normalizeTailoringLevel } = require('../../domains/ai/core/tailoringConfig');
+const { normalizeFormat } = require('../document/documentPersistenceService');
+
+const runAiStep = async (stepName, fn, fallbackValue) => {
+  try {
+    return await fn();
+  } catch (err) {
+    console.warn(`[workflow] ${stepName} failed:`, err.message);
+    if (fallbackValue !== undefined) return fallbackValue;
+    throw err;
+  }
+};
 
 /**
  * Run the full job workflow pipeline.
@@ -83,14 +96,14 @@ const runJobWorkflow = async ({ jobId, profile, recipientData = {} }) => {
 
     // ── Step 4: AI Resume (draft) ─────────────────────────────
     const resumeConfig = aiService.resolveFeatureConfig('resume_generation');
-    const resumeContent = await aiService.generateResume({ ...job, parsedData }, profile);
+    const resumeContent = await runAiStep(
+      'resume_generation',
+      () => aiService.generateResume({ ...job, parsedData }, profile)
+    );
 
-    const resumeDoc = documentRepo.saveDocument({
-      jobId,
-      type: 'resume',
-      content: resumeContent,
-      model: resumeConfig.model,
-      status: 'draft',
+    const resumeDoc = documentRegistry.createDocument({
+      jobId, type: 'resume', content: resumeContent, model: resumeConfig.model, status: 'draft',
+      source: 'workflow',
     });
 
     jobRepo.linkDocument(jobId, resumeDoc.id);
@@ -113,9 +126,12 @@ const runJobWorkflow = async ({ jobId, profile, recipientData = {} }) => {
 
     // ── Step 5: AI Cover Letter (draft) ─────────────────────
     const coverConfig = aiService.resolveFeatureConfig('cover_letter_generation');
-    const coverLetterContent = await aiService.generateCoverLetter({ ...job, parsedData }, profile);
+    const coverLetterContent = await runAiStep(
+      'cover_letter_generation',
+      () => aiService.generateCoverLetter({ ...job, parsedData }, profile)
+    );
 
-    const coverLetterDoc = documentRepo.saveDocument({
+    const coverLetterDoc = documentRegistry.createDocument({
       jobId,
       type: 'cover-letter',
       content: coverLetterContent,
@@ -142,10 +158,9 @@ const runJobWorkflow = async ({ jobId, profile, recipientData = {} }) => {
 
     // ── Step 6: AI Cold Email (draft) ───────────────────────
     const emailConfig = aiService.resolveFeatureConfig('email_generation');
-    const emailContent = await aiService.generateEmail(
-      { ...job, parsedData },
-      profile,
-      recipientData
+    const emailContent = await runAiStep(
+      'email_generation',
+      () => aiService.generateEmail({ ...job, parsedData }, profile, recipientData)
     );
 
     // Parse subject + body from AI output
@@ -220,6 +235,18 @@ const runJobWorkflow = async ({ jobId, profile, recipientData = {} }) => {
       durationMs,
     });
 
+    if (error instanceof ExternalApiError || error.type === 'external_api_error') {
+      return {
+        success: false,
+        jobId,
+        partial: true,
+        type: 'external_api_error',
+        error: error.message || 'External service temporarily unavailable',
+        message: error.message || 'External service temporarily unavailable',
+        durationMs,
+      };
+    }
+
     throw error;
   }
 };
@@ -232,35 +259,47 @@ const regenerateDocument = async ({ jobId, type, profile, recipientData = {} }) 
   const job = jobRepo.getJob(jobId);
   if (!job) throw new Error(`Job ${jobId} not found`);
 
-  let content, doc;
+  let content;
+  let doc;
 
-  if (type === 'resume') {
-    const cfg = aiService.resolveFeatureConfig('resume_generation');
-    content = await aiService.generateResume(job, profile);
-    doc = documentRepo.saveDocument({ jobId, type: 'resume', content, model: cfg.model, status: 'draft' });
-  } else if (type === 'cover-letter') {
-    const cfg = aiService.resolveFeatureConfig('cover_letter_generation');
-    content = await aiService.generateCoverLetter(job, profile);
-    doc = documentRepo.saveDocument({ jobId, type: 'cover-letter', content, model: cfg.model, status: 'draft' });
-  } else if (type === 'email') {
-    const cfg = aiService.resolveFeatureConfig('email_generation');
-    content = await aiService.generateEmail(job, profile, recipientData);
-    const subjectMatch = content.match(/SUBJECT:\s*(.+)/i);
-    const bodyMatch = content.match(/BODY:\s*([\s\S]+)/i);
-    const emailScores = scoreEmail(bodyMatch?.[1]?.trim() || content, {
-      recipientData, jobData: job, profile,
-    });
-    doc = emailRepo.saveEmail({
-      jobId,
-      to: recipientData.email || '',
-      subject: subjectMatch?.[1]?.trim() || '',
-      body: bodyMatch?.[1]?.trim() || content,
-      model: cfg.model,
-      status: 'draft',
-      scores: emailScores,
-    });
-  } else {
-    throw new Error(`Unknown document type: ${type}`);
+  try {
+    if (type === 'resume') {
+      const cfg = aiService.resolveFeatureConfig('resume_generation');
+      content = await aiService.generateResume(job, profile);
+      doc = documentRegistry.createDocument({ jobId, type: 'resume', content, model: cfg.model, status: 'draft' });
+    } else if (type === 'cover-letter') {
+      const cfg = aiService.resolveFeatureConfig('cover_letter_generation');
+      content = await aiService.generateCoverLetter(job, profile);
+      doc = documentRegistry.createDocument({ jobId, type: 'cover-letter', content, model: cfg.model, status: 'draft' });
+    } else if (type === 'email') {
+      const cfg = aiService.resolveFeatureConfig('email_generation');
+      content = await aiService.generateEmail(job, profile, recipientData);
+      const subjectMatch = content.match(/SUBJECT:\s*(.+)/i);
+      const bodyMatch = content.match(/BODY:\s*([\s\S]+)/i);
+      const emailScores = scoreEmail(bodyMatch?.[1]?.trim() || content, {
+        recipientData, jobData: job, profile,
+      });
+      doc = emailRepo.saveEmail({
+        jobId,
+        to: recipientData.email || '',
+        subject: subjectMatch?.[1]?.trim() || '',
+        body: bodyMatch?.[1]?.trim() || content,
+        model: cfg.model,
+        status: 'draft',
+        scores: emailScores,
+      });
+    } else {
+      throw new Error(`Unknown document type: ${type}`);
+    }
+  } catch (err) {
+    if (err instanceof ExternalApiError || err.type === 'external_api_error') {
+      const wrapped = new Error(err.message || 'External service temporarily unavailable');
+      wrapped.statusCode = err.statusCode || 502;
+      wrapped.type = 'external_api_error';
+      wrapped.errorCode = 'EXTERNAL_API_ERROR';
+      throw wrapped;
+    }
+    throw err;
   }
 
   const model = doc.model || aiService.resolveFeatureConfig('email_generation').model;
@@ -276,4 +315,251 @@ const regenerateDocument = async ({ jobId, type, profile, recipientData = {} }) 
   return doc;
 };
 
-module.exports = { runJobWorkflow, regenerateDocument };
+/**
+ * Run ATS analysis only — no document generation.
+ * Use this to show the user their ATS score before they decide what to generate.
+ */
+const runAtsOnly = async ({ jobId, profile }) => {
+  const startTime = Date.now();
+  const job = jobRepo.getJob(jobId);
+  if (!job) throw new Error(`Job ${jobId} not found`);
+
+  let parsedData = job.parsedData;
+  if (!parsedData || Object.keys(parsedData).length === 0) {
+    parsedData = parseJob(job.rawDescription, {
+      title: job.title,
+      company: job.company,
+      location: job.location,
+    });
+    jobRepo.updateJob(jobId, { parsedData });
+  }
+
+  let atsResult;
+  try {
+    const aiAts = await aiService.analyzeATS({ ...job, parsedData }, profile);
+    atsResult = {
+      score: Number(aiAts.score) || 0,
+      matchedKeywords: Array.isArray(aiAts.matchedKeywords) ? aiAts.matchedKeywords : [],
+      missingKeywords: Array.isArray(aiAts.missingKeywords) ? aiAts.missingKeywords : [],
+      breakdown: aiAts.breakdown || {},
+      scoredAt: new Date().toISOString(),
+      meta: aiAts.meta,
+      schemaVersion: aiAts.schemaVersion,
+    };
+  } catch (_err) {
+    atsResult = scoreATS(parsedData, profile);
+  }
+
+  jobRepo.updateJob(jobId, { atsScore: atsResult.score, atsBreakdown: atsResult });
+
+  log(ACTION_TYPES.WORKFLOW_STARTED, {
+    module: 'workflow',
+    jobId,
+    details: `ATS-only analysis completed in ${Date.now() - startTime}ms`,
+  });
+
+  return {
+    success: true,
+    jobId,
+    ats: atsResult,
+    parsedJob: parsedData,
+    durationMs: Date.now() - startTime,
+  };
+};
+
+/**
+ * Generate only the document types selected by the user.
+ * Replaces the auto-generate-everything workflow for production UX.
+ *
+ * @param {object} options
+ * @param {string}   options.jobId
+ * @param {object}   options.profile
+ * @param {string[]} options.types - e.g. ['resume', 'cover-letter', 'email']
+ * @param {object} [options.formats] - per-type format map e.g. { resume: 'pdf', 'cover-letter': 'docx' }
+ * @param {string}   [options.format] - legacy global format fallback
+ * @param {string}   [options.tailoringLevel] - conservative | balanced | aggressive
+ * @param {object}   [options.recipientData]
+ */
+const generateSelectedDocuments = async ({
+  jobId,
+  profile,
+  types,
+  formats = {},
+  format = 'pdf',
+  tailoringLevel = 'balanced',
+  recipientData = {},
+}) => {
+  const startTime = Date.now();
+  const job = jobRepo.getJob(jobId);
+  if (!job) throw new Error(`Job ${jobId} not found`);
+
+  let parsedData = job.parsedData;
+  if (!parsedData || Object.keys(parsedData).length === 0) {
+    parsedData = parseJob(job.rawDescription, { title: job.title, company: job.company, location: job.location });
+    jobRepo.updateJob(jobId, { parsedData });
+  }
+
+  const validTypes = Array.isArray(types) && types.length ? types : ['resume'];
+  const safeTailoring = normalizeTailoringLevel(tailoringLevel);
+  const legacyFormat = normalizeFormat(format, 'pdf');
+  const aiOptions = { tailoringLevel: safeTailoring };
+  const results = {};
+
+  const resolveTypeFormat = (type) => normalizeFormat(formats[type] || legacyFormat, 'pdf');
+
+  log(ACTION_TYPES.WORKFLOW_STARTED, {
+    module: 'workflow',
+    jobId,
+    details: `Selective generation started: [${validTypes.join(', ')}] tailoring=${safeTailoring}`,
+  });
+
+  try {
+    if (validTypes.includes('resume')) {
+      const cfg = aiService.resolveFeatureConfig('resume_generation');
+      const typeFormat = resolveTypeFormat('resume');
+      const content = await runAiStep('resume_generation', () =>
+        aiService.generateResume({ ...job, parsedData }, profile, aiOptions)
+      );
+      const doc = documentRegistry.createDocument({
+        jobId,
+        generatedFromJobId: jobId,
+        type: 'resume',
+        editableContent: content,
+        content,
+        contentSource: 'ai',
+        format: typeFormat,
+        exportFormat: typeFormat,
+        status: 'draft',
+        model: cfg.model,
+        tailoringLevel: safeTailoring,
+        title: `Resume — ${job.title} at ${job.company}`,
+        source: 'workflow',
+      });
+      jobRepo.linkDocument(jobId, doc.id);
+      log(ACTION_TYPES.AI_GENERATED, { module: 'resume', jobId, entityId: doc.id, entityType: 'document', model: cfg.model, details: 'Resume draft generated (selective)' });
+      results.resume = doc;
+    }
+
+    if (validTypes.includes('professional-cv')) {
+      const cfg = aiService.resolveFeatureConfig('professional_cv_generation');
+      const typeFormat = resolveTypeFormat('professional-cv');
+      const content = await runAiStep('professional_cv_generation', () =>
+        aiService.generateProfessionalCv({ ...job, parsedData }, profile, aiOptions)
+      );
+      const doc = documentRegistry.createDocument({
+        jobId,
+        generatedFromJobId: jobId,
+        type: 'professional-cv',
+        editableContent: content,
+        content,
+        contentSource: 'ai',
+        format: typeFormat,
+        exportFormat: typeFormat,
+        status: 'draft',
+        model: cfg.model,
+        tailoringLevel: safeTailoring,
+        source: 'workflow',
+        title: `Professional CV — ${job.title} at ${job.company}`,
+      });
+      jobRepo.linkDocument(jobId, doc.id);
+      log(ACTION_TYPES.AI_GENERATED, { module: 'professional-cv', jobId, entityId: doc.id, entityType: 'document', model: cfg.model, details: 'Professional CV generated (selective)' });
+      results.professionalCv = doc;
+    }
+
+    if (validTypes.includes('cover-letter')) {
+      const cfg = aiService.resolveFeatureConfig('cover_letter_generation');
+      const typeFormat = resolveTypeFormat('cover-letter');
+      const content = await runAiStep('cover_letter_generation', () =>
+        aiService.generateCoverLetter({ ...job, parsedData }, profile, aiOptions)
+      );
+      const doc = documentRegistry.createDocument({
+        jobId,
+        generatedFromJobId: jobId,
+        type: 'cover-letter',
+        editableContent: content,
+        content,
+        contentSource: 'ai',
+        format: typeFormat,
+        exportFormat: typeFormat,
+        status: 'draft',
+        model: cfg.model,
+        tailoringLevel: safeTailoring,
+        title: `Cover Letter — ${job.title} at ${job.company}`,
+        source: 'workflow',
+      });
+      jobRepo.linkDocument(jobId, doc.id);
+      log(ACTION_TYPES.AI_GENERATED, { module: 'cover-letter', jobId, entityId: doc.id, entityType: 'document', model: cfg.model, details: 'Cover letter draft generated (selective)' });
+      results.coverLetter = doc;
+    }
+
+    if (validTypes.includes('email')) {
+      const cfg = aiService.resolveFeatureConfig('email_generation');
+      const typeFormat = resolveTypeFormat('email');
+      const emailContent = await runAiStep('email_generation', () =>
+        aiService.generateEmail({ ...job, parsedData }, profile, recipientData, aiOptions)
+      );
+      const subjectMatch = emailContent.match(/SUBJECT:\s*(.+)/i);
+      const bodyMatch = emailContent.match(/BODY:\s*([\s\S]+)/i);
+      const emailSubject = subjectMatch?.[1]?.trim() || `Application for ${job.title} at ${job.company}`;
+      const emailBody = bodyMatch?.[1]?.trim() || emailContent;
+      const emailScores = scoreEmail(emailBody, { recipientData, jobData: { ...job, parsedData }, profile });
+      const emailRecord = emailRepo.saveEmail({
+        jobId, to: recipientData.email || '', subject: emailSubject, body: emailBody,
+        model: cfg.model, status: 'draft', scores: emailScores,
+      });
+      jobRepo.linkEmail(jobId, emailRecord.id);
+
+      const emailDocContent = `SUBJECT: ${emailSubject}\n\nBODY:\n${emailBody}`;
+      const emailDoc = documentRegistry.createDocument({
+        jobId,
+        generatedFromJobId: jobId,
+        type: 'email',
+        editableContent: emailDocContent,
+        content: emailDocContent,
+        contentSource: 'ai',
+        format: typeFormat,
+        exportFormat: typeFormat,
+        status: 'draft',
+        model: cfg.model,
+        tailoringLevel: safeTailoring,
+        title: `Cold Email — ${job.title} at ${job.company}`,
+        metadata: { emailId: emailRecord.id, subject: emailSubject },
+        source: 'workflow',
+      });
+      jobRepo.linkDocument(jobId, emailDoc.id);
+
+      log(ACTION_TYPES.AI_GENERATED, { module: 'cold-email', jobId, entityId: emailRecord.id, entityType: 'email', model: cfg.model, details: 'Email draft generated (selective)' });
+      results.email = emailRecord;
+      results.emailDocument = emailDoc;
+    }
+
+    const durationMs = Date.now() - startTime;
+    log(ACTION_TYPES.WORKFLOW_COMPLETED, { module: 'workflow', jobId, details: `Selective generation completed in ${durationMs}ms` });
+
+    return {
+      success: true,
+      jobId,
+      tailoringLevel: safeTailoring,
+      formats: Object.fromEntries(validTypes.map((t) => [t, resolveTypeFormat(t)])),
+      generatedTypes: validTypes,
+      durationMs,
+      ...results,
+    };
+
+  } catch (error) {
+    const durationMs = Date.now() - startTime;
+    log(ACTION_TYPES.WORKFLOW_FAILED, { module: 'workflow', jobId, details: error.message, durationMs });
+
+    if (error instanceof ExternalApiError || error.type === 'external_api_error') {
+      return {
+        success: false, jobId, type: 'external_api_error',
+        error: error.message || 'External service temporarily unavailable',
+        message: error.message || 'External service temporarily unavailable',
+        durationMs,
+      };
+    }
+    throw error;
+  }
+};
+
+module.exports = { runJobWorkflow, regenerateDocument, runAtsOnly, generateSelectedDocuments };

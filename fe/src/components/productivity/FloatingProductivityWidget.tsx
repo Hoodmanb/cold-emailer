@@ -8,7 +8,8 @@ import {
   FileText, 
   Plus, 
   X,
-  Zap
+  Zap,
+  Award,
 } from "lucide-react";
 import { 
   Box, 
@@ -70,6 +71,17 @@ export default function FloatingProductivityWidget() {
       onClick: (e: any) => {
         e.stopPropagation();
         openModal("mail");
+        setIsOpen(false);
+      }
+    },
+    { 
+      id: "professional-cv", 
+      icon: <Award size={22} />, 
+      label: "Professional CV", 
+      color: "#8b5cf6",
+      onClick: (e: any) => {
+        e.stopPropagation();
+        openModal("generator", { docType: "professional-cv", preselect: true });
         setIsOpen(false);
       }
     },

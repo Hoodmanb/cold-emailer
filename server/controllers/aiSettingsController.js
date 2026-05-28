@@ -14,6 +14,8 @@ const {
 } = require('../repositories/chatRepository');
 const { getProviders, getModelsByProvider, getAllModelsGrouped } = require('../services/ai/modelCatalog');
 const { safeGenerateForFeature, chatForFeature } = require('../services/aiService');
+const { validateProviderKey, validateFeatureConfig } = require('../services/ai/providerValidation');
+const { resolveProvider } = require('../domains/ai/core/providerRouter');
 
 const reqLog = (req) => console.log('➡️', req.method, req.originalUrl || req.url, req.body);
 
@@ -118,8 +120,23 @@ const featureGenerateHandler = async (req, res, next) => {
   try {
     reqLog(req);
     const { featureId, prompt, messages, options } = req.body || {};
-    const result = await safeGenerateForFeature({ featureId, prompt, messages, options });
-    if (!result.success) return res.status(400).json(result);
+    const normalizedFeatureId = String(featureId || "").trim();
+    if (!normalizedFeatureId) {
+      return res.status(400).json({
+        success: false,
+        message: "featureId is required",
+        errors: ["Missing featureId in request body"],
+      });
+    }
+    const result = await safeGenerateForFeature({ featureId: normalizedFeatureId, prompt, messages, options });
+    if (!result.success) {
+      return res.status(502).json({
+        success: false,
+        type: result.type || 'external_api_error',
+        error: result.error || result.message || 'External service temporarily unavailable',
+        message: result.message || 'AI request failed',
+      });
+    }
     return res.status(200).json(result);
   } catch (err) {
     next(err);
@@ -223,6 +240,48 @@ const getLatestChatSessionHandler = (req, res, next) => {
   }
 };
 
+const testConnectionHandler = async (req, res, next) => {
+  try {
+    const { provider } = req.body || {};
+    const keyCheck = validateProviderKey(provider);
+    if (!keyCheck.valid) {
+      return res.status(400).json({
+        success: false,
+        message: keyCheck.message,
+        code: keyCheck.code,
+      });
+    }
+
+    const exec = resolveProvider(keyCheck.provider);
+    await exec({
+      model: keyCheck.provider === 'openrouter' ? 'openai/gpt-4o-mini' : 'gpt-4o-mini',
+      messages: [{ role: 'user', content: 'Reply with exactly: OK' }],
+      max_tokens: 10,
+      temperature: 0,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `Connection to ${keyCheck.provider} verified successfully`,
+    });
+  } catch (err) {
+    return res.status(502).json({
+      success: false,
+      message: err.message || 'Connection test failed',
+      type: err.type || 'external_api_error',
+    });
+  }
+};
+
+const validateFeatureHandler = (req, res) => {
+  const { featureId } = req.params;
+  const result = validateFeatureConfig(featureId);
+  if (!result.valid) {
+    return res.status(400).json({ success: false, ...result });
+  }
+  return res.status(200).json({ success: true, ...result });
+};
+
 module.exports = {
   getAISettingsHandler,
   updateFeatureConfigHandler,
@@ -234,4 +293,6 @@ module.exports = {
   chatHandler,
   getChatSessionHandler,
   getLatestChatSessionHandler,
+  testConnectionHandler,
+  validateFeatureHandler,
 };

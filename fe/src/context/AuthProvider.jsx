@@ -3,71 +3,109 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import axiosInstance from "@/hooks/axios";
-import useAuthStore from "@/store/useAuthStore";
+import useAuthStore, { waitForAuthHydration } from "@/store/useAuthStore";
+import AuthInitializingScreen from "@/components/auth/AuthInitializingScreen";
+import { syncAuthCookie } from "@/utils/authSession";
 
 const AuthContext = createContext(null);
 
 const PUBLIC_PATHS = ["/login", "/signup"];
+const ME_TIMEOUT_MS = 8000;
 
-// Shared promise for deduplicating /me calls during initialization
-let bootstrapPromise = null;
+function isPublicPath(pathname) {
+  return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
+function isAuthFailure(error) {
+  const original = error?.originalError || error;
+  const status = original?.response?.status ?? error?.statusCode;
+  const type = original?.response?.data?.type;
+  return status === 401 && type !== "external_api_error";
+}
 
 export default function AuthProvider({ children }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [loading, setLoading] = useState(true);
-  
-  const { user, token, isAuthenticated, setAuth, clearAuth } = useAuthStore();
+  const [isInitializingAuth, setIsInitializingAuth] = useState(true);
+
+  const { user, token, isAuthenticated, hasHydrated, setAuth, clearAuth } = useAuthStore();
 
   useEffect(() => {
-    const bootstrap = async () => {
-      // Deduplicate auth check if multiple components trigger this
-      if (bootstrapPromise) return bootstrapPromise;
+    let cancelled = false;
 
-      bootstrapPromise = (async () => {
+    const initialize = async () => {
+      console.log("[Auth] Initialization start");
+      try {
+        await waitForAuthHydration();
+        if (cancelled) return;
+
+        const { token: storedToken, setAuth: applyAuth, clearAuth: resetAuth } = useAuthStore.getState();
+
+        if (!storedToken) {
+          console.log("[Auth] No token after hydration — unauthenticated");
+          return;
+        }
+
+        syncAuthCookie(storedToken);
+
         try {
-          // Check if we already have a session in store (Zustand persist will handle localStorage)
-          if (!token) return;
+          console.log("[Auth] Validating session via /api/auth/me");
+          const res = await axiosInstance.get("/api/auth/me", {
+            timeout: ME_TIMEOUT_MS,
+            headers: { "X-Bypass-Global-Toast": "true" },
+          });
 
-          console.log("[Auth] Bootstrap: Validating session...");
-          const res = await axiosInstance.get("/api/auth/me");
-          
-          if (res.status >= 200 && res.status < 300 && res.data?.success) {
-            console.log("[Auth] Bootstrap: Session valid", { version: res.data.data?.userVersion });
-            setAuth(res.data.data, token);
+          if (cancelled) return;
+
+          if (res.status >= 200 && res.status < 300 && res.data?.success && res.data?.data) {
+            console.log("[Auth] Session valid", { version: res.data.data?.userVersion });
+            applyAuth(res.data.data, storedToken);
           } else {
-            console.warn("[Auth] Bootstrap: Session invalid or expired");
-            clearAuth();
+            console.warn("[Auth] Session validation returned unexpected payload");
+            resetAuth("bootstrap_unexpected_response");
           }
         } catch (err) {
-          console.error("[Auth] Bootstrap error:", err);
-          clearAuth();
-        } finally {
-          setLoading(false);
-          bootstrapPromise = null;
-        }
-      })();
+          if (cancelled) return;
 
-      return bootstrapPromise;
+          if (isAuthFailure(err)) {
+            console.warn("[Auth] Session invalid — clearing auth", err?.message);
+            resetAuth("bootstrap_auth_failure");
+          } else {
+            console.warn("[Auth] Transient bootstrap error — keeping stored session", err?.message);
+          }
+        }
+      } finally {
+        if (!cancelled) {
+          console.log("[Auth] Initialization end");
+          setIsInitializingAuth(false);
+        }
+      }
     };
 
-    void bootstrap();
-  }, [setAuth, clearAuth, token]);
+    void initialize();
 
-  // Route protection logic
+    return () => {
+      cancelled = true;
+    };
+  }, [setAuth, clearAuth]);
+
   useEffect(() => {
-    if (loading) return;
-    const isPublic = PUBLIC_PATHS.includes(pathname);
-    
+    if (!hasHydrated || isInitializingAuth) return;
+
+    const isPublic = isPublicPath(pathname);
+    console.log("[Auth] Route guard check", { pathname, isAuthenticated, isPublic });
+
     if (!isAuthenticated && !isPublic) {
-      console.log("[Auth] Redirecting to login: Unauthenticated on protected route", pathname);
+      console.log("[Auth] Redirect → /login (unauthenticated protected route)");
       router.replace("/login");
+      return;
     }
+
     if (isAuthenticated && isPublic) {
-      console.log("[Auth] Redirecting to dashboard: Already authenticated", pathname);
+      console.log("[Auth] Redirect → /dashboard (authenticated public route)");
       router.replace("/dashboard");
     }
-  }, [pathname, isAuthenticated, loading, router]);
+  }, [pathname, isAuthenticated, hasHydrated, isInitializingAuth, router]);
 
   const signup = async ({ name, email, password }) => {
     const res = await axiosInstance.post("/api/auth/signup", { name, email, password });
@@ -76,7 +114,7 @@ export default function AuthProvider({ children }) {
     }
     const { token: nextToken, user: nextUser } = res.data.data;
     setAuth(nextUser, nextToken);
-    document.cookie = `auth_token=${nextToken}; path=/; max-age=${60 * 60 * 24 * 7}; samesite=lax`;
+    setIsInitializingAuth(false);
     router.replace("/dashboard");
   };
 
@@ -87,14 +125,12 @@ export default function AuthProvider({ children }) {
     }
     const { token: nextToken, user: nextUser } = res.data.data;
     setAuth(nextUser, nextToken);
-    document.cookie = `auth_token=${nextToken}; path=/; max-age=${60 * 60 * 24 * 7}; samesite=lax`;
+    setIsInitializingAuth(false);
     router.replace("/dashboard");
   };
 
   const logout = () => {
-    clearAuth();
-    document.cookie = "auth_token=; path=/; max-age=0; samesite=lax";
-    // Clear all app-specific storage
+    clearAuth("user_logout");
     if (typeof window !== "undefined") {
       Object.keys(localStorage)
         .filter((k) => k.startsWith("job-bot:") || k.includes("persist"))
@@ -103,10 +139,30 @@ export default function AuthProvider({ children }) {
     }
   };
 
+  const loading = !hasHydrated || isInitializingAuth;
+
   const value = useMemo(
-    () => ({ token, user, loading, login, signup, logout, isAuthenticated }),
-    [token, user, loading, isAuthenticated]
+    () => ({
+      token,
+      user,
+      loading,
+      isInitializingAuth,
+      hasHydrated,
+      login,
+      signup,
+      logout,
+      isAuthenticated,
+    }),
+    [token, user, loading, isInitializingAuth, hasHydrated, isAuthenticated]
   );
+
+  if (loading) {
+    return (
+      <AuthContext.Provider value={value}>
+        <AuthInitializingScreen />
+      </AuthContext.Provider>
+    );
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

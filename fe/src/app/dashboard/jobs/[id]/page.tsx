@@ -117,7 +117,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         {/* Left Column: Generator & ATS */}
         <Grid size={{ xs: 12, md: 4 }}>
           <Stack gap={4}>
-            <GeneratePanel jobId={job.id} onComplete={() => { refetchDocs(); refetchEmails(); }} />
+            <GeneratePanel jobId={job.id} onComplete={() => { refetchDocs(); refetchEmails(); void refetch(); }} />
 
             {job.atsBreakdown && (
               <Stack bgcolor="background.paper" p={3} borderRadius={4} gap={3} boxShadow="0 1px 3px rgba(0,0,0,0.1)">
