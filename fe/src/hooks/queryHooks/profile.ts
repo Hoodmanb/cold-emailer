@@ -18,6 +18,7 @@ export const useGetProfile = () => {
       if (res.status < 200 || res.status >= 300 || res.data?.success === false) {
         throw new Error(res.data?.message || "Could not load profile");
       }
+      console.log(res)
       return (res.data?.data || {}) as Partial<UserProfile>;
     },
   });
@@ -36,7 +37,7 @@ export const useProjects = () => {
     queryFn: async () => {
       console.log("[useProjects] queryFn executing...");
       const res = await axiosInstance.get("/api/profile/projects");
-      
+
       console.log("[useProjects] API response received:", {
         status: res.status,
         success: res.data?.success,

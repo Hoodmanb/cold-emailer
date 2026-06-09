@@ -2,6 +2,7 @@ const nodemailer = require('nodemailer');
 const smtpRepo = require('../../repositories/smtpRepository');
 const logger = require('../../utils/logger');
 const { buildMailAttachments } = require('./artifactMail');
+const { buildDocumentAttachments } = require('./documentAttachmentMail');
 const { recordSendContext } = require('../../services/contextUsageService');
 
 /**
@@ -36,7 +37,10 @@ const sendEmail = async (payload) => {
       },
     });
 
-    const mailAttachments = buildMailAttachments(payload);
+    const mailAttachments = [
+      ...buildMailAttachments(payload),
+      ...(await buildDocumentAttachments(payload)),
+    ];
 
     const mailOptions = {
       from: config.email,

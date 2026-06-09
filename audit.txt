@@ -1,0 +1,238 @@
+# MVP Production Readiness Audit (Sections A–K)
+
+Full repository audit based on route wiring, frontend usage, backend guards, and data-layer patterns.
+
+---
+
+## A. Executive Summary
+
+The app is a **functional MVP** with real auth, email/templates/documents, billing, and a new admin panel — but it carries **significant production debt**: duplicate scheduler systems, mock UI, security gaps on moderation, broken/dead routes, and minimal tests.
+
+**MVP readiness score: 5.5 / 10**
+
+| Area | Status |
+|------|--------|
+| Core user flows (auth, templates, send email, documents) | Mostly working |
+| Admin panel | Working, recently refactored |
+| Scheduler | Dual implementation; FE uses legacy only |
+| Tests / CI | Placeholder-level |
+| Security / moderation | Gaps on template approval |
+| Data layer | JSON store with shape inconsistencies |
+
+---
+
+## B. Critical Issues (fix before production)
+
+### B1. Dual scheduler systems on the same data
+
+Two backends both touch scheduling:
+
+| System | Routes | Used by FE? |
+|--------|--------|-------------|
+| **Legacy** | `/api/schedule`, `GET /api/schedule/run` | Yes — `useGetSchedule`, `CreateSchedule`, `ScheduleList` |
+| **QStash** | `/api/scheduler/*`, `/api/webhooks/qstash` | **No** — zero frontend calls |
+
+Both read/write schedule-related JSON. Running both in prod risks duplicate sends, race conditions, and confusing ops.
+
+**Recommendation:** Pick one (likely legacy until QStash is fully wired, or migrate FE to `/api/scheduler` and retire legacy).
+
+### B2. Template approval not admin-gated
+
+`approveTemplate` / `rejectTemplate` in `templateService.js` call the repo with no role check. Any authenticated user hitting `/api/document-templates/:id/approve|reject` can moderate community templates.
+
+`PendingApprovalQueue.tsx` on the Community tab exposes approve/reject to all users.
+
+**Recommendation:** Add `requireAdmin` on approve/reject routes; move queue UI to admin or hide actions for non-admins.
+
+### B3. Broken route: `/dashboard/documents/create`
+
+`DocumentTemplatesSection.tsx` links to `/dashboard/documents/create`, but only `fe/src/app/dashboard/documents/page.tsx` exists. Navigation 404s if that component is ever mounted.
+
+---
+
+## C. High Issues
+
+### C1. Schedule History is mock data
+
+`ScheduleHistory.tsx` uses hardcoded 2023 campaigns. `/dashboard/schedules/history` renders it with **no API**. Users see fake history.
+
+### C2. `GET /api/schedule/run` requires auth
+
+External cron cannot trigger runs without a JWT. Either intentional (manual only) or a design smell — needs a cron secret / internal route if automated runs are required.
+
+### C3. JSON wallet/store shape inconsistency
+
+`credits_wallets.json` was `{ __scoped: true, users: {} }` while admin code expected an array — patched via `readWalletList()` / `writeWalletList()`. Other global files may still have mixed shapes; not all code paths normalize.
+
+### C4. Minimal test coverage
+
+- `server/tests/production.test.js` — ~5 tests, mostly utils/placeholders  
+- `fe/src/__tests__/production.test.ts` — placeholder logic, not real components  
+
+No meaningful E2E or integration coverage for auth, billing, or send flows.
+
+### C5. `SCHEDULER_ENABLED` / QStash env coupling
+
+QStash module exists but is unused by FE. If enabled in prod without full wiring, it adds complexity with no user-visible benefit.
+
+---
+
+## D. Medium Issues
+
+### D1. Orphan / legacy frontend components
+
+| File | Status |
+|------|--------|
+| `DesignTemplatesSection.tsx` | Not imported anywhere |
+| `DocumentTemplatesSection.tsx` | Not on templates page (Email / AI / Community only) |
+| `fe/src/components/layout/Attachment.tsx` | Unused |
+| `AddAttachment.tsx` | Unused (only in old `ts_errors.txt`) |
+| `useFetchAttachment` (`attachment.ts`) | Legacy hook; new code uses `attachments.ts` + React Query |
+
+### D2. Duplicate attachment hook exports
+
+`queryHooks/index.ts` exports both `attachment.ts` and `attachments.ts` — two patterns (useState vs React Query) for the same domain.
+
+### D3. Data consistency service underused
+
+`dataConsistencyService.js` audits attachment references only; not run on startup or exposed in admin UI.
+
+### D4. Admin moderation UX split
+
+Community tab shows pending approvals to everyone; admin has no dedicated moderation queue (despite admin refactor elsewhere).
+
+### D5. `AddAttachment` uses wrong fetch pattern
+
+`useFetchCategory("/api/attachment")` — category hook against attachment API; dead code but signals copy-paste drift.
+
+---
+
+## E. Low Issues / Polish
+
+- Badge/placeholder coverage incomplete on some template states  
+- Some admin help tooltips added; not verified on every sub-section  
+- `pdf files/` and claude/kimi experiments in repo — not wired to app (noise for deploy)  
+- Mixed axios vs `adminApi.ts` patterns (admin is centralized; older pages use raw hooks)
+
+---
+
+## F. Redundant / Overlapping Features
+
+```mermaid
+flowchart LR
+  subgraph Legacy["Legacy scheduler"]
+    A["/api/schedule"]
+    B["scheduleRepository.js"]
+    C["email/scheduler.js"]
+  end
+  subgraph QStash["QStash scheduler"]
+    D["/api/scheduler"]
+    E["modules/scheduler/*"]
+    F["/api/webhooks/qstash"]
+  end
+  G["schedules.json / shared storage"]
+  A --> G
+  D --> G
+  FE["Frontend"] --> A
+  FE -.->|never| D
+```
+
+| Redundancy | Notes |
+|------------|-------|
+| Two schedulers | Same data, different execution paths |
+| Two attachment hooks | `attachment.ts` vs `attachments.ts` |
+| Document template UIs | `DocumentTemplatesSection` vs documents page modals |
+| Template APIs | `/api/template` (email), `/api/document-templates`, `/api/system-templates` — intentional split but easy to confuse |
+
+---
+
+## G. Broken or Disconnected Routes
+
+| Route / Link | Issue |
+|--------------|-------|
+| `/dashboard/documents/create` | Missing page |
+| `/dashboard/schedules/history` | Mock UI only |
+| `/api/scheduler/*` | Backend only, no FE |
+| Community approve/reject | Works but wrong authorization model |
+
+**Working routes (sample):** auth, dashboard, templates, documents list, recipients, schedules/scheduler, admin/*, billing, profile, jobs.
+
+---
+
+## G2. API Surface vs Frontend Usage
+
+**Used by FE:** `/api/auth`, `/api/template`, `/api/document-templates`, `/api/system-templates`, `/api/attachment`, `/api/documents/uploads`, `/api/email`, `/api/schedule`, `/api/recipient`, `/api/category`, `/api/billing`, `/api/admin/*`, profile/jobs/workflow hooks.
+
+**Backend with little/no FE use:**
+
+- `/api/scheduler/*` (full QStash CRUD + executions)  
+- `/api/webhooks/qstash` (webhook — external, not FE)  
+- Data consistency / some audit endpoints (partial wiring)
+
+---
+
+## H. Security Review
+
+| Check | Result |
+|-------|--------|
+| Admin routes `requireAuth` + `requireAdmin` | Yes on `/api/admin/*` |
+| Admin layout FE guard | `AdminLayout` checks role |
+| Template approve/reject | **Any authenticated user** |
+| File uploads | Auth required; verify size/type limits in upload controller |
+| JWT / session | Standard pattern via `AuthProvider` |
+| QStash webhook | Verify signature module exists (`verify.js`) — must be configured in prod |
+| Cron `/api/schedule/run` | Auth-gated — cron won't work without token |
+
+**Priority:** Lock down template moderation; document cron strategy.
+
+---
+
+## I. Data & Persistence Risks
+
+- **No migrations** — additive JSON changes only; shape drift handled ad hoc (`walletRepository`, `billingBootstrap.repairWalletStoreShape`)  
+- **Scoped vs global files** — `__scoped: true` wrappers caused admin user list failure (fixed for wallets; pattern may repeat)  
+- **Concurrent writes** — JSON file DB without locking beyond scheduler lock module (QStash path only)  
+- **Credit expiry** — `startCreditExpiryScheduler()` on boot — verify idempotency in multi-instance deploy  
+
+---
+
+## J. What's Working Well
+
+- Auth flow and protected dashboard  
+- Admin refactor: billing, models catalog, usage, users (with searchable grant credits)  
+- Email templates + attachments via `AttachmentPicker`  
+- Template preview fix (Next rewrite + `resolveBackendAssetUrl`)  
+- Billing user checkout + admin config/model verification  
+- Floating productivity widget  
+- Frontend build passes after recent TS fixes  
+
+---
+
+## K. Recommended Fix Order
+
+1. **Resolve scheduler** — disable or remove unused QStash path, or migrate FE and delete legacy  
+2. **Admin-only template approval** — backend middleware + FE visibility  
+3. **Schedule history** — wire to real execution log or remove nav item  
+4. **Remove or fix `/documents/create`** — add page or delete link from orphan component  
+5. **Delete/wire orphans** — `DesignTemplatesSection`, unused `DocumentTemplatesSection`, `AddAttachment`, `Attachment.tsx`  
+6. **Cron strategy** — secret header or dedicated internal route for `/schedule/run`  
+7. **Tests** — at least integration tests for auth, admin guard, approve rejection, wallet read  
+8. **Repo hygiene** — gitignore or move `pdf files/` experiments out of deploy path  
+
+---
+
+## Summary Score Breakdown
+
+| Criterion | Score (0–10) |
+|-----------|--------------|
+| Feature completeness | 7 |
+| Wiring / no dead ends | 5 |
+| Security | 5 |
+| Data reliability | 5 |
+| Test / ops readiness | 4 |
+| Code hygiene | 6 |
+| **Overall MVP** | **5.5** |
+
+---
+
+The audit deliverable is complete. If you want to proceed with implementation, the highest-impact first step is **B1 (scheduler)** or **B2 (template approval)** — say which to tackle and I can implement it.

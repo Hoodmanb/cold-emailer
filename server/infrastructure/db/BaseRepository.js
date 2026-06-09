@@ -4,48 +4,56 @@
  * and standard CRUD operations into a single reusable component.
  */
 const fileStore = require('../../utils/fileStore');
+const { OBJECT_FILES, defaultFor } = fileStore;
+const { ensureArray } = require('../../utils/jsonNormalizer');
 
 class BaseRepository {
   constructor(filename, schemaValidator = null) {
     this.filename = filename;
     this.schema = schemaValidator;
+    this.isObjectStore = OBJECT_FILES.has(filename);
   }
 
   /**
-   * Retrieves all records scoped to the current active user context.
+   * Retrieves all records (array store) or the user object (object store) scoped to userId.
    */
-  readAll() {
-    return fileStore.read(this.filename);
+  readAll(userId) {
+    const raw = fileStore.read(this.filename, userId);
+    if (this.isObjectStore) {
+      if (raw && typeof raw === 'object' && !Array.isArray(raw)) return raw;
+      return defaultFor(this.filename);
+    }
+    return ensureArray(raw);
   }
 
   /**
    * Retrieves a single record by ID.
    */
-  readById(id) {
+  readById(id, userId) {
     if (!id) return null;
-    const list = this.readAll();
+    const list = this.readAll(userId);
+    if (!Array.isArray(list)) return null;
     return list.find((item) => String(item.id) === String(id)) || null;
   }
 
   /**
    * Appends a new validated entity record.
    */
-  create(item) {
+  create(item, userId) {
     const payload = { ...item };
     if (this.schema) {
-      // Validate before write-ahead append
       this.schema.validate(payload);
     }
-    return fileStore.append(this.filename, payload);
+    return fileStore.append(this.filename, payload, userId);
   }
 
   /**
    * Updates an existing validated record by ID.
    */
-  update(id, updates) {
+  update(id, updates, userId) {
     if (!id) throw new Error('Cannot update entity: Missing ID parameter.');
-    
-    const current = this.readById(id);
+
+    const current = this.readById(id, userId);
     if (!current) {
       throw new Error(`Record with ID '${id}' was not found in ${this.filename}.`);
     }
@@ -58,7 +66,8 @@ class BaseRepository {
     const result = fileStore.update(
       this.filename,
       (item) => String(item.id) === String(id),
-      () => updates
+      () => updates,
+      userId,
     );
 
     if (!result) {
@@ -70,9 +79,9 @@ class BaseRepository {
   /**
    * Removes a record by ID.
    */
-  delete(id) {
+  delete(id, userId) {
     if (!id) return 0;
-    return fileStore.remove(this.filename, (item) => String(item.id) === String(id));
+    return fileStore.remove(this.filename, (item) => String(item.id) === String(id), userId);
   }
 }
 

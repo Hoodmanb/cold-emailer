@@ -9,11 +9,11 @@ const fileStore = require('../utils/fileStore');
 const FILE = 'jobs.json';
 const jobRepo = new BaseRepository(FILE, SCHEMAS.job);
 
-const listJobs = () => jobRepo.readAll();
+const listJobs = (userId) => jobRepo.readAll(userId);
 
-const getJob = (id) => jobRepo.readById(id);
+const getJob = (id, userId) => jobRepo.readById(id, userId);
 
-const createJob = (jobData) => {
+const createJob = (jobData, userId) => {
   const payload = {
     title: '',
     company: '',
@@ -27,21 +27,35 @@ const createJob = (jobData) => {
     status: 'active',
     ...jobData,
   };
-  return jobRepo.create(payload);
+  return jobRepo.create(payload, userId);
 };
 
-const updateJob = (id, updates) => jobRepo.update(id, updates);
+const updateJob = (id, updates, userId) => jobRepo.update(id, updates, userId);
 
-const deleteJob = (id) => jobRepo.delete(id);
+const deleteJob = (id, userId) => jobRepo.delete(id, userId);
 
-const linkDocument = (jobId, documentId) =>
-  fileStore.update(FILE, (j) => j.id === jobId, (j) => ({
-    linkedDocuments: [...new Set([...(Array.isArray(j.linkedDocuments) ? j.linkedDocuments : []), documentId])],
-  }));
+const linkDocument = (jobId, documentId, userId) =>
+  fileStore.update(
+    FILE,
+    (j) => j.id === jobId,
+    (j) => ({
+      linkedDocuments: [
+        ...new Set([...(Array.isArray(j.linkedDocuments) ? j.linkedDocuments : []), documentId]),
+      ],
+    }),
+    userId,
+  );
 
-const linkEmail = (jobId, emailId) =>
-  fileStore.update(FILE, (j) => j.id === jobId, (j) => ({
-    linkedEmails: [...new Set([...(Array.isArray(j.linkedEmails) ? j.linkedEmails : []), emailId])],
-  }));
+const linkEmail = (jobId, emailId, userId) =>
+  fileStore.update(
+    FILE,
+    (j) => j.id === jobId,
+    (j) => ({
+      linkedEmails: [
+        ...new Set([...(Array.isArray(j.linkedEmails) ? j.linkedEmails : []), emailId]),
+      ],
+    }),
+    userId,
+  );
 
 module.exports = { listJobs, getJob, createJob, updateJob, deleteJob, linkDocument, linkEmail };

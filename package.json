@@ -12,5 +12,10 @@
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
+  },
+  "dependencies": {
+    "@upstash/qstash": "^2.11.0",
+    "cron-parser": "^5.5.0",
+    "zod": "^4.4.3"
   }
 }

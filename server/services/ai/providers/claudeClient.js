@@ -28,6 +28,18 @@ async function completeClaude({ apiKey, model, messages, options = {} }) {
   );
   const content = response.data?.content?.[0]?.text;
   if (!content) throw new Error('Claude returned empty content');
+
+  const usage = response.data?.usage;
+  if (usage) {
+    const { addUsageEntry } = require('../../../middleware/requestContext');
+    addUsageEntry({
+      provider: 'claude',
+      model,
+      inputTokens: usage.input_tokens ?? usage.prompt_tokens ?? 0,
+      outputTokens: usage.output_tokens ?? usage.completion_tokens ?? 0,
+    });
+  }
+
   return String(content).trim();
 }
 

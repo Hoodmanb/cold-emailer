@@ -13,6 +13,7 @@ router.delete('/:id', ctrl.deleteEmail);
 
 // Sending
 router.post('/', ctrl.sendSingle);
+router.post('/send', ctrl.sendSingle);
 router.post('/bulk', ctrl.sendBulk);
 
 module.exports = router;

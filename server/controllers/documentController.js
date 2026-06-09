@@ -15,15 +15,20 @@ const {
   normalizeFormat,
   recordExport,
 } = require('../services/document/documentPersistenceService');
+const { requireUserId } = require('../utils/requireUserId');
 
 const listDocuments = (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
   const { jobId } = req.query;
-  const docs = documentRepo.listDocuments(jobId);
+  const docs = documentRepo.listDocuments(jobId, userId);
   return res.status(200).json({ message: 'retrieved successfully', data: docs });
 };
 
 const getDocument = (req, res) => {
-  const doc = documentRepo.getDocument(req.params.id);
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  const doc = documentRepo.getDocument(req.params.id, userId);
   if (!doc) return res.status(404).json({ message: 'Document not found' });
   return res.status(200).json({ message: 'retrieved successfully', data: doc });
 };
@@ -34,12 +39,14 @@ const saveDocument = (req, res) => {
 };
 
 const updateDocument = (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
   const { id } = req.params;
-  const existing = documentRepo.getDocument(id);
+  const existing = documentRepo.getDocument(id, userId);
   if (!existing) return res.status(404).json({ message: 'Document not found' });
 
   const prevContent = getEditableContent(existing);
-  const updated = documentRepo.updateDocument(id, req.body);
+  const updated = documentRepo.updateDocument(id, req.body, userId);
   const nextContent = getEditableContent(updated);
 
   if (nextContent !== prevContent) {
@@ -55,19 +62,23 @@ const updateDocument = (req, res) => {
 };
 
 const renameDocument = (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
   const { id } = req.params;
   const { title } = req.body || {};
   if (!title || !String(title).trim()) {
     return res.status(400).json({ success: false, message: 'title is required' });
   }
-  const existing = documentRepo.getDocument(id);
+  const existing = documentRepo.getDocument(id, userId);
   if (!existing) return res.status(404).json({ message: 'Document not found' });
-  const updated = documentRepo.updateDocument(id, { title: String(title).trim() });
+  const updated = documentRepo.updateDocument(id, { title: String(title).trim() }, userId);
   return res.status(200).json({ message: 'renamed successfully', data: updated });
 };
 
 const duplicateDocumentHandler = (req, res) => {
-  const copy = documentRepo.duplicateDocument(req.params.id);
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  const copy = documentRepo.duplicateDocument(req.params.id, userId);
   if (!copy) return res.status(404).json({ message: 'Document not found' });
   log(ACTION_TYPES.DOCUMENT_GENERATED, {
     module: 'documents',
@@ -79,11 +90,13 @@ const duplicateDocumentHandler = (req, res) => {
 };
 
 const approveDocument = (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
   const { id } = req.params;
-  const doc = documentRepo.getDocument(id);
+  const doc = documentRepo.getDocument(id, userId);
   if (!doc) return res.status(404).json({ message: 'Document not found' });
 
-  const approved = documentRepo.approveDocument(id);
+  const approved = documentRepo.approveDocument(id, userId);
 
   log(ACTION_TYPES.DRAFT_APPROVED, {
     module: doc.type,

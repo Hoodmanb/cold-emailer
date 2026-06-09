@@ -6,8 +6,19 @@ const { getCurrentUserId } = require("../middleware/requestContext");
 const debugLog = require("./debugLogger");
 const { asErrorMessage } = require("./safeError");
 
-const GLOBAL_FILES = new Set(["users.json"]);
-const OBJECT_FILES = new Set(["profiles.json", "settings.json", "ai-configs.json", "chats.json"]);
+const GLOBAL_FILES = new Set([
+  "users.json",
+  "admin_smtp.json",
+  "communication_settings.json",
+  "feedback.json",
+  "documentTemplates.json",
+]);
+const OBJECT_FILES = new Set(["profiles.json", "settings.json", "ai-configs.json", "chats.json", "communication_settings.json"]);
+
+function resolveUserId(explicitUserId) {
+  const uid = explicitUserId ?? getCurrentUserId();
+  return uid ? String(uid) : null;
+}
 
 /**
  * Returns default empty state for a given file.
@@ -133,8 +144,8 @@ const fileStore = {
   /**
    * Reads data from a file (scoped to current user if applicable).
    */
-  read: (filename) => {
-    const userId = getCurrentUserId();
+  read: (filename, explicitUserId) => {
+    const userId = resolveUserId(explicitUserId);
     const raw = safeRead(filename, defaultFor(filename));
     const normalizedRaw = normalizeScopedFile(filename, raw);
     const data = normalizeShape(filename, getScopedData(filename, normalizedRaw, userId));
@@ -145,9 +156,9 @@ const fileStore = {
   /**
    * Overwrites data in a file (scoped to current user if applicable).
    */
-  write: (filename, data) => {
+  write: (filename, data, explicitUserId) => {
     return withLock(filename, () => {
-      const userId = getCurrentUserId();
+      const userId = resolveUserId(explicitUserId);
       const existingRaw = normalizeScopedFile(filename, safeRead(filename, defaultFor(filename)));
       const nextUserData = normalizeShape(filename, data);
       const nextRaw = setScopedData(filename, existingRaw, userId, nextUserData);
@@ -164,9 +175,9 @@ const fileStore = {
   /**
    * Appends a record to a collection (scoped to current user).
    */
-  append: (filename, item) => {
+  append: (filename, item, explicitUserId) => {
     return withLock(filename, () => {
-      const userId = getCurrentUserId();
+      const userId = resolveUserId(explicitUserId);
       const existingRaw = normalizeScopedFile(filename, safeRead(filename, defaultFor(filename)));
       const currentData = normalizeShape(filename, getScopedData(filename, existingRaw, userId));
 
@@ -187,9 +198,9 @@ const fileStore = {
   /**
    * Updates records in a collection matching a predicate.
    */
-  update: (filename, predicate, updater) => {
+  update: (filename, predicate, updater, explicitUserId) => {
     return withLock(filename, () => {
-      const userId = getCurrentUserId();
+      const userId = resolveUserId(explicitUserId);
       const existingRaw = normalizeScopedFile(filename, safeRead(filename, defaultFor(filename)));
       const currentData = normalizeShape(filename, getScopedData(filename, existingRaw, userId));
 
@@ -222,9 +233,9 @@ const fileStore = {
   /**
    * Removes records from a collection matching a predicate.
    */
-  remove: (filename, predicate) => {
+  remove: (filename, predicate, explicitUserId) => {
     return withLock(filename, () => {
-      const userId = getCurrentUserId();
+      const userId = resolveUserId(explicitUserId);
       const existingRaw = normalizeScopedFile(filename, safeRead(filename, defaultFor(filename)));
       const currentData = normalizeShape(filename, getScopedData(filename, existingRaw, userId));
 
@@ -246,8 +257,8 @@ const fileStore = {
     });
   },
 
-  readWhere: (filename, predicate) => {
-    const rows = fileStore.read(filename);
+  readWhere: (filename, predicate, explicitUserId) => {
+    const rows = fileStore.read(filename, explicitUserId);
     if (!Array.isArray(rows)) return [];
     if (typeof predicate !== "function") return rows;
     try {
@@ -260,3 +271,7 @@ const fileStore = {
 };
 
 module.exports = fileStore;
+module.exports.GLOBAL_FILES = GLOBAL_FILES;
+module.exports.OBJECT_FILES = OBJECT_FILES;
+module.exports.isScopedFile = isScopedFile;
+module.exports.defaultFor = defaultFor;

@@ -3,7 +3,7 @@ const path = require("path");
 const { asErrorMessage } = require("../utils/safeError");
 
 const SERVER_ROOT = path.resolve(__dirname, "..");
-const DB_DIR = path.resolve(SERVER_ROOT, "storage", "data");
+const DB_DIR = process.env.TEST_STORAGE_PATH ? path.resolve(process.env.TEST_STORAGE_PATH) : path.resolve(SERVER_ROOT, "storage", "data");
 const BACKUP_DIR = path.resolve(SERVER_ROOT, "storage", "backups");
 
 const LOCK_LEASE_MS = 2500; // Lock stale lease limit
@@ -23,11 +23,25 @@ const DEFAULT_FILES = {
   "chats.json": { sessions: [] },
   "uploads.json": [],
   "schedules.json": [],
+  "executions.json": [],
+  "idempotency.json": [],
   "categories.json": [],
   "artifacts.json": [],
+  "attachments.json": [],
+  "documentTemplates.json": [],
+  "auditLogs.json": [],
   "creditPacks.json": [],
   "transactions.json": [],
-  "gatewaySettings.json": {}
+  "gatewaySettings.json": {},
+  "billing_settings.json": {},
+  "credits_wallets.json": [],
+  "credit_transactions.json": [],
+  "ai_model_pricing.json": [],
+  "ai_usage_logs.json": [],
+  "ai_model_catalog.json": {},
+  "admin_smtp.json": [],
+  "communication_settings.json": {},
+  "feedback.json": [],
 };
 
 if (!fs.existsSync(DB_DIR)) {

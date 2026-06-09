@@ -83,11 +83,13 @@ export const useRunATS = () => {
     setAts(null);
     try {
       const res = await axiosInstance.post("/api/workflow/run-ats", { jobId });
-      if (res.data?.success && res.data?.data?.ats) {
-        setAts(res.data.data.ats);
-        return res.data.data.ats as AtsResult;
+      // Support both { data: { ats } } and { ats } structures
+      const atsData = res?.data?.data?.ats || res?.data?.ats;
+      if (atsData) {
+        setAts(atsData as AtsResult);
+        return atsData as AtsResult;
       }
-      throw new Error(res.data?.message || "ATS analysis failed");
+      throw new Error(res?.data?.message || "ATS analysis failed");
     } catch (err: any) {
       const msg = err.message || "ATS analysis failed";
       setError(msg);

@@ -27,3 +27,7 @@ export type LogoutReason =
 export function logLogoutTrigger(reason: LogoutReason, detail?: string) {
   console.warn("[AuthSession] Logout triggered", { reason, detail });
 }
+export function getAuthToken(): string | null {
+  // Returns the auth token stored in the cookie, or null if not present.
+  return readAuthCookie();
+}

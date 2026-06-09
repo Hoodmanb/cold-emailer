@@ -1,4 +1,5 @@
 const fileStore = require("../utils/fileStore");
+const { ensureArray } = require("../utils/jsonNormalizer");
 const { getProfile } = require("./profileRepository");
 const { getAllProjects } = require("./projectRepository");
 const { getSettings } = require("./settingsRepository");
@@ -15,12 +16,12 @@ const USERS_FILE = "users.json";
 const findUserByEmail = (email) => {
   const target = String(email || "").trim().toLowerCase();
   if (!target) return null;
-  const users = fileStore.read(USERS_FILE);
+  const users = ensureArray(fileStore.read(USERS_FILE));
   return users.find((u) => String(u.email || "").toLowerCase() === target) || null;
 };
 
 const findUserById = (id) => {
-  const users = fileStore.read(USERS_FILE);
+  const users = ensureArray(fileStore.read(USERS_FILE));
   return users.find((u) => String(u.id) === String(id)) || null;
 };
 
@@ -48,11 +49,11 @@ const updateUserRecord = (id, updates) => {
 /**
  * Unified user data view (scoped)
  */
-const getUserFullData = () => ({
-  profile: getProfile(),
-  projects: getAllProjects(),
-  settings: getSettings(),
-  aiSettings: getAiSettings(),
+const getUserFullData = (userId) => ({
+  profile: getProfile(userId),
+  projects: getAllProjects(userId),
+  settings: getSettings(userId),
+  aiSettings: getAiSettings(userId),
 });
 
 const PURGEABLE_SCOPED_FILES = [
@@ -62,7 +63,6 @@ const PURGEABLE_SCOPED_FILES = [
   "jobs.json",
   "emails.json",
   "templates.json",
-  "documentTemplates.json",
   "recipients.json",
   "smtp.json",
   "ai-configs.json",
@@ -87,7 +87,23 @@ const deleteUserAndCleanup = (userId) => {
     console.log(`[userRepository] Removed user ${userId} from ${USERS_FILE}`);
   });
 
-  // 2. Clear user-scoped records from allowed tables
+  // 2. Remove user-created document templates from global catalog
+  try {
+    withLock('documentTemplates.json', () => {
+      const raw = safeRead('documentTemplates.json', []);
+      if (Array.isArray(raw)) {
+        const filtered = raw.filter((t) => String(t.createdBy || '') !== String(userId));
+        if (filtered.length !== raw.length) {
+          atomicWrite('documentTemplates.json', filtered);
+          console.log('[userRepository] Removed user templates from documentTemplates.json');
+        }
+      }
+    });
+  } catch (err) {
+    console.error(`[userRepository] Failed to purge document templates for ${userId}:`, err.message);
+  }
+
+  // 3. Clear user-scoped records from allowed tables
   for (const file of PURGEABLE_SCOPED_FILES) {
     try {
       withLock(file, () => {

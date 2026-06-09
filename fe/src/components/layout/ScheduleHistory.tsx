@@ -30,32 +30,41 @@ interface ScheduleHistoryProps {
     }>;
 }
 
-const schedules = [
-    {
-        id: '4',
-        name: 'Q4 Campaign',
-        template: 'Year-end Template',
-        recipients: 120,
-        frequency: 'monthly',
-        lastRun: '2023-12-30T10:00:00Z',
-        status: 'completed' as const,
-        sent: 118,
-        failed: 2,
-    },
-    {
-        id: '5',
-        name: 'Holiday Greetings',
-        template: 'Holiday Template',
-        recipients: 89,
-        frequency: 'weekly',
-        lastRun: '2023-12-25T08:00:00Z',
-        status: 'completed' as const,
-        sent: 89,
-        failed: 0,
-    },
-];
+import { useQuery } from "@tanstack/react-query";
+import apiClient from "@/lib/apiClient";
+
+interface ExecutionRecord {
+    id: string;
+    scheduleId: string;
+    status: string;
+    executedAt: string;
+    recipientCount: number;
+    error?: string;
+}
+
+const fetchHistory = async (): Promise<ExecutionRecord[]> => {
+    const res = await apiClient.get('/api/scheduler/history');
+    return res.data?.data ?? [];
+};
 
 const ScheduleHistory = () => {
+    const { data: executions = [] } = useQuery<ExecutionRecord[]>({
+        queryKey: ['scheduleHistory'],
+        queryFn: fetchHistory,
+    });
+
+    const schedules = executions.map((e) => ({
+        id: e.id,
+        name: `Execution ${e.id}`,
+        template: `Schedule ${e.scheduleId}`,
+        recipients: e.recipientCount,
+        frequency: 'once',
+        lastRun: e.executedAt,
+        status: e.status,
+        sent: e.status === 'completed' ? e.recipientCount : 0,
+        failed: e.status === 'failed' ? e.recipientCount : 0,
+    }));
+
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('en-US', {
             month: 'short',

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import { useParams } from "next/navigation";
 import { Stack, Typography, CircularProgress, Box, Chip, Divider, Grid, Button } from "@mui/material";
 import { useGetJob, useGetDocuments, useGetEmailHistory, useApproveDocument, useApproveEmail, useRegenerate, useRerunATS } from "@/hooks/queryHooks";
 import KeywordGrid from "@/components/layout/KeywordGrid";
@@ -12,12 +12,12 @@ import DraftBadge from "@/components/layout/DraftBadge";
 import { Building2, MapPin, Calendar, RefreshCcw } from "lucide-react";
 import { useSnackbar } from "@/context/SnackbarContext";
 
-interface JobDetailPageProps {
-  params: { id: string };
-}
+// interface JobDetailPageProps {
+//   params: { id: string };
+// }
 
-export default function JobDetailPage({ params }: JobDetailPageProps) {
-  const id = params.id;
+export default function JobDetailPage() {
+  const { id } = useParams<{ id: string }>();
   const { job, loading, refetch } = useGetJob(id);
   const { documents, refetch: refetchDocs } = useGetDocuments(id);
   const { emails, refetch: refetchEmails } = useGetEmailHistory(id);

@@ -1,5 +1,5 @@
 import { logger } from "@/utils/logger";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axiosInstance from "../axios";
 type TemplateProp = {
   name: string;
@@ -14,11 +14,10 @@ export const useGetTemplates = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<any>(null);
 
-  const fetchTemplate = async () => {
+  const fetchTemplate = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await axiosInstance("/api/template");
-      logger.debug("check", response);
+      const response = await axiosInstance.get("/api/template");
       if (response.data?.message === "retrieved successfully") {
         setTemplate(
           (response.data.data || []).map((item: any) => ({
@@ -33,11 +32,11 @@ export const useGetTemplates = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchTemplate();
-  }, []);
+    void fetchTemplate();
+  }, [fetchTemplate]);
 
   return { template, loading, error, refetch: fetchTemplate };
 };

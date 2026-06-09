@@ -24,8 +24,9 @@ function maskApiKey(raw) {
   return `${key.slice(0, 4)}...${key.slice(-4)}`;
 }
 
-const getAiSettings = () => {
-  const settings = fileStore.read(FILENAME);
+const getAiSettings = (userId) => {
+  const raw = fileStore.read(FILENAME, userId);
+  const settings = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
   const featureMap = { ...DEFAULT_FEATURE_MAP };
 
   // Deep merge feature map to ensure all keys exist
@@ -64,7 +65,7 @@ function normalizeFeatureConfig(featureId, value) {
   };
 }
 
-const resolveFeatureConfig = (featureId) => {
+const resolveFeatureConfig = (featureId, userId) => {
   const normalizedFeatureId = String(featureId || "").trim();
   if (!FEATURE_IDS.has(normalizedFeatureId)) {
     throw new Error(`Invalid feature ID: ${normalizedFeatureId || "<empty>"}`);
@@ -74,11 +75,11 @@ const resolveFeatureConfig = (featureId) => {
     const { getSystemFeatureConfig } = require("../services/billing/systemProviderKeys");
     return getSystemFeatureConfig(normalizedFeatureId);
   }
-  const settings = getAiSettings();
+  const settings = getAiSettings(userId);
   return normalizeFeatureConfig(normalizedFeatureId, settings.featureMap[normalizedFeatureId]);
 };
 
-const resolveActivePrompt = (featureId) => {
+const resolveActivePrompt = (featureId, userId) => {
   const normalizedFeatureId = String(featureId || "").trim();
   if (!FEATURE_IDS.has(normalizedFeatureId)) {
     throw new Error(`Invalid feature ID: ${normalizedFeatureId || "<empty>"}`);
@@ -87,7 +88,7 @@ const resolveActivePrompt = (featureId) => {
   return resolvePrompt(normalizedFeatureId);
 };
 
-const updateFeatureConfig = (featureId, updates) => {
+const updateFeatureConfig = (featureId, updates, userId) => {
   const normalizedFeatureId = String(featureId || "").trim();
   if (!FEATURE_IDS.has(normalizedFeatureId)) {
     throw new Error(`Invalid feature ID: ${normalizedFeatureId || "<empty>"}`);
@@ -103,14 +104,14 @@ const updateFeatureConfig = (featureId, updates) => {
   }
 
   if (Object.keys(nextPartial).length === 0) {
-    const currentSettings = getAiSettings();
+    const currentSettings = getAiSettings(userId);
     return {
       featureId: normalizedFeatureId,
       ...normalizeFeatureConfig(normalizedFeatureId, currentSettings.featureMap[normalizedFeatureId]),
     };
   }
 
-  const settings = getAiSettings();
+  const settings = getAiSettings(userId);
   const existing = normalizeFeatureConfig(normalizedFeatureId, settings.featureMap[normalizedFeatureId]);
   const merged = normalizeFeatureConfig(normalizedFeatureId, { ...existing, ...nextPartial });
   const nextFeatureMap = {
@@ -118,20 +119,20 @@ const updateFeatureConfig = (featureId, updates) => {
     [normalizedFeatureId]: merged,
   };
 
-  saveAiSettings({ featureMap: nextFeatureMap });
+  saveAiSettings({ featureMap: nextFeatureMap }, userId);
   return {
     featureId: normalizedFeatureId,
-    ...normalizeFeatureConfig(normalizedFeatureId, getAiSettings().featureMap[normalizedFeatureId]),
+    ...normalizeFeatureConfig(normalizedFeatureId, getAiSettings(userId).featureMap[normalizedFeatureId]),
   };
 };
 
-const saveAiSettings = (updates) => {
-  const current = getAiSettings();
+const saveAiSettings = (updates, userId) => {
+  const current = getAiSettings(userId);
   const next = { ...current, ...updates };
-  return fileStore.write(FILENAME, next);
+  return fileStore.write(FILENAME, next, userId);
 };
 
-const upsertApiKey = ({ provider, apiKey, label = "Primary", isActive = true }) => {
+const upsertApiKey = ({ provider, apiKey, label = "Primary", isActive = true, userId }) => {
   const normalizedProvider = String(provider || "").trim().toLowerCase();
   if (!SUPPORTED_AI_PROVIDERS.includes(normalizedProvider)) {
     throw new Error("Unsupported AI provider");
@@ -140,7 +141,7 @@ const upsertApiKey = ({ provider, apiKey, label = "Primary", isActive = true }) 
   if (!normalizedApiKey) {
     throw new Error("API key is required");
   }
-  const settings = getAiSettings();
+  const settings = getAiSettings(userId);
   const { encryptedPassword, iv } = encrypt(normalizedApiKey);
 
   const existingIdx = settings.apiKeys.findIndex(k => k.provider === normalizedProvider);
@@ -162,27 +163,27 @@ const upsertApiKey = ({ provider, apiKey, label = "Primary", isActive = true }) 
     nextKeys.push(entry);
   }
 
-  saveAiSettings({ apiKeys: nextKeys });
+  saveAiSettings({ apiKeys: nextKeys }, userId);
   return { ...entry, encryptedApiKey: undefined, iv: undefined };
 };
 
-const getDecryptedKey = (provider) => {
-  const settings = getAiSettings();
+const getDecryptedKey = (provider, userId) => {
+  const settings = getAiSettings(userId);
   const normalizedProvider = String(provider || "").trim().toLowerCase();
   const keyEntry = settings.apiKeys.find(k => k.provider === normalizedProvider && k.isActive);
   if (!keyEntry) return null;
   return decrypt(keyEntry.encryptedApiKey, keyEntry.iv);
 };
 
-const deleteApiKey = (provider) => {
+const deleteApiKey = (provider, userId) => {
   const normalizedProvider = String(provider || "").trim().toLowerCase();
-  const settings = getAiSettings();
+  const settings = getAiSettings(userId);
   const nextKeys = settings.apiKeys.filter((k) => k.provider !== normalizedProvider);
-  saveAiSettings({ apiKeys: nextKeys });
-  return getAiSettings();
+  saveAiSettings({ apiKeys: nextKeys }, userId);
+  return getAiSettings(userId);
 };
 
-const updateFeatureMap = (featureMap) => {
+const updateFeatureMap = (featureMap, userId) => {
   const incomingMap = featureMap && typeof featureMap === "object" ? featureMap : {};
   const normalizedMap = Object.keys(DEFAULT_FEATURE_MAP).reduce((acc, featureId) => {
     acc[featureId] = normalizeFeatureConfig(featureId, {
@@ -191,8 +192,8 @@ const updateFeatureMap = (featureMap) => {
     });
     return acc;
   }, {});
-  saveAiSettings({ featureMap: normalizedMap });
-  return getAiSettings().featureMap;
+  saveAiSettings({ featureMap: normalizedMap }, userId);
+  return getAiSettings(userId).featureMap;
 };
 
 module.exports = {

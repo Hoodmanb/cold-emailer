@@ -66,6 +66,17 @@ async function completeOpenRouter({ apiKey, model, messages, options = {} }) {
       );
     }
 
+    const usage = response.data?.usage;
+    if (usage) {
+      const { addUsageEntry } = require('../../../middleware/requestContext');
+      addUsageEntry({
+        provider: 'openrouter',
+        model,
+        inputTokens: usage.prompt_tokens ?? usage.input_tokens ?? 0,
+        outputTokens: usage.completion_tokens ?? usage.output_tokens ?? 0,
+      });
+    }
+
     return String(content).trim();
   } catch (err) {
     if (err instanceof ExternalApiError) throw err;

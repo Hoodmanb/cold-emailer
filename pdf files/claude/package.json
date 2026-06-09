@@ -1,0 +1,33 @@
+{
+  "name": "cv-pdf-generator",
+  "version": "1.0.0",
+  "description": "Professional, data-driven CV generation system using HTML, CSS, and Puppeteer",
+  "main": "puppeteer-render.js",
+  "scripts": {
+    "generate": "node puppeteer-render.js",
+    "generate:dev": "node puppeteer-render.js --debug",
+    "test": "node -e \"require('./data.js'); console.log('✓ Data validation passed')\""
+  },
+  "keywords": [
+    "cv",
+    "resume",
+    "pdf",
+    "puppeteer",
+    "generator",
+    "a4",
+    "print"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer": "^25.1.0"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/cv-pdf-generator"
+  }
+}

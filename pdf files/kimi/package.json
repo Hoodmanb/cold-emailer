@@ -1,0 +1,22 @@
+{
+    "name": "pamilerin-cv-generator",
+    "version": "1.0.0",
+    "description": "Modular, data-driven CV PDF generator using HTML, CSS, and Puppeteer",
+    "main": "render-puppeteer.js",
+    "scripts": {
+        "generate": "node render-puppeteer.js",
+        "preview": "npx serve ."
+    },
+    "dependencies": {
+        "puppeteer": "^25.1.0"
+    },
+    "keywords": [
+        "cv",
+        "resume",
+        "pdf",
+        "puppeteer",
+        "template"
+    ],
+    "author": "",
+    "license": "MIT"
+}

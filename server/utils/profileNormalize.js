@@ -18,12 +18,12 @@ function buildProjectMarkdown(p) {
     : [];
   const screenshots = Array.isArray(p.screenshots)
     ? p.screenshots
-        .map((s) => ({
-          type: String(s?.type || '').trim(),
-          value: String(s?.value || '').trim(),
-        }))
-        .filter((s) => (s.type === 'upload' || s.type === 'url') && s.value)
-        .slice(0, 2)
+      .map((s) => ({
+        type: String(s?.type || '').trim(),
+        value: String(s?.value || '').trim(),
+      }))
+      .filter((s) => (s.type === 'upload' || s.type === 'url') && s.value)
+      .slice(0, 2)
     : [];
 
   const parts = [`# ${title}`, '', '## Summary', summary || '_No summary._', ''];
@@ -83,12 +83,12 @@ function normalizeProjects(projects) {
         : [],
       screenshots: Array.isArray(raw.screenshots)
         ? raw.screenshots
-            .map((s) => ({
-              type: String(s?.type || '').trim(),
-              value: String(s?.value || '').trim(),
-            }))
-            .filter((s) => (s.type === 'upload' || s.type === 'url') && s.value)
-            .slice(0, 2)
+          .map((s) => ({
+            type: String(s?.type || '').trim(),
+            value: String(s?.value || '').trim(),
+          }))
+          .filter((s) => (s.type === 'upload' || s.type === 'url') && s.value)
+          .slice(0, 2)
         : [],
       createdAt: raw.createdAt || new Date().toISOString(),
     };
@@ -168,12 +168,12 @@ function normalizeExperience(experience) {
 
       const companyLinks = Array.isArray(exp.companyLinks)
         ? exp.companyLinks
-            .filter((l) => l && typeof l === "object" && isValidUrl(l.url))
-            .map((l) => ({
-              label: String(l.label || "").trim(),
-              url: String(l.url).trim(),
-            }))
-            .slice(0, 2)
+          .filter((l) => l && typeof l === "object" && isValidUrl(l.url))
+          .map((l) => ({
+            label: String(l.label || "").trim(),
+            url: String(l.url).trim(),
+          }))
+          .slice(0, 2)
         : [];
 
       const achievements = Array.isArray(exp.achievements)
@@ -200,8 +200,8 @@ function normalizeCertificates(certificates) {
   return certificates.map((cert) => {
     if (!cert || typeof cert !== 'object') return null;
     const link = String(cert.link || '').trim();
+    // if (!link) return null;
     if (!link || !isValidUrl(link)) return null;
-
     return {
       id: cert.id || uuidv4(),
       title: String(cert.title || '').trim(),

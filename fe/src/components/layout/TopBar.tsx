@@ -51,6 +51,18 @@ export default function TopBar({ toggleDrawer, isDrawerOpen, isMobile }: TopBarP
         return "Billing";
       case "/dashboard/admin":
         return "Admin";
+      case "/dashboard/admin/billing":
+        return "Admin · Billing";
+      case "/dashboard/admin/models":
+        return "Admin · Models";
+      case "/dashboard/admin/usage":
+        return "Admin · Usage";
+      case "/dashboard/admin/users":
+        return "Admin · Users";
+      case "/dashboard/admin/communication":
+        return "Admin · Communication";
+      case "/dashboard/admin/feedback":
+        return "Admin · Feedback";
       default:
         break;
     }

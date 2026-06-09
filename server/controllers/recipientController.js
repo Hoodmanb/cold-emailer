@@ -1,19 +1,25 @@
 const recipientRepo = require('../repositories/recipientRepository');
-const normalizeString = require('../utils/normalizeString');
+const { requireUserId } = require('../utils/requireUserId');
 
 const listRecipients = (req, res) => {
-  const recipients = recipientRepo.listRecipients();
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  const recipients = recipientRepo.listRecipients(userId);
   return res.status(200).json({ message: 'retrieved successfully', data: recipients });
 };
 
 const getRecipient = (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
   const { email } = req.params;
-  const recipient = recipientRepo.getRecipientByEmail(email);
+  const recipient = recipientRepo.getRecipientByEmail(email, userId);
   if (!recipient) return res.status(404).json({ message: 'recipient not found' });
   return res.status(200).json({ message: 'retrieved successfully', data: recipient });
 };
 
 const createRecipient = (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
   const { email, name, category, company, role } = req.body;
 
   if (!email || !name) {
@@ -26,30 +32,34 @@ const createRecipient = (req, res) => {
     });
   }
 
-  const existing = recipientRepo.getRecipientByEmail(email);
+  const existing = recipientRepo.getRecipientByEmail(email, userId);
   if (existing) {
     return res.status(409).json({ message: 'field error', errors: { email: 'email already exist' } });
   }
 
-  const recipient = recipientRepo.createRecipient({ email, name, category, company, role });
+  const recipient = recipientRepo.createRecipient({ email, name, category, company, role }, userId);
   return res.status(200).json({ message: 'created successfully', data: recipient });
 };
 
 const updateRecipient = (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
   const { email } = req.params;
-  const existing = recipientRepo.getRecipientByEmail(email);
+  const existing = recipientRepo.getRecipientByEmail(email, userId);
   if (!existing) return res.status(404).json({ message: 'recipient not found' });
 
-  const updated = recipientRepo.updateRecipient(existing.id, req.body);
+  const updated = recipientRepo.updateRecipient(existing.id, req.body, userId);
   return res.status(200).json({ message: 'recipient updated successfully', data: updated });
 };
 
 const deleteRecipient = (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
   const { email } = req.params;
-  const existing = recipientRepo.getRecipientByEmail(email);
+  const existing = recipientRepo.getRecipientByEmail(email, userId);
   if (!existing) return res.status(404).json({ message: 'recipient not found' });
 
-  recipientRepo.deleteRecipient(existing.id);
+  recipientRepo.deleteRecipient(existing.id, userId);
   return res.status(204).send();
 };
 

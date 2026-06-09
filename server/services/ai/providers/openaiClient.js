@@ -24,6 +24,18 @@ async function completeOpenAI({ apiKey, model, messages, options = {} }) {
   );
   const content = response.data?.choices?.[0]?.message?.content;
   if (!content) throw new Error('OpenAI returned empty content');
+
+  const usage = response.data?.usage;
+  if (usage) {
+    const { addUsageEntry } = require('../../../middleware/requestContext');
+    addUsageEntry({
+      provider: 'openai',
+      model,
+      inputTokens: usage.prompt_tokens ?? usage.input_tokens ?? 0,
+      outputTokens: usage.completion_tokens ?? usage.output_tokens ?? 0,
+    });
+  }
+
   return String(content).trim();
 }
 

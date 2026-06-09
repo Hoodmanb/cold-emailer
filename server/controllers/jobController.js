@@ -5,10 +5,13 @@ const { getProfile } = require('../repositories/profileRepository');
 const { log, ACTION_TYPES } = require('../logs/auditLogger');
 const { extractJobFromImage } = require('../modules/ai/aiService');
 const logger = require('../utils/logger');
+const { requireUserId } = require('../utils/requireUserId');
 
 const listJobs = (req, res, next) => {
   try {
-    const jobs = jobRepo.listJobs();
+    const userId = requireUserId(req, res);
+    if (!userId) return;
+    const jobs = jobRepo.listJobs(userId);
     return res.status(200).json({ success: true, message: 'retrieved successfully', data: jobs });
   } catch (err) {
     next(err);
@@ -17,7 +20,9 @@ const listJobs = (req, res, next) => {
 
 const getJob = (req, res, next) => {
   try {
-    const job = jobRepo.getJob(req.params.id);
+    const userId = requireUserId(req, res);
+    if (!userId) return;
+    const job = jobRepo.getJob(req.params.id, userId);
     if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
     return res.status(200).json({ success: true, message: 'retrieved successfully', data: job });
   } catch (err) {
@@ -27,6 +32,8 @@ const getJob = (req, res, next) => {
 
 const createJob = (req, res, next) => {
   try {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
     const { title, company, location, type, rawDescription } = req.body;
 
     if (!rawDescription) {
@@ -35,7 +42,7 @@ const createJob = (req, res, next) => {
 
   // Immediately parse + score
   const parsedData = parseJob(rawDescription, { title, company, location });
-  const profile = getProfile();
+  const profile = getProfile(userId);
   const atsResult = scoreATS(parsedData, profile);
 
   const job = jobRepo.createJob({
@@ -47,7 +54,7 @@ const createJob = (req, res, next) => {
     parsedData,
     atsScore: atsResult.score,
     atsBreakdown: atsResult,
-  });
+  }, userId);
 
     log(ACTION_TYPES.JOB_CREATED, {
       module: 'job',
@@ -64,7 +71,9 @@ const createJob = (req, res, next) => {
 
 const updateJob = (req, res, next) => {
   try {
-    const updated = jobRepo.updateJob(req.params.id, req.body);
+    const userId = requireUserId(req, res);
+    if (!userId) return;
+    const updated = jobRepo.updateJob(req.params.id, req.body, userId);
     if (!updated) return res.status(404).json({ success: false, message: 'Job not found' });
     return res.status(200).json({ success: true, message: 'updated successfully', data: updated });
   } catch (err) {
@@ -74,7 +83,9 @@ const updateJob = (req, res, next) => {
 
 const deleteJob = (req, res, next) => {
   try {
-    const count = jobRepo.deleteJob(req.params.id);
+    const userId = requireUserId(req, res);
+    if (!userId) return;
+    const count = jobRepo.deleteJob(req.params.id, userId);
     if (count === 0) return res.status(404).json({ success: false, message: 'Job not found' });
 
     log(ACTION_TYPES.JOB_DELETED, { module: 'job', entityId: req.params.id });
@@ -109,18 +120,20 @@ const parseImage = async (req, res, next) => {
 
 const rerunATS = (req, res, next) => {
   try {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
     const { id } = req.params;
-    const job = jobRepo.getJob(id);
+    const job = jobRepo.getJob(id, userId);
     if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
 
-    const profile = getProfile();
+    const profile = getProfile(userId);
     const atsResult = scoreATS(job.parsedData, profile);
 
     const updated = jobRepo.updateJob(id, {
       atsScore: atsResult.score,
       atsBreakdown: atsResult,
       atsUpdatedAt: new Date().toISOString(),
-    });
+    }, userId);
 
     log(ACTION_TYPES.JOB_UPDATED, {
       module: 'job',

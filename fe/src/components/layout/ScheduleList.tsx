@@ -1,115 +1,71 @@
 "use client";
 
-import { logger } from "@/utils/logger";
-import React, { useState } from 'react';
-import {
-    Box,
-    Typography,
-    Stack,
-} from '@mui/material';
-import { PlusIcon } from 'lucide-react';
-import ScheduleCard from './ScheduleCard';
-import CustomButton from '../ui/Button';
-import CreateSchedule from './CreateSchedule';
-import { useGlobalModal } from '../ui/Modal';
+import React from "react";
+import { Box, Typography, Stack } from "@mui/material";
+import { PlusIcon } from "lucide-react";
+import ScheduleCard from "./ScheduleCard";
+import CustomButton from "../ui/Button";
+import CreateSchedule from "./CreateSchedule";
+import { useGlobalModal } from "../ui/Modal";
+import axiosInstance from "@/hooks/axios";
+import { useSnackbar } from "@/context/SnackbarContext";
+import type { Schedule } from "@/types";
 
-const SchedulesList: React.FC = () => {
-    const { showModal } = useGlobalModal()
-    const [refresh, setRefresh] = useState(false)
+type Props = {
+  schedules: Schedule[];
+  setRefresh: React.Dispatch<React.SetStateAction<boolean>>;
+};
 
-    const [upcomingSchedules, setUpcomingSchedules] = useState([
-        {
-            id: '1',
-            name: 'Tech Companies Outreach',
-            template: 'Job Application Template',
-            recipients: 45,
-            frequency: 'weekly',
-            nextRun: '2024-01-15T10:00:00Z',
-            status: 'active' as const,
-        },
-        {
-            id: '2',
-            name: 'Follow-up Campaign',
-            template: 'Follow-up Template',
-            recipients: 23,
-            frequency: 'monthly',
-            nextRun: '2024-01-20T14:30:00Z',
-            status: 'paused' as const,
-        },
-        {
-            id: '3',
-            name: 'Startup Outreach',
-            template: 'Startup Template',
-            recipients: 67,
-            frequency: 'weekly',
-            nextRun: '2024-01-18T09:15:00Z',
-            status: 'active' as const,
-        },
-    ]);
+const SchedulesList: React.FC<Props> = ({ schedules, setRefresh }) => {
+  const { showModal } = useGlobalModal();
+  const { showSnackbar } = useSnackbar();
 
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Delete this schedule?")) return;
+    try {
+      await axiosInstance.delete(`/api/scheduler/${id}`);
+      showSnackbar("Schedule deleted", "success");
+      setRefresh((p) => !p);
+    } catch {
+      showSnackbar("Failed to delete schedule", "error");
+    }
+  };
 
-    const handleToggleStatus = (id: string) => {
-        setUpcomingSchedules((prev) =>
-            prev.map((schedule) =>
-                schedule.id === id
-                    ? {
-                        ...schedule,
-                        status: schedule.status === 'active' ? 'paused' : 'active',
-                    }
-                    : schedule
-            )
-        );
-    };
+  return (
+    <Box>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={4}>
+        <Typography color="text.secondary">Manage your automated email campaigns</Typography>
+        <CustomButton
+          text="Create Schedule"
+          icon={PlusIcon}
+          iconColor="grey"
+          onClick={() => showModal(<CreateSchedule type="add" setRefresh={setRefresh} />)}
+        />
+      </Stack>
 
-    const handleEdit = (id: string) => {
-        logger.debug('Edit schedule:', id);
-    };
-
-    const handleDelete = (id: string) => {
-        setUpcomingSchedules((prev) => prev.filter((schedule) => schedule.id !== id));
-    };
-
-    return (
-        <Box>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={4}>
-
-                <Typography color="text.secondary">
-                    Manage your automated email campaigns
-                </Typography>
-                <Box>
-                    <CustomButton
-                        text="Create Schedule"
-                        icon={PlusIcon}
-                        iconColor="grey"
-                        onClick={() =>
-                            showModal(<CreateSchedule type={"add"} setRefresh={setRefresh} />)
-                        }
-                    />
-                </Box>
-            </Stack>
-
-
-            <Box sx={{ overflowX: 'auto' }}>
-                <Box
-                    display="flex"
-                    flexDirection="column"
-                    minWidth="600px"
-                    gap={2}
-                >
-                    {upcomingSchedules.map((schedule) => (
-                        <ScheduleCard
-                            key={schedule.id}
-                            schedule={schedule}
-                            onToggleStatus={handleToggleStatus}
-                            onEdit={handleEdit}
-                            onDelete={handleDelete}
-                        />
-                    ))}
-                </Box>
-            </Box>
-
-        </Box>
-    );
+      <Stack spacing={3}>
+        {schedules.map((schedule) => (
+          <ScheduleCard
+            key={schedule.id}
+            schedule={{
+              id: schedule.id,
+              name: schedule.name,
+              template:
+                typeof schedule.template === "object" && schedule.template
+                  ? schedule.template.subject || "Email template"
+                  : "Email template",
+              recipients: Array.isArray(schedule.recipients) ? schedule.recipients.length : 0,
+              frequency: schedule.frequency,
+              status: schedule.disabled ? "paused" : "active",
+            }}
+            onEdit={() => showModal(<CreateSchedule type="update" scheduleID={schedule.id} setRefresh={setRefresh} />)}
+            onDelete={handleDelete}
+            onToggleStatus={() => showSnackbar("Pause/resume will be available in a future update", "info")}
+          />
+        ))}
+      </Stack>
+    </Box>
+  );
 };
 
 export default SchedulesList;

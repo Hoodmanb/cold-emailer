@@ -1,31 +1,29 @@
-const fileStore = require("../utils/fileStore");
+const fileStore = require('../utils/fileStore');
 
-const FILENAME = "projects.json";
+const FILENAME = 'projects.json';
 
-const getAllProjects = () => {
-  const projects = fileStore.read(FILENAME);
+const getAllProjects = (userId) => {
+  const projects = fileStore.read(FILENAME, userId);
   return Array.isArray(projects) ? projects : [];
 };
 
-const getProjectById = (id) => {
-  const projects = getAllProjects();
+const getProjectById = (id, userId) => {
+  const projects = getAllProjects(userId);
   return projects.find((p) => String(p.id) === String(id)) || null;
 };
 
-const createProject = (data) => {
-  return fileStore.append(FILENAME, data);
-};
+const createProject = (data, userId) => fileStore.append(FILENAME, data, userId);
 
-const updateProject = (id, updates) => {
-  return fileStore.update(FILENAME, (p) => String(p.id) === String(id), (p) => ({
-    ...p,
-    ...updates,
-  }));
-};
+const updateProject = (id, updates, userId) =>
+  fileStore.update(
+    FILENAME,
+    (p) => String(p.id) === String(id),
+    (p) => ({ ...p, ...updates }),
+    userId,
+  );
 
-const deleteProject = (id) => {
-  return fileStore.remove(FILENAME, (p) => String(p.id) === String(id));
-};
+const deleteProject = (id, userId) =>
+  fileStore.remove(FILENAME, (p) => String(p.id) === String(id), userId);
 
 module.exports = {
   getAllProjects,

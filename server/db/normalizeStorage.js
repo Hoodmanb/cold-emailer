@@ -1,4 +1,6 @@
-const { safeRead, atomicWrite } = require("./jsonDb");
+const fs = require('fs');
+const path = require('path');
+const { safeRead, atomicWrite } = require('./jsonDb');
 
 const ARRAY_FILES = [
   "users.json",
@@ -7,7 +9,6 @@ const ARRAY_FILES = [
   "emails.json",
   "templates.json",
   "documentTemplates.json",
-  "audit.json",
   "auditLogs.json",
   "recipients.json",
   "smtp.json",
@@ -18,6 +19,10 @@ const ARRAY_FILES = [
   "artifacts.json",
   "creditPacks.json",
   "transactions.json",
+  "credits_wallets.json",
+  "credit_transactions.json",
+  "ai_model_pricing.json",
+  "ai_usage_logs.json",
 ];
 
 const OBJECT_FILES = [
@@ -26,9 +31,25 @@ const OBJECT_FILES = [
   "ai-configs.json",
   "chats.json",
   "gatewaySettings.json",
+  "billing_settings.json",
 ];
 
-const GLOBAL_FILES = new Set(["users.json", "gatewaySettings.json", "creditPacks.json", "transactions.json"]);
+const GLOBAL_FILES = new Set([
+  "users.json",
+  "gatewaySettings.json",
+  "creditPacks.json",
+  "transactions.json",
+  "billing_settings.json",
+  "credits_wallets.json",
+  "credit_transactions.json",
+  "ai_model_pricing.json",
+  "ai_usage_logs.json",
+  "documentTemplates.json",
+  "feedback.json",
+  "admin_smtp.json",
+  "communication_settings.json",
+  "ai_model_catalog.json",
+]);
 
 function isPlainObject(value) {
   return value && typeof value === "object" && !Array.isArray(value);
@@ -59,9 +80,16 @@ function normalizeScopedFile(filename, raw) {
 function normalizeStorage() {
   const files = [...ARRAY_FILES, ...OBJECT_FILES];
   for (const filename of files) {
+    const filePath = path.join(__dirname, '..', 'storage', 'data', filename);
     const current = safeRead(filename, GLOBAL_FILES.has(filename) ? [] : { __scoped: true, users: {} });
     const normalized = normalizeScopedFile(filename, current);
-    atomicWrite(filename, normalized);
+    // Only write if the normalized data differs from current
+    if (JSON.stringify(normalized) !== JSON.stringify(current)) {
+      // Backup original file
+      const backupPath = `${filePath}.bak_${Date.now()}`;
+      try { fs.copyFileSync(filePath, backupPath); } catch (e) { /* ignore if file missing */ }
+      atomicWrite(filename, normalized);
+    }
   }
 }
 

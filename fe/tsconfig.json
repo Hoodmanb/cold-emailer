@@ -35,7 +35,9 @@
     ".next/types/**/*.ts",
     "src/components/ui/Modal.jsx",
     "src/styles/theme.ts",
-    ".next/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts",
+    "vitest.setup.ts",
+    "src/context/AuthProvider.jsx"
   ],
   "exclude": [
     "node_modules"

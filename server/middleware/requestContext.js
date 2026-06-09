@@ -4,7 +4,7 @@ const debugLog = require("../utils/debugLogger");
 const storage = new AsyncLocalStorage();
 
 function runWithRequestContext(req, res, next) {
-  storage.run({ userId: null }, () => next());
+  storage.run({ userId: null, usageEntries: [] }, () => next());
 }
 
 function setCurrentUserId(userId) {
@@ -40,6 +40,33 @@ function clearBillingExecutionMode() {
   }
 }
 
+function initUsageEntries() {
+  const store = storage.getStore();
+  if (store) {
+    store.usageEntries = [];
+  }
+}
+
+function addUsageEntry(entry) {
+  const store = storage.getStore();
+  if (store) {
+    if (!store.usageEntries) store.usageEntries = [];
+    store.usageEntries.push(entry);
+  }
+}
+
+function getUsageEntries() {
+  const store = storage.getStore();
+  return store?.usageEntries || [];
+}
+
+function clearUsageEntries() {
+  const store = storage.getStore();
+  if (store) {
+    store.usageEntries = [];
+  }
+}
+
 module.exports = {
   runWithRequestContext,
   setCurrentUserId,
@@ -47,4 +74,8 @@ module.exports = {
   setBillingExecutionMode,
   getBillingExecutionMode,
   clearBillingExecutionMode,
+  initUsageEntries,
+  addUsageEntry,
+  getUsageEntries,
+  clearUsageEntries,
 };

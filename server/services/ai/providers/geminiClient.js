@@ -30,6 +30,18 @@ async function completeGemini({ apiKey, model, messages, options = {} }) {
   );
   const content = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!content) throw new Error('Gemini returned empty content');
+
+  const usage = response.data?.usageMetadata;
+  if (usage) {
+    const { addUsageEntry } = require('../../../middleware/requestContext');
+    addUsageEntry({
+      provider: 'gemini',
+      model,
+      inputTokens: usage.promptTokenCount ?? usage.input_tokens ?? 0,
+      outputTokens: usage.candidatesTokenCount ?? usage.output_tokens ?? 0,
+    });
+  }
+
   return String(content).trim();
 }
 

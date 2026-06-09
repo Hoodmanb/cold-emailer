@@ -14,3 +14,9 @@ cold-emailer/fe/.env.local
 server/storage/db/
 /server/db/*.json
 server/storage/*
+
+# Experimental & Drafts
+experiments/
+claude-*
+kimi-*
+*.draft.*

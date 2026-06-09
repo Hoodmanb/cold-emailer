@@ -57,14 +57,21 @@ export const CertificatesSection = forwardRef<CertificatesSectionHandle, Certifi
     const handleSave = () => {
       if (!form.title || !form.link || !form.awarder) return;
 
+      // Ensure the link includes a protocol; prepend https:// if missing
+      const normalizedLink = form.link.startsWith('http://') || form.link.startsWith('https://')
+        ? form.link
+        : `https://${form.link}`;
+
+      const updatedForm = { ...form, link: normalizedLink };
+
       if (editingId) {
         onChange(
           certificates.map((cert) =>
-            cert.id === editingId ? ({ ...cert, ...form } as Certificate) : cert
+            cert.id === editingId ? ({ ...cert, ...updatedForm } as Certificate) : cert
           )
         );
       } else {
-        onChange([...certificates, { ...form, id: uuidv4() } as Certificate]);
+        onChange([...certificates, { ...updatedForm, id: uuidv4() } as Certificate]);
       }
       setDialogOpen(false);
     };

@@ -7,6 +7,7 @@ const {
   isPreviewAllowedMime,
   safeContentDispositionFilename,
 } = require('../utils/artifactSecurity');
+const { requireUserId } = require('../utils/requireUserId');
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -15,10 +16,9 @@ const upload = multer({
 
 const listArtifacts = (req, res) => {
   try {
-    const items = artifactRepo
-      .listArtifacts()
-      .filter((item) => String(item.userId || "") === String(req.user?.id || ""))
-      .map(artifactRepo.toPublic);
+    const userId = requireUserId(req, res);
+    if (!userId) return;
+    const items = artifactRepo.listArtifacts(userId).map(artifactRepo.toPublic);
     return res.status(200).json({ success: true, data: items });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
@@ -27,6 +27,8 @@ const listArtifacts = (req, res) => {
 
 const createArtifact = (req, res) => {
   try {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
     const file = req.file;
     if (!file) {
       return res.status(400).json({
@@ -39,7 +41,7 @@ const createArtifact = (req, res) => {
       buffer: file.buffer,
       filename: file.originalname,
       mimetype: file.mimetype,
-      userId: req.user?.id,
+      userId,
     });
 
     return res.status(201).json({
@@ -52,8 +54,10 @@ const createArtifact = (req, res) => {
 };
 
 const getArtifactMeta = (req, res) => {
-  const art = artifactRepo.getArtifact(req.params.id);
-  if (!art || String(art.userId || "") !== String(req.user?.id || "")) {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  const art = artifactRepo.getArtifact(req.params.id, userId);
+  if (!art || String(art.userId || "") !== String(userId)) {
     return res.status(404).json({ success: false, message: 'Artifact not found' });
   }
   return res.status(200).json({
@@ -75,8 +79,10 @@ function pipeFileDownload(res, absPath, artifact, disposition) {
 }
 
 const downloadArtifact = (req, res) => {
-  const art = artifactRepo.getArtifact(req.params.id);
-  if (!art || String(art.userId || "") !== String(req.user?.id || "")) {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  const art = artifactRepo.getArtifact(req.params.id, userId);
+  if (!art || String(art.userId || "") !== String(userId)) {
     return res.status(404).json({ success: false, message: 'Artifact not found' });
   }
 
@@ -101,8 +107,10 @@ const downloadArtifact = (req, res) => {
 };
 
 const previewArtifact = (req, res) => {
-  const art = artifactRepo.getArtifact(req.params.id);
-  if (!art || String(art.userId || "") !== String(req.user?.id || "")) {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  const art = artifactRepo.getArtifact(req.params.id, userId);
+  if (!art || String(art.userId || "") !== String(userId)) {
     return res.status(404).json({ success: false, message: 'Artifact not found' });
   }
 

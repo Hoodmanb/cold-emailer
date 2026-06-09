@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional CV</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="cv-container" id="cvContent">
+        <!-- Header Section -->
+        <header class="cv-header">
+            <div class="header-name-block">
+                <h1 class="header-name"></h1>
+                <p class="header-title"></p>
+            </div>
+            <div class="header-contact">
+                <div class="contact-item">
+                    <span class="contact-label">Phone:</span>
+                    <span class="contact-value"></span>
+                </div>
+                <div class="contact-item">
+                    <span class="contact-label">Email:</span>
+                    <a class="contact-value email-link" href="mailto:"></a>
+                </div>
+                <!-- <div class="contact-item">
+                    <span class="contact-label">Location:</span>
+                    <span class="contact-value"></span>
+                </div> -->
+            </div>
+        </header>
+
+        <!-- Professional Summary Section -->
+        <section class="cv-section" data-section="summary">
+            <h2 class="section-title">PROFESSIONAL SUMMARY</h2>
+            <div class="section-content">
+                <p class="summary-text"></p>
+            </div>
+        </section>
+
+        <!-- Work History Section -->
+        <section class="cv-section" data-section="workHistory">
+            <h2 class="section-title">WORK HISTORY</h2>
+            <div class="section-content" id="workHistoryContainer">
+                <!-- Dynamically populated -->
+            </div>
+        </section>
+
+        <!-- Education Section -->
+        <section class="cv-section" data-section="education">
+            <h2 class="section-title">EDUCATION</h2>
+            <div class="section-content" id="educationContainer">
+                <!-- Dynamically populated -->
+            </div>
+        </section>
+
+        <!-- Relevant MSc -->
+        <section class="cv-section" data-section="mscModules">
+            <h2 class="section-title">RELEVANT MSc MODULES</h2>
+            <div class="section-content" id="mscModulesContainer"></div>
+        </section>
+
+        <!-- Skills Section -->
+        <section class="cv-section" data-section="skills">
+            <h2 class="section-title">SKILLS</h2>
+            <div class="section-content" id="skillsContainer">
+            </div>
+        </section>
+
+        <!-- Leadership & Entrepreneurship Section -->
+        <section class="cv-section" data-section="leadership">
+            <h2 class="section-title">LEADERSHIP & ENTREPRENEURSHIP</h2>
+            <div class="section-content" id="leadershipContainer">
+            </div>
+        </section>
+
+        <!-- Certifications Section -->
+        <section class="cv-section" data-section="certifications">
+            <h2 class="section-title">CERTIFICATIONS</h2>
+            <div class="section-content" id="certificationsContainer">
+                <!-- Dynamically populated -->
+            </div>
+        </section>
+
+        <!-- Research & Publications Section -->
+        <section class="cv-section" data-section="research">
+            <h2 class="section-title">RESEARCH & PUBLICATIONS</h2>
+            <div class="section-content" id="researchContainer">
+                <!-- Dynamically populated -->
+            </div>
+        </section>
+
+    </div>
+
+    <!-- <script src="Business Management.js"></script> -->
+    <!-- <script src="Customer Service Professional.js"></script> -->
+    <script src="Human Resources Management.js"></script>
+    <!-- <script src="Sales.js"></script> -->
+    <!-- <script src="HR.js"></script> -->
+    <script src="render.js"></script>
+</body>
+
+</html>

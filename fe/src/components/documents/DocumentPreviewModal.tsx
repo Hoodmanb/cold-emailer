@@ -46,7 +46,7 @@ function MarkdownPreview({ content }: { content: string }) {
   );
 }
 
-function PdfPreview({ docId }: { docId: string }) {
+function PdfPreview({ previewUrl }: { previewUrl: string }) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -59,7 +59,7 @@ function PdfPreview({ docId }: { docId: string }) {
     setLoading(true);
 
     axiosInstance
-      .get(`/api/documents/${docId}/preview`, { responseType: "blob" })
+      .get(previewUrl, { responseType: "blob" })
       .then((res) => {
         if (cancelled) return;
         const blob = new Blob([res.data], { type: "application/pdf" });
@@ -79,7 +79,7 @@ function PdfPreview({ docId }: { docId: string }) {
         prevBlobUrl.current = null;
       }
     };
-  }, [docId]);
+  }, [previewUrl]);
 
   if (loadError) {
     return (
@@ -173,7 +173,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
       <DialogContent sx={{ p: 0 }}>
         <Box sx={{ overflowY: "auto", maxHeight: "78vh" }}>
           {fmt === "pdf" ? (
-            <PdfPreview docId={document.id} />
+            <PdfPreview previewUrl={document.fileUrl.replace('/download','/preview')} />
           ) : sourceContent ? (
             <MarkdownPreview content={sourceContent} />
           ) : (

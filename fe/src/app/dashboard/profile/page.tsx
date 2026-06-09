@@ -24,6 +24,20 @@ import { ExperienceSection, type ExperienceSectionHandle } from "@/components/pr
 import { CertificatesSection, type CertificatesSectionHandle } from "@/components/profile/CertificatesSection";
 import type { ProfileSkill, WorkExperience, Certificate } from "@/types";
 
+// Shape of a partial profile update used by saveProfilePartial
+type ProfilePartial = Partial<{
+  name: string;
+  email: string;
+  summary: string;
+  phoneNumber: string;
+  githubUrl: string;
+  linkedinUrl: string;
+  experience: WorkExperience[];
+  projects: any[]; // project type can be refined if available
+  certificates: Certificate[];
+  skills: ProfileSkill[];
+}>;
+
 function coerceProfileSkills(raw: unknown): ProfileSkill[] {
   if (!Array.isArray(raw)) return [];
   const out: ProfileSkill[] = [];
@@ -82,10 +96,11 @@ export default function ProfilePage() {
     }
   }, [profile]);
 
-  const handleSaveProfile = async () => {
+  // Helper to persist full profile after section changes
+  const saveProfilePartial = async (partial: ProfilePartial) => {
     setSavingProfile(true);
     try {
-      const res = await axiosInstance.put("/api/profile", {
+      const payload = {
         name: form.name,
         email: form.email,
         summary: form.summary,
@@ -93,23 +108,30 @@ export default function ProfilePage() {
         githubUrl: form.githubUrl,
         linkedinUrl: form.linkedinUrl,
         experience,
-        certificates,
         projects,
-      });
+        certificates,
+        skills,
+        ...partial,
+      };
+      const res = await axiosInstance.put('/api/profile', payload);
       if (res.status >= 200 && res.status < 300 && (res.data?.success || res.status === 200)) {
-        showSnackbar("Profile saved", "success");
+        showSnackbar('Profile saved', 'success');
         await refetch();
       } else {
-        showSnackbar(res.data?.message || "Failed to save profile", "error");
+        showSnackbar(res.data?.message || 'Failed to save profile', 'error');
       }
     } catch (e) {
       console.error(e);
-      showSnackbar("Failed to save profile", "error");
+      showSnackbar('Failed to save profile', 'error');
     } finally {
       setSavingProfile(false);
     }
   };
 
+  const handleCertificatesChange = async (newCertificates: Certificate[]) => {
+    setCertificates(newCertificates);
+    await saveProfilePartial({ certificates: newCertificates });
+  };
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
@@ -129,15 +151,7 @@ export default function ProfilePage() {
             Manage your professional identity and AI context
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          onClick={handleSaveProfile}
-          disabled={savingProfile}
-          startIcon={<Save size={18} />}
-          sx={{ borderRadius: 2.5, fontWeight: 700, px: 3, py: 1.2 }}
-        >
-          {savingProfile ? "Saving..." : "Save changes"}
-        </Button>
+
       </Stack>
 
       {error ? (
@@ -326,7 +340,7 @@ export default function ProfilePage() {
               count={certificates.length}
               onAdd={() => certRef.current?.openNew()}
             >
-              <CertificatesSection ref={certRef} certificates={certificates} onChange={setCertificates} />
+              <CertificatesSection ref={certRef} certificates={certificates} onChange={handleCertificatesChange} />
             </CollapsibleSection>
 
             <CollapsibleSection
@@ -341,20 +355,11 @@ export default function ProfilePage() {
           </Stack>
 
           <Box sx={{ display: { xs: "block", sm: "none" }, mt: 2 }}>
-            <Button
-              variant="contained"
-              fullWidth
-              onClick={handleSaveProfile}
-              disabled={savingProfile}
-              startIcon={<Save size={18} />}
-              sx={{ borderRadius: 3, fontWeight: 700, py: 1.5 }}
-            >
-              {savingProfile ? "Saving..." : "Save profile"}
-            </Button>
+
           </Box>
         </Stack>
       </Box>
     </Stack>
-  );
+  )
 }
 

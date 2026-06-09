@@ -107,6 +107,38 @@ function getStarredTemplates(userId) {
   return starredIds.map((id) => byId.get(String(id))).filter(Boolean);
 }
 
+function getApprovedPublicTemplates() {
+  ensureSeeded();
+  return documentTemplateRepo.listApprovedPublic();
+}
+
+function getCommunityTemplates(userId) {
+  ensureSeeded();
+  return documentTemplateRepo.listCommunityForUser(userId);
+}
+
+function getAiTemplates(userId) {
+  ensureSeeded();
+  return getAllTemplates({ publicOnly: false }).filter(
+    (t) => String(t.createdBy) !== String(userId) || t.templateKind === 'ai' || t.templateKind === 'hybrid',
+  );
+}
+
+function getPendingApprovalTemplates() {
+  ensureSeeded();
+  return documentTemplateRepo.listPendingApproval();
+}
+
+function approveTemplate(id, userId) {
+  ensureSeeded();
+  return documentTemplateRepo.approve(id, userId);
+}
+
+function rejectTemplate(id, userId, reason) {
+  ensureSeeded();
+  return documentTemplateRepo.reject(id, userId, reason);
+}
+
 function resolveTemplateForGeneration(templateId, documentType) {
   if (!templateId) return null;
   try {
@@ -139,4 +171,9 @@ module.exports = {
   getStarredTemplates,
   getUserStarredIds,
   resolveTemplateForGeneration,
+  getPendingApprovalTemplates,
+  getCommunityTemplates,
+  getAiTemplates,
+  approveTemplate,
+  rejectTemplate,
 };

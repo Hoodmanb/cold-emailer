@@ -42,7 +42,7 @@ export default function TemplateSelector({
   const starMutation = useStarDocumentTemplate();
   const unstarMutation = useUnstarDocumentTemplate();
 
-  const templates = data?.templates || [];
+  const templates = (data?.templates || []).filter((t) => t.approvalStatus === "approved");
   const starredIds = new Set(data?.starredIds || []);
 
   const displayed = useMemo(() => {

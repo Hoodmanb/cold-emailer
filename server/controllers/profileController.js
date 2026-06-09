@@ -6,6 +6,7 @@ const { encrypt } = require("../utils/encryption");
 const { normalizeProfilePayload } = require("../utils/profileNormalize");
 const { log, ACTION_TYPES } = require("../logs/auditLogger");
 const { successResponse } = require("../utils/response");
+const { requireUserId } = require("../utils/requireUserId");
 
 const screenshotUpload = multer({
   storage: multer.memoryStorage(),
@@ -18,30 +19,37 @@ const screenshotUpload = multer({
   },
 });
 
-const getProfileHandler = (req, res) =>
-  successResponse(res, {
+const getProfileHandler = (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  return successResponse(res, {
     status: 200,
     message: "Profile retrieved successfully",
-    data: getProfile(),
+    data: getProfile(userId),
   });
+};
 
 const updateProfileHandler = (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
   if (!req.body || typeof req.body !== "object") {
     const err = new Error("Profile payload must be a JSON object");
     err.status = 400;
     throw err;
   }
-  updateProfile(normalizeProfilePayload(req.body));
+  updateProfile(normalizeProfilePayload(req.body), userId);
   log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: "Career profile updated" });
   return successResponse(res, {
     status: 200,
     message: "Profile updated successfully",
-    data: getProfile(),
+    data: getProfile(userId),
   });
 };
 
 const getProjectsHandler = (req, res) => {
-  const projects = getAllProjects();
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  const projects = getAllProjects(userId);
   console.log(`[profileController] Fetched ${projects.length} projects for user ${req.user?.id}`);
   return successResponse(res, {
     status: 200,
@@ -52,7 +60,9 @@ const getProjectsHandler = (req, res) => {
 };
 
 const createProjectHandler = (req, res) => {
-  const created = createProject(req.body);
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  const created = createProject(req.body, userId);
   log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: "Project created" });
   return successResponse(res, {
     status: 201,
@@ -62,8 +72,10 @@ const createProjectHandler = (req, res) => {
 };
 
 const updateProjectHandler = (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
   const { projectId } = req.params;
-  const updated = updateProject(projectId, req.body);
+  const updated = updateProject(projectId, req.body, userId);
   if (!updated) {
     const err = new Error("Project not found");
     err.status = 404;
@@ -78,8 +90,10 @@ const updateProjectHandler = (req, res) => {
 };
 
 const deleteProjectHandler = (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
   const { projectId } = req.params;
-  const removedCount = deleteProject(projectId);
+  const removedCount = deleteProject(projectId, userId);
   if (removedCount === 0) {
     const err = new Error("Project not found");
     err.status = 404;
@@ -108,16 +122,21 @@ const uploadScreenshotHandler = (req, res) => {
   });
 };
 
-const getSkillsHandler = (_req, res) =>
-  successResponse(res, {
+const getSkillsHandler = (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  return successResponse(res, {
     status: 200,
     message: "Skills retrieved successfully",
-    data: getProfile().skills || [],
+    data: getProfile(userId).skills || [],
   });
+};
 
 const createSkillHandler = (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
   const { normalizeSkillsInput } = require("../utils/profileNormalize");
-  const profile = getProfile();
+  const profile = getProfile(userId);
   const rawInput = req.body?.name || req.body?.skills;
 
   if (!rawInput) throw new Error("Skill name or skills array required");
@@ -137,7 +156,7 @@ const createSkillHandler = (req, res) => {
   }
 
   if (added.length > 0) {
-    updateProfile({ skills: existingSkills });
+    updateProfile({ skills: existingSkills }, userId);
   }
 
   log(ACTION_TYPES.PROFILE_UPDATED, { 
@@ -152,15 +171,20 @@ const createSkillHandler = (req, res) => {
   });
 };
 
-const getCertificatesHandler = (_req, res) =>
-  successResponse(res, {
+const getCertificatesHandler = (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  return successResponse(res, {
     status: 200,
     message: "Certificates retrieved successfully",
-    data: getProfile().certificates || [],
+    data: getProfile(userId).certificates || [],
   });
+};
 
 const createCertificateHandler = (req, res) => {
-  const profile = getProfile();
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  const profile = getProfile(userId);
   const certificates = Array.isArray(profile.certificates) ? profile.certificates : [];
   const { normalizeCertificates } = require("../utils/profileNormalize");
 
@@ -172,7 +196,7 @@ const createCertificateHandler = (req, res) => {
   }
 
   certificates.push(normalized[0]);
-  updateProfile({ certificates });
+  updateProfile({ certificates }, userId);
 
   log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: "Certificate added" });
   return successResponse(res, {
@@ -183,15 +207,17 @@ const createCertificateHandler = (req, res) => {
 };
 
 const updateCertificateHandler = (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
   const { certId } = req.params;
-  const profile = getProfile();
+  const profile = getProfile(userId);
   const certificates = (profile.certificates || []).map((c) =>
     String(c.id) === String(certId) ? { ...c, ...req.body, id: certId } : c
   );
   
   const { normalizeCertificates } = require("../utils/profileNormalize");
   const normalized = normalizeCertificates(certificates);
-  updateProfile({ certificates: normalized });
+  updateProfile({ certificates: normalized }, userId);
 
   log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: "Certificate updated" });
   return successResponse(res, {
@@ -202,10 +228,12 @@ const updateCertificateHandler = (req, res) => {
 };
 
 const deleteCertificateHandler = (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
   const { certId } = req.params;
-  const profile = getProfile();
+  const profile = getProfile(userId);
   const certificates = (profile.certificates || []).filter((c) => String(c.id) !== String(certId));
-  updateProfile({ certificates });
+  updateProfile({ certificates }, userId);
 
   log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: "Certificate removed" });
   return successResponse(res, {
@@ -216,6 +244,8 @@ const deleteCertificateHandler = (req, res) => {
 };
 
 const updateSkillHandler = (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
   const { skillId } = req.params;
   if (!skillId) {
     const err = new Error("Skill ID is required");
@@ -230,7 +260,7 @@ const updateSkillHandler = (req, res) => {
     throw err;
   }
 
-  const profile = getProfile();
+  const profile = getProfile(userId);
   const skills = (profile.skills || []).map((s) =>
     String(s.id) === String(skillId) ? { ...s, name } : s
   );
@@ -244,7 +274,7 @@ const updateSkillHandler = (req, res) => {
     throw err;
   }
 
-  updateProfile({ skills: normalized });
+  updateProfile({ skills: normalized }, userId);
 
   log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: `Skill updated: ${name}` });
   return successResponse(res, {
@@ -254,8 +284,10 @@ const updateSkillHandler = (req, res) => {
   });
 };
 
-const getEmailConfigHandler = (_req, res) => {
-  const profile = getProfile();
+const getEmailConfigHandler = (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  const profile = getProfile(userId);
   return successResponse(res, {
     status: 200,
     message: "Email config retrieved successfully",
@@ -268,6 +300,8 @@ const getEmailConfigHandler = (_req, res) => {
 };
 
 const updateEmailConfig = (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
   const body = req.body && typeof req.body === "object" ? req.body : {};
   const updates = {};
 
@@ -283,10 +317,10 @@ const updateEmailConfig = (req, res) => {
     throw err;
   }
 
-  updateProfile(normalizeProfilePayload(updates));
+  updateProfile(normalizeProfilePayload(updates), userId);
   log(ACTION_TYPES.EMAIL_CONFIG_UPDATED, { module: "profile", details: "Email sender config updated" });
 
-  const profile = getProfile();
+  const profile = getProfile(userId);
   return successResponse(res, {
     status: 200,
     message: "Email config updated successfully",
@@ -299,10 +333,12 @@ const updateEmailConfig = (req, res) => {
 };
 
 const deleteSkillHandler = (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
   const { skillId } = req.params;
-  const profile = getProfile();
+  const profile = getProfile(userId);
   const skills = (profile.skills || []).filter((s) => String(s.id) !== String(skillId));
-  updateProfile({ skills });
+  updateProfile({ skills }, userId);
 
   log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: "Skill removed" });
   return successResponse(res, {
@@ -312,15 +348,20 @@ const deleteSkillHandler = (req, res) => {
   });
 };
 
-const getPreferencesHandler = (_req, res) =>
-  successResponse(res, {
+const getPreferencesHandler = (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  return successResponse(res, {
     status: 200,
     message: "Preferences retrieved successfully",
-    data: getSettings(),
+    data: getSettings(userId),
   });
+};
 
 const updatePreferencesHandler = (req, res) => {
-  const updated = updateSettings(req.body);
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  const updated = updateSettings(req.body, userId);
   return successResponse(res, {
     status: 200,
     message: "Preferences updated successfully",

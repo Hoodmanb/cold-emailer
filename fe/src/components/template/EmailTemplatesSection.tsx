@@ -21,21 +21,16 @@ import {
   Link2,
   Mail,
   Plus,
-  Download,
-  FileText,
-  FileDigit,
-  FileCode,
-  FileType2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGlobalModal } from "@/components/ui/Modal";
 import { useSnackbar } from "@/context/SnackbarContext";
-import { useFetchAttachment } from "@/hooks/queryHooks";
 import { useGetTemplates } from "@/hooks/queryHooks/templates";
 import AddEmailTemplate from "@/components/layout/AddEmailTemplate";
-import AddAttachment from "@/components/layout/AddAttachment";
-import axiosInstance from "@/hooks/axios";
-import useAuthStore from "@/store/useAuthStore";
+import TemplateStatusBadge from "@/components/template/TemplateStatusBadge";
+import { useAttachments } from "@/hooks/queryHooks/attachments";
+import { AttachmentPreviewList } from "@/components/attachments/AttachmentPicker";
+import apiClient from "@/lib/apiClient";
 
 type EmailTemplate = {
   _id: string;
@@ -44,21 +39,17 @@ type EmailTemplate = {
   body: string;
   isPublic: boolean;
   url?: string;
-};
-type Attachment = {
-  _id: string;
-  name: string;
-  url?: string;
-  isPublic: boolean;
+  approvalStatus?: string;
 };
 
-const getFileIcon = (filename: string) => {
-  const ext = filename.split(".").pop()?.toLowerCase();
-  if (ext === "pdf") return <FileText size={18} />;
-  if (ext === "doc" || ext === "docx") return <FileDigit size={18} />;
-  if (ext === "xls" || ext === "xlsx") return <FileCode size={18} />;
-  return <FileType2 size={18} />;
-};
+// Helper to filter only approved templates
+const onlyApproved = (templates: EmailTemplate[]) => templates.filter(t => t.approvalStatus === "approved");
+
+function TemplateAttachmentList({ templateId }: { templateId: string }) {
+  const { attachments, loading } = useAttachments(templateId, "email_template");
+  if (loading) return <Typography variant="caption" color="text.secondary">Loading attachments...</Typography>;
+  return <AttachmentPreviewList attachments={attachments} />;
+}
 
 function EmailCard({
   tpl,
@@ -74,10 +65,10 @@ function EmailCard({
   const del = async () => {
     if (!window.confirm("Delete this template?")) return;
     try {
-      const res = await axiosInstance.delete(`/api/template/${tpl._id}`);
+      const res = await apiClient.delete(`/api/template/${tpl._id}`);
       if (res.status === 200) {
         showSnackbar("Template deleted", "success");
-        setRefresh((p) => !p);
+        setRefresh(p => !p);
       } else showSnackbar(res.data.message || "Delete failed", "error");
     } catch {
       showSnackbar("Server error", "error");
@@ -145,6 +136,8 @@ function EmailCard({
               color={tpl.isPublic ? "success" : "default"}
               sx={{ fontSize: "0.7rem", fontWeight: 600 }}
             />
+            {tpl.approvalStatus === "approved" && <TemplateStatusBadge status="approved" />}
+            <Chip size="small" label="📝 Email Template" sx={{ fontSize: "0.7rem", fontWeight: 600 }} />
             <Box
               sx={{
                 color: "text.secondary",
@@ -188,18 +181,20 @@ function EmailCard({
             </Typography>
             {tpl.url && (
               <Stack direction="row" alignItems="center" gap={0.5} mb={2}>
-                <Link2
-                  size={13}
-                  style={{ color: "var(--mui-palette-primary-main)" }}
-                />
-                <Typography
-                  variant="caption"
-                  sx={{ color: "primary.main", wordBreak: "break-all" }}
-                >
+                <Link2 size={13} style={{ color: "var(--mui-palette-primary-main)" }} />
+                <Typography variant="caption" sx={{ color: "primary.main", wordBreak: "break-all" }}>
                   {tpl.url}
                 </Typography>
               </Stack>
             )}
+            <Box mb={2}>
+              <Typography variant="caption" fontWeight={700} color="text.secondary">
+                ATTACHED DOCUMENTS
+              </Typography>
+              <Box mt={1}>
+                <TemplateAttachmentList templateId={tpl._id} />
+              </Box>
+            </Box>
             <Stack direction="row" gap={1}>
               <Button
                 size="small"
@@ -236,113 +231,23 @@ function EmailCard({
   );
 }
 
-function AttachmentCard({
-  file,
-  setRefresh,
-}: {
-  file: Attachment;
-  setRefresh: React.Dispatch<React.SetStateAction<boolean>>;
-}) {
-  const { showSnackbar } = useSnackbar();
-  const del = async () => {
-    try {
-      const res = await axiosInstance.delete(`/api/attachment/${file._id}`);
-      if (res.data.message === "deleted successfully") {
-        showSnackbar("Attachment deleted", "success");
-        setRefresh((p) => !p);
-      } else showSnackbar(res.data.message || "Delete failed", "error");
-    } catch {
-      showSnackbar("Error deleting attachment", "error");
-    }
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0 }}
-    >
-      <Paper
-        elevation={0}
-        sx={{
-          p: 2,
-          display: "flex",
-          alignItems: "center",
-          gap: 1.5,
-          border: "1px solid",
-          borderColor: "divider",
-          borderRadius: 2.5,
-          minWidth: 180,
-          transition: "box-shadow 0.2s",
-          "&:hover": { boxShadow: "0 2px 12px rgba(0,0,0,0.08)" },
-        }}
-      >
-        <Box sx={{ color: "primary.main" }}>{getFileIcon(file.name)}</Box>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Tooltip title={file.name}>
-            <Typography
-              variant="caption"
-              fontWeight={600}
-              sx={{
-                display: "block",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {file.name}
-            </Typography>
-          </Tooltip>
-          <Chip
-            size="small"
-            label={file.isPublic ? "Public" : "Private"}
-            color={file.isPublic ? "success" : "default"}
-            sx={{ mt: 0.5, fontSize: "0.6rem", height: 18 }}
-          />
-        </Box>
-        <Stack direction="row" gap={0.5}>
-          {file.url && (
-            <Tooltip title="Download">
-              <IconButton
-                size="small"
-                onClick={() => window.open(file.url, "_blank")}
-              >
-                <Download size={14} />
-              </IconButton>
-            </Tooltip>
-          )}
-          <Tooltip title="Delete">
-            <IconButton size="small" onClick={del}>
-              <Trash2 size={14} />
-            </IconButton>
-          </Tooltip>
-        </Stack>
-      </Paper>
-    </motion.div>
-  );
-}
-
 export default function EmailTemplatesSection() {
   const { showModal } = useGlobalModal();
-  const user = useAuthStore((state) => state.userProfile?.name);
   const [refresh, setRefresh] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const { template, loading, error, refetch } = useGetTemplates();
-  const { attachment, loadingFetch, refetchAttachment } =
-    useFetchAttachment("/api/attachment");
+  const { template, loading, refetch } = useGetTemplates();
 
   useEffect(() => {
-    if (user) {
-      refetch();
-      refetchAttachment();
-    }
     setMounted(true);
-  }, [refresh]);
+  }, []);
+
+  useEffect(() => {
+    void refetch();
+  }, [refresh, refetch]);
 
   if (!mounted) return null;
 
   const templates: EmailTemplate[] = Array.isArray(template) ? template : [];
-  const attachments: Attachment[] = Array.isArray(attachment) ? attachment : [];
 
   return (
     <Box>
@@ -442,98 +347,12 @@ export default function EmailTemplatesSection() {
       ) : (
         <Stack gap={2} mb={4}>
           <AnimatePresence>
-            {templates.map((t) => (
+            {onlyApproved(templates).map((t) => (
               <EmailCard key={t._id} tpl={t} setRefresh={setRefresh} />
             ))}
           </AnimatePresence>
         </Stack>
       )}
-
-      {/* Attachments */}
-      <Box sx={{ mt: 2 }}>
-        <Stack
-          direction="row"
-          justifyContent="space-between"
-          alignItems="center"
-          mb={3}
-        >
-          <Box>
-            <Typography variant="h6" fontWeight={700}>
-              Attachments
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              CVs and documents attached to your emails
-            </Typography>
-          </Box>
-          {attachments.length !== 0 && (
-            <Button
-              variant="outlined"
-              startIcon={<Plus size={16} />}
-              sx={{
-                textTransform: "none",
-                borderRadius: 2.5,
-                fontWeight: 600,
-                minHeight: 44,
-              }}
-              onClick={() =>
-                showModal(<AddAttachment type="add" setRefresh={setRefresh} />)
-              }
-            >
-              Upload Attachment
-            </Button>
-          )}
-        </Stack>
-
-        {loadingFetch ? (
-          <Stack direction="row" flexWrap="wrap" gap={2}>
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} variant="rounded" width={200} height={72} />
-            ))}
-          </Stack>
-        ) : attachments.length === 0 ? (
-          <Paper
-            elevation={0}
-            sx={{
-              p: 6,
-              textAlign: "center",
-              border: "1px dashed",
-              borderColor: "divider",
-              borderRadius: 3,
-            }}
-          >
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              No attachments uploaded yet
-            </Typography>
-            <Button
-              variant="outlined"
-              startIcon={<Plus size={16} />}
-              sx={{
-                textTransform: "none",
-                borderRadius: 2.5,
-                fontWeight: 600,
-                minHeight: 44,
-              }}
-              onClick={() =>
-                showModal(<AddAttachment type="add" setRefresh={setRefresh} />)
-              }
-            >
-              Upload First Attachment
-            </Button>
-          </Paper>
-        ) : (
-          <Stack direction="row" flexWrap="wrap" gap={2}>
-            <AnimatePresence>
-              {attachments.map((file) => (
-                <AttachmentCard
-                  key={file._id}
-                  file={file}
-                  setRefresh={setRefresh}
-                />
-              ))}
-            </AnimatePresence>
-          </Stack>
-        )}
-      </Box>
     </Box>
   );
 }

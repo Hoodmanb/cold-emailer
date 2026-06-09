@@ -1,6 +1,12 @@
+const {
+  getCustomModelsByProvider,
+  addCustomModel: persistCustomModel,
+  removeCustomModel: persistCustomModelRemoval,
+} = require('../../repositories/modelCatalogRepository');
+
 const PROVIDERS = ['openai', 'claude', 'gemini', 'openrouter'];
 
-const MODELS_BY_PROVIDER = {
+const BASELINE_MODELS_BY_PROVIDER = {
   openai: [
     { id: 'gpt-4o', name: 'GPT-4o' },
     { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
@@ -25,19 +31,39 @@ const MODELS_BY_PROVIDER = {
 
 const normalizeProvider = (provider) => String(provider || '').trim().toLowerCase();
 
+function isBaselineModel(provider, modelId) {
+  const p = normalizeProvider(provider);
+  const id = String(modelId || '').trim();
+  return (BASELINE_MODELS_BY_PROVIDER[p] || []).some((row) => row.id === id);
+}
+
+function mergeProviderModels(provider) {
+  const p = normalizeProvider(provider);
+  const merged = new Map();
+
+  (BASELINE_MODELS_BY_PROVIDER[p] || []).forEach((row) => {
+    merged.set(row.id, { id: row.id, name: row.name, source: 'baseline' });
+  });
+
+  getCustomModelsByProvider(p).forEach((row) => {
+    merged.set(row.id, { id: row.id, name: row.name, source: 'custom' });
+  });
+
+  return [...merged.values()];
+}
+
 function getProviders() {
   return [...PROVIDERS];
 }
 
 function getModelsByProvider(provider) {
-  const p = normalizeProvider(provider);
-  return MODELS_BY_PROVIDER[p] ? [...MODELS_BY_PROVIDER[p]] : [];
+  return mergeProviderModels(provider).map(({ id, name }) => ({ id, name }));
 }
 
 function getAllModelsGrouped() {
   return PROVIDERS.map((provider) => ({
     provider,
-    models: getModelsByProvider(provider),
+    models: mergeProviderModels(provider),
   }));
 }
 
@@ -45,14 +71,52 @@ function isValidModelForProvider(provider, model) {
   const p = normalizeProvider(provider);
   const m = String(model || '').trim();
   if (!p || !m) return false;
-  return getModelsByProvider(p).some((row) => row.id === m);
+  return mergeProviderModels(p).some((row) => row.id === m);
+}
+
+function addCustomModel(provider, { id, name }) {
+  const p = normalizeProvider(provider);
+  const modelId = String(id || '').trim();
+  if (!PROVIDERS.includes(p)) {
+    const err = new Error(`Unsupported provider: ${provider}`);
+    err.statusCode = 400;
+    throw err;
+  }
+  if (isValidModelForProvider(p, modelId)) {
+    const err = new Error(`Model "${modelId}" is already in the catalog`);
+    err.statusCode = 409;
+    throw err;
+  }
+  persistCustomModel(p, { id: modelId, name: name || modelId });
+  return mergeProviderModels(p).find((row) => row.id === modelId);
+}
+
+function removeCustomModel(provider, modelId) {
+  const p = normalizeProvider(provider);
+  const id = String(modelId || '').trim();
+  if (isBaselineModel(p, id)) {
+    const err = new Error('Built-in models cannot be removed');
+    err.statusCode = 400;
+    throw err;
+  }
+  if (!getCustomModelsByProvider(p).some((row) => row.id === id)) {
+    const err = new Error(`Custom model "${id}" not found`);
+    err.statusCode = 404;
+    throw err;
+  }
+  persistCustomModelRemoval(p, id);
+  return { provider: p, model: id };
 }
 
 module.exports = {
   PROVIDERS,
-  MODELS_BY_PROVIDER,
+  BASELINE_MODELS_BY_PROVIDER,
+  MODELS_BY_PROVIDER: BASELINE_MODELS_BY_PROVIDER,
   getProviders,
   getModelsByProvider,
   getAllModelsGrouped,
   isValidModelForProvider,
+  isBaselineModel,
+  addCustomModel,
+  removeCustomModel,
 };
