@@ -13,6 +13,7 @@ const cvData = {
     contact: {
       phone: "+447350168547",
       email: "fpamilerinadeniyi@gmail.com",
+      linkedIn: "https://www.linkedin.com/in/pamilerin-fayose-b66642413",
       location: "Leeds, West Yorkshire, LS3 1AT",
     },
     title: "Customer Service & Client Relations Professional",
@@ -20,13 +21,15 @@ const cvData = {
   summary: {
     title: "PROFESSIONAL SUMMARY",
     content:
-      "Customer service professional with over 3+ years of experience in automotive sales, hospitality, and customer relationship management. Proven ability to build strong client relationships, resolve issues effectively, and drive satisfaction. Strong communication, organisational, and analytical skills, supported by practical business experience and published research. Committed to delivering excellent service, supporting team coordination, and improving customer experience processes.",
+      "Ambitious professional with 3+ years of experience in automotive sales, hospitality, business development, and operations. Proven ability to build strong client relationships and drive revenue growth. Strong analytical and communication skills, supported by published research. Committed to people management, strategic HR operations, and continuous improvement.",
   },
+  // ============ Leadership ============ 
   leadership: [
-    "Managed customer-facing operations, client relationships, and service delivery activities.",
-    "Coordinated planning and administrative processes to ensure consistent customer satisfaction.",
-    "Demonstrated initiative, empathy, and decision-making through business ownership and team support.",
+    "Published undergraduate research in 2024 on entrepreneurial passion and decision-making.",
+    "Founded and managed registered businesses while completing a university degree.",
+    "Earned Trade Test Certificates Grades 1, 2, and 3, demonstrating commitment to professional development.",
   ],
+
   achievements: [
     "Published undergraduate research project in 2024 on entrepreneurial passion and decision-making.",
     "Founded and managed registered businesses while completing a university degree, demonstrating client-focused leadership.",
@@ -53,14 +56,15 @@ const cvData = {
       dateRange: "Mar 2023 - Sep 2025",
       // "location": "Ibadan, Oyo",
       responsibilities: [
-        "Managed third-party logistics providers and tracked performance to ensure reliable service delivery.",
-        "Resolved supply chain disruptions quickly to prevent delays and maintain customer trust.",
-        "Designed workload plans that allowed bike delivery staff to increase both productivity and earnings.",
-        "Developed strong organisational and problem-solving skills through customer-focused operations management.",
+        "Delivered consistent year on year sales growth.",
+        "Assisted customers with vehicle enquiries and the sales process.",
+        "Successfully expanded market share and customer base.",
+        "Contributed to sustained sales growth through effective team leadership and business development.",
+        "Led initiatives that improved operational efficiency and customer engagement.",
       ],
     },
     {
-      jobTitle: "Car Sales Executive",
+      jobTitle: "Lead Car Sales Executive",
       company: "DAILY DEAL AUTOS",
       dateRange: "May 2021 - June 2024",
       // "location": "Lagos, Nigeria",
@@ -87,10 +91,10 @@ const cvData = {
   ],
   education: [
     {
-      degree: "MASTER OF SCIENCE",
+      degree: "MSc HRM",
       field: "Human Resources Management",
       institution: "York St John University, York",
-      dateRange: "Sep 2025 - Current",
+      dateRange: "Sep 2025 - Sep 2026",
     },
     {
       degree: "BACHELOR OF SCIENCE",
@@ -112,9 +116,8 @@ const cvData = {
   ],
   mscModules: [
     "Employee Relations",
-    "Organisational Behaviour",
     "Talent Management",
-    "Leadership and Management",
+    "Organisational Behaviour",
     "Research Methods",
   ],
   research: [
@@ -135,11 +138,16 @@ const cvData = {
     //     ]
     // },
     {
-      category: "Technical & Professional",
+      category: "Professional Skills",
       items: [
-        "Microsoft Office (Word, Excel, PowerPoint)",
-        "Report Writing & Data Analysis",
-        "Attention to Detail & Reliability",
+        "Stakeholder Management",
+        "Project Coordination",
+        "Administrative Support",
+        "Commercial Awareness",
+        "Quality inspection & standard compliance",
+        "Guest complaint resolution",
+        "Problem-Solving & Initiative",
+        "Organisational & Research Skills",
       ],
     },
     {
@@ -152,16 +160,11 @@ const cvData = {
       ],
     },
     {
-      category: "Professional Skills",
+      category: "Technical & Professional",
       items: [
-        "Stakeholder Management",
-        "Project Coordination",
-        "Administrative Support",
-        "Commercial Awareness",
-        "Quality inspection & standard compliance",
-        "Guest complaint resolution",
-        "Problem-Solving & Initiative",
-        "Organisational & Research Skills",
+        "Microsoft Office (Word, Excel, PowerPoint)",
+        "Report Writing & Data Analysis",
+        "Attention to Detail & Reliability",
       ],
     },
   ],

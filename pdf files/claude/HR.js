@@ -13,6 +13,7 @@ const cvData = {
     contact: {
       phone: "+447350168547",
       email: "fpamilerinadeniyi@gmail.com",
+      linkedIn: "https://www.linkedin.com/in/pamilerin-fayose-b66642413",
       location: "Leeds, West Yorkshire, LS3 1AT",
     },
     title:
@@ -21,12 +22,13 @@ const cvData = {
   summary: {
     title: "PROFESSIONAL SUMMARY",
     content:
-      "MSc Human Resources Management student with 3+ years of experience in automotive sales, CRM, business development, and operations. Proven ability to build strong client relationships and drive revenue growth. Strong analytical and communication skills, supported by published research. Committed to people management, strategic HR operations, and continuous improvement.",
+      "Ambitious professional with 3+ years of experience in automotive sales, hospitality, business development, and operations. Proven ability to build strong client relationships and drive revenue growth. Strong analytical and communication skills, supported by published research. Committed to people management, strategic HR operations, and continuous improvement.",
   },
+  // ============ Leadership ============ 
   leadership: [
-    "Managed business operations, team workflows, and people-focused processes supporting organisational objectives.",
-    "Coordinated planning and administrative processes, ensuring alignment with business and HR goals.",
-    "Demonstrated initiative, commercial awareness, and decision-making through business ownership and team supervision.",
+    "Published undergraduate research in 2024 on entrepreneurial passion and decision-making.",
+    "Founded and managed registered businesses while completing a university degree.",
+    "Earned Trade Test Certificates Grades 1, 2, and 3, demonstrating commitment to professional development.",
   ],
   achievements: [
     "Published undergraduate research project in 2024 on entrepreneurial passion and decision-making.",
@@ -48,7 +50,7 @@ const cvData = {
       ],
     },
     {
-      jobTitle: "Logistics Manager",
+      jobTitle: "Manager",
       company: "DAILY DEAL ARRIVALS",
       dateRange: "Mar 2023 - Sep 2025",
       // "location": "Ibadan, Oyo",
@@ -56,11 +58,11 @@ const cvData = {
         "Managed third-party logistics providers and tracked performance to maintain service levels.",
         "Resolved supply chain disruptions quickly to prevent production delays and customer complaints.",
         "Designed workload plans that allowed bike delivery staff to increase both productivity and earnings.",
-        "Developed strong leadership, organisational, and problem-solving skills through team oversight.",
+        "⁠Designed workload plans that allowed bike delivery staff to increase both productivity and earnings.",
       ],
     },
     {
-      jobTitle: "Car Sales Executive",
+      jobTitle: "Lead Car Sales Executive",
       company: "DAILY DEAL AUTOS",
       dateRange: "May 2021 - June 2024",
       // "location": "Lagos, Nigeria",
@@ -87,10 +89,10 @@ const cvData = {
   ],
   education: [
     {
-      degree: "MASTER OF SCIENCE",
+      degree: "MSc HRM",
       field: "Human Resources Management",
       institution: "York St John University, York",
-      dateRange: "Sep 2025 - Current",
+      dateRange: "Sep 2025 - Sep 2026",
     },
     {
       degree: "BACHELOR OF SCIENCE",
@@ -126,6 +128,28 @@ const cvData = {
   ],
   skills: [
     {
+      category: "Professional Skills",
+      items: [
+        "Stakeholder Management",
+        "Project Coordination",
+        "Administrative Support",
+        "Commercial Awareness",
+        "Quality inspection & standard compliance",
+        "Guest complaint resolution",
+        "Problem-Solving & Initiative",
+        "Organisational & Research Skills",
+      ],
+    },
+    {
+      category: "Interpersonal & Management",
+      items: [
+        "Teamwork & Collaboration",
+        "Customer Service",
+        "Professional Communication",
+        "Time Management",
+      ],
+    },
+    {
       category: "HR & People Management",
       items: [
         "Talent Management & Employee Relations",
@@ -140,28 +164,6 @@ const cvData = {
         "Microsoft Office (Word, Excel, PowerPoint)",
         "Report Writing & Data Analysis",
         "Attention to Detail & Reliability",
-      ],
-    },
-    {
-      category: "Interpersonal & Management",
-      items: [
-        "Teamwork & Collaboration",
-        "Customer Service",
-        "Professional Communication",
-        "Time Management",
-      ],
-    },
-    {
-      category: "Professional Skills",
-      items: [
-        "Stakeholder Management",
-        "Project Coordination",
-        "Administrative Support",
-        "Commercial Awareness",
-        "Quality inspection & standard compliance",
-        "Guest complaint resolution",
-        "Problem-Solving & Initiative",
-        "Organisational & Research Skills",
       ],
     },
   ],

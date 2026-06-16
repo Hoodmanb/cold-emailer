@@ -24,6 +24,7 @@ const cvData = {
     contact: {
       phone: "+447350168547",
       email: "fpamilerinadeniyi@gmail.com",
+      linkedIn: "https://www.linkedin.com/in/pamilerin-fayose-b66642413",
       location: "Leeds, West Yorkshire, LS3 1AT",
     },
   },
@@ -32,14 +33,14 @@ const cvData = {
   summary: {
     title: "PROFESSIONAL SUMMARY",
     content:
-      "MSc Human Resources Management student with 3+ years of experience in automotive sales, CRM, business development, and operations. Proven ability to build strong client relationships and drive revenue growth. Strong analytical and communication skills, supported by published research. Committed to people management, strategic HR operations, and continuous improvement.",
+      "Ambitious professional with 3+ years of experience in automotive sales, hospitality, business development, and operations. Proven ability to build strong client relationships and drive revenue growth. Strong analytical and communication skills, supported by published research. Committed to people management, strategic HR operations, and continuous improvement.",
   },
 
-  // ============ Leadership ============
+  // ============ Leadership ============ 
   leadership: [
-    "Managed business operations, customer relationships, and logistics activities.",
-    "Coordinated planning and administrative processes supporting business objectives.",
-    "Demonstrated initiative, commercial awareness, and decision-making through business ownership.",
+    "Published undergraduate research in 2024 on entrepreneurial passion and decision-making.",
+    "Founded and managed registered businesses while completing a university degree.",
+    "Earned Trade Test Certificates Grades 1, 2, and 3, demonstrating commitment to professional development.",
   ],
 
   // ============ Key Achievments ============
@@ -60,7 +61,7 @@ const cvData = {
       responsibilities: [
         "Inspected 40–60 guest rooms daily to ensure cleanliness standards before guest check-in.",
         "Oversaw administrative tasks, record management and operational planning.",
-        "Developed strong leadership, organisational, and problem-solving skills.",
+        "Trained new Room Attendants on service standards, guest interaction, and hotel protocols.",
         "Contributed to high guest satisfaction scores by maintaining housekeeping standards and service quality.",
       ],
     },
@@ -71,13 +72,13 @@ const cvData = {
       // location: "Ibadan, Oyo",
       responsibilities: [
         "Built and maintained relationships with customers, suppliers, and business partners, supporting daily business operations and growth.",
-        "Resolved supply chain disruptions quickly to prevent production delays and customer complaints",
+        "Resolved supply chain disruptions quickly to prevent production delays and customer complaints.",
         "Developed strong leadership, organisational, and problem-solving skills.",
-        "⁠Designed workload plans that allowed bike delivery staff to increase both productivity and earnings",
+        "⁠Designed workload plans that allowed bike delivery staff to increase both productivity and earnings.",
       ],
     },
     {
-      jobTitle: "Car Sales Executive",
+      jobTitle: "Lead Car Sales Executive",
       company: "DAILY DEAL AUTOS",
       dateRange: "May 2021 - June 2024",
       // location: "Lagos, Nigeria",
@@ -85,7 +86,7 @@ const cvData = {
         "Delivered consistent year on year sales growth.",
         "Assisted customers with vehicle enquiries and the sales process.",
         "Successfully expanded market share and customer base.",
-        "Contributed to sustained sales growth through effective team leadership and business development",
+        "Contributed to sustained sales growth through effective team leadership and business development.",
         "Led initiatives that improved operational efficiency and customer engagement.",
       ],
     },
@@ -106,10 +107,10 @@ const cvData = {
   // ============ EDUCATION ============
   education: [
     {
-      degree: "MASTER OF SCIENCE",
+      degree: "MSc HRM",
       field: "Human Resources Management",
       institution: "York St John University, York",
-      dateRange: "Sep 2025 - Current",
+      dateRange: "Sep 2025 - Sep 2026",
     },
     {
       degree: "BACHELOR OF SCIENCE",
@@ -134,10 +135,9 @@ const cvData = {
 
   // ============ RELEVANT MSc MODULES ============
   mscModules: [
-    "Talent Management",
     "Employee Relations",
+    "Talent Management",
     "Organisational Behaviour",
-    "Leadership and Management",
     "Research Methods",
   ],
 
@@ -153,10 +153,16 @@ const cvData = {
   // ============ SKILLS ============
   skills: [
     {
-      category: "Technical & Professional",
+      category: "Professional Skills",
       items: [
-        "Microsoft Office (Word, Excel, PowerPoint)",
-        "Report Writing & Data Analysis",
+        "Stakeholder Management",
+        "Project Coordination",
+        "Administrative Support",
+        "Commercial Awareness",
+        "Quality inspection & standard compliance",
+        "Attention to details & reliability",
+        "Problem-Solving & Initiative",
+        "Organisational & Research Skills",
         "Attention to Detail & Reliability",
       ],
     },
@@ -170,16 +176,11 @@ const cvData = {
       ],
     },
     {
-      category: "Professional Skills",
+      category: "Technical & Professional",
       items: [
-        "Stakeholder Management",
-        "Project Coordination",
-        "Administrative Support",
-        "Commercial Awareness",
-        "Quality inspection & standard compliance",
-        "Guest complaint resolution",
-        "Problem-Solving & Initiative",
-        "Organisational & Research Skills",
+        "Microsoft Office (Word, Excel, PowerPoint)",
+        "Report Writing & Data Analysis",
+        "Organizational and research skills",
       ],
     },
   ],

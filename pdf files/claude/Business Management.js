@@ -13,6 +13,7 @@ const cvData = {
     contact: {
       phone: "+447350168547",
       email: "fpamilerinadeniyi@gmail.com",
+      linkedIn: "https://www.linkedin.com/in/pamilerin-fayose-b66642413",
       location: "Leeds, West Yorkshire, LS3 1AT",
     },
     title: "MSc Human Resources Management | People Management Professional",
@@ -20,12 +21,12 @@ const cvData = {
   summary: {
     title: "PROFESSIONAL SUMMARY",
     content:
-      "MSc Human Resources Management student with 3+ years of experience in automotive sales, CRM, business development, and operations. Proven ability to build strong client relationships and drive revenue growth. Strong analytical and communication skills, supported by published research. Committed to people management, strategic HR operations, and continuous improvement.",
+      "Ambitious professional with 3+ years of experience in automotive sales, hospitality, business development, and operations. Proven ability to build strong client relationships and drive revenue growth. Strong analytical and communication skills, supported by published research. Committed to people management, strategic HR operations, and continuous improvement.",
   },
   leadership: [
-    "Managed business operations, team workflows, and people-focused processes supporting organisational objectives.",
-    "Coordinated planning and administrative processes, ensuring alignment with business and HR goals.",
-    "Demonstrated initiative, commercial awareness, and decision-making through business ownership and team supervision.",
+    "Published undergraduate research in 2024 on entrepreneurial passion and decision-making.",
+    "Founded and managed registered businesses while completing a university degree.",
+    "Earned Trade Test Certificates Grades 1, 2, and 3, demonstrating commitment to professional development.",
   ],
   achievements: [
     "Published undergraduate research project in 2024 on entrepreneurial passion and decision-making.",
@@ -59,7 +60,7 @@ const cvData = {
       ],
     },
     {
-      jobTitle: "Car Sales Executive",
+      jobTitle: "Lead Car Sales Executive",
       company: "DAILY DEAL AUTOS",
       dateRange: "May 2021 - June 2024",
       // "location": "Lagos, Nigeria",
@@ -86,10 +87,10 @@ const cvData = {
   ],
   education: [
     {
-      degree: "MASTER OF SCIENCE",
+      degree: "MSc HRM",
       field: "Human Resources Management",
       institution: "York St John University, York",
-      dateRange: "Sep 2025 - Current",
+      dateRange: "Sep 2025 - Sep 2026",
     },
     {
       degree: "BACHELOR OF SCIENCE",
@@ -110,12 +111,12 @@ const cvData = {
     },
   ],
   mscModules: [
-    "Talent Management",
     "Employee Relations",
+    "Talent Management",
     "Organisational Behaviour",
-    "Leadership and Management",
     "Research Methods",
   ],
+
   research: [
     {
       title: "Published Undergraduate Research Study (2024)",
@@ -125,19 +126,16 @@ const cvData = {
   ],
   skills: [
     {
-      category: "HR & People Management",
+      category: "Professional Skills",
       items: [
-        "Talent Management & Employee Relations",
-        "Training & Onboarding Coordination",
-        "Performance Monitoring & Feedback",
-        "Conflict Resolution & Mediation",
-      ],
-    },
-    {
-      category: "Technical & Professional",
-      items: [
-        "Microsoft Office (Word, Excel, PowerPoint)",
-        "Report Writing & Data Analysis",
+        "Stakeholder Management",
+        "Project Coordination",
+        "Administrative Support",
+        "Commercial Awareness",
+        "Quality inspection & standard compliance",
+        "Attention to details & reliability",
+        "Problem-Solving & Initiative",
+        "Organisational & Research Skills",
         "Attention to Detail & Reliability",
       ],
     },
@@ -151,16 +149,11 @@ const cvData = {
       ],
     },
     {
-      category: "Professional Skills",
+      category: "Technical & Professional",
       items: [
-        "Stakeholder Management",
-        "Project Coordination",
-        "Administrative Support",
-        "Commercial Awareness",
-        "Quality inspection & standard compliance",
-        "Guest complaint resolution",
-        "Problem-Solving & Initiative",
-        "Organisational & Research Skills",
+        "Microsoft Office (Word, Excel, PowerPoint)",
+        "Report Writing & Data Analysis",
+        "Organizational and research skills",
       ],
     },
   ],

@@ -13,6 +13,7 @@ const cvData = {
     contact: {
       phone: "+447350168547",
       email: "fpamilerinadeniyi@gmail.com",
+      linkedIn: "https://www.linkedin.com/in/pamilerin-fayose-b66642413",
       location: "Leeds, West Yorkshire, LS3 1AT",
     },
     title: "Sales & Business Development Professional",
@@ -20,12 +21,12 @@ const cvData = {
   summary: {
     title: "PROFESSIONAL SUMMARY",
     content:
-      "Results-driven sales professional with 3+ years of experience in automotive sales, CRM, and business development, plus an MSc in Human Resources Management (in progress). Proven ability to build strong client relationships, drive revenue growth, and coordinate teams. Strong communication and negotiation skills. Looking to leverage operational experience and people insights in a senior sales role.",
+      "Ambitious professional with 3+ years of experience in automotive sales, hospitality, business development, and operations. Proven ability to build strong client relationships and drive revenue growth. Strong analytical and communication skills, supported by published research. Committed to people management, strategic HR operations, and continuous improvement.",
   },
   leadership: [
-    "Managed sales operations, client relationships, and logistics activities to drive business growth.",
-    "Coordinated planning and administrative processes to support sales targets and customer satisfaction.",
-    "Demonstrated initiative, commercial awareness, and decision-making through business ownership and team leadership.",
+    "Published undergraduate research in 2024 on entrepreneurial passion and decision-making.",
+    "Founded and managed registered businesses while completing a university degree.",
+    "Earned Trade Test Certificates Grades 1, 2, and 3, demonstrating commitment to professional development.",
   ],
   achievements: [
     "Published undergraduate research project in 2024 on entrepreneurial passion and decision-making.",
@@ -43,7 +44,7 @@ const cvData = {
         "Delivered exceptional guest service, ensuring high satisfaction scores and repeat bookings.",
         "Trained new Room Attendants on service standards, improving team performance and guest feedback.",
         "Inspected 40\u201360 guest rooms daily to ensure cleanliness standards before guest check-in.",
-        "Handled guest complaints related to room cleanliness, resolving issues within 10 minutes on average.",
+        "Trained new Room Attendants on service standards, guest interaction, and hotel protocols.",
         "Contributed to high guest satisfaction scores by maintaining housekeeping standards and service quality.",
       ],
     },
@@ -61,7 +62,7 @@ const cvData = {
       ],
     },
     {
-      jobTitle: "Car Sales Executive",
+      jobTitle: "Lead Car Sales Executive",
       company: "DAILY DEAL AUTOS",
       dateRange: "May 2021 - June 2024",
       // "location": "Lagos, Nigeria",
@@ -88,10 +89,10 @@ const cvData = {
   ],
   education: [
     {
-      degree: "MASTER OF SCIENCE",
+      degree: "MSc HRM",
       field: "Human Resources Management",
       institution: "York St John University, York",
-      dateRange: "Sep 2025 - Current",
+      dateRange: "Sep 2025 - Sep 2026",
     },
     {
       degree: "BACHELOR OF SCIENCE",
@@ -136,6 +137,19 @@ const cvData = {
     //     ]
     // },
     {
+      category: "Professional Skills",
+      items: [
+        "Stakeholder Management",
+        "Project Coordination",
+        "Administrative Support",
+        "Commercial Awareness",
+        "Quality inspection & standard compliance",
+        "Guest complaint resolution",
+        "Problem-Solving & Initiative",
+        "Organisational & Research Skills",
+      ],
+    },
+    {
       category: "Technical & Professional",
       items: [
         "Microsoft Office (Word, Excel, PowerPoint)",
@@ -152,19 +166,7 @@ const cvData = {
         "Time Management",
       ],
     },
-    {
-      category: "Professional Skills",
-      items: [
-        "Stakeholder Management",
-        "Project Coordination",
-        "Administrative Support",
-        "Commercial Awareness",
-        "Quality inspection & standard compliance",
-        "Guest complaint resolution",
-        "Problem-Solving & Initiative",
-        "Organisational & Research Skills",
-      ],
-    },
+
   ],
   competencies: [
     "Customer Relationship Management",
