@@ -5,14 +5,27 @@ const TABLE = 'uploads';
 
 function fromRow(row) {
   if (!row) return null;
+  const publicId = row.public_id || '';
+  const inferredTitle = publicId.replace(/^[0-9a-f-]{36}_/i, '') || publicId || 'Uploaded document';
+  const fileTypeByFormat = {
+    pdf: 'application/pdf',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    txt: 'text/plain',
+  };
   return {
     id: row.id,
     userId: row.user_id,
-    publicId: row.public_id,
+    publicId,
+    title: inferredTitle,
     url: row.url,
     format: row.format,
+    fileType: fileTypeByFormat[row.format] || 'application/octet-stream',
+    fileUrl: `/api/documents/uploads/${row.id}/download`,
+    previewUrl: `/api/documents/uploads/${row.id}/preview`,
+    source: 'user_upload',
     resourceType: row.resource_type,
     bytes: row.bytes,
+    size: row.bytes,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -23,11 +36,11 @@ function toRow(meta, userId) {
   return {
     id: meta.id || uuidv4(),
     user_id: userId || meta.userId,
-    public_id: meta.publicId || meta.public_id,
-    url: meta.url,
+    public_id: meta.publicId || meta.public_id || meta.fileName || meta.title || meta.id,
+    url: meta.url || meta.fileUrl || '',
     format: meta.format || null,
-    resource_type: meta.resourceType || meta.resource_type || 'image',
-    bytes: meta.bytes || null,
+    resource_type: meta.resourceType || meta.resource_type || 'document',
+    bytes: meta.bytes || meta.size || null,
     created_at: meta.createdAt || now,
     updated_at: now,
   };

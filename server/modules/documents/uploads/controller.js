@@ -70,14 +70,18 @@ const uploadFile = (req, res) => {
     const metadata = {
       id,
       userId,
+      publicId: safeName,
       title: req.file.originalname,
       fileUrl: `/api/documents/uploads/${id}/download`,
+      url: `/api/documents/uploads/${id}/download`,
       // Unified fields
       format: inferredFormat,          // <-- NEW
       type: inferredType,              // <-- NEW
       // Keep the raw MIME for fallback if you need it
       fileType: req.file.mimetype,    // (optional, keep for debugging)
       size: req.file.size,
+      bytes: req.file.size,
+      resourceType: 'document',
       source: 'user_upload',
       createdAt: new Date().toISOString(),
     };
@@ -114,7 +118,7 @@ const deleteUpload = async (req, res) => {
   if (await attachmentsRepo.isDocumentReferenced(id)) {
     return res.status(409).json({ message: 'Document is referenced by attachments and cannot be deleted' });
   }
-  const filePath = path.join(uploadDir, `${record.id}_${record.title.replace(/[^a-zA-Z0-9._-]/g, '')}`);
+  const filePath = path.join(uploadDir, record.publicId || `${record.id}_${String(record.title || '').replace(/[^a-zA-Z0-9._-]/g, '')}`);
   // Delete the physical file if it exists
   if (fs.existsSync(filePath)) {
     fs.unlinkSync(filePath);
@@ -137,7 +141,7 @@ const previewUpload = async (req, res) => {
   if (record.userId !== userId) {
     return res.status(403).json({ message: 'Forbidden' });
   }
-  const filePath = path.join(uploadDir, `${record.id}_${record.title.replace(/[^a-zA-Z0-9._-]/g, '')}`);
+  const filePath = path.join(uploadDir, record.publicId || `${record.id}_${String(record.title || '').replace(/[^a-zA-Z0-9._-]/g, '')}`);
   if (!fs.existsSync(filePath)) {
     return res.status(404).json({ message: 'File not found' });
   }
@@ -160,7 +164,7 @@ const downloadUpload = async (req, res) => {
   if (record.userId !== userId) {
     return res.status(403).json({ message: 'Forbidden' });
   }
-  const filePath = path.join(uploadDir, `${record.id}_${record.title.replace(/[^a-zA-Z0-9._-]/g, '')}`);
+  const filePath = path.join(uploadDir, record.publicId || `${record.id}_${String(record.title || '').replace(/[^a-zA-Z0-9._-]/g, '')}`);
   if (!fs.existsSync(filePath)) {
     return res.status(404).json({ message: 'File not found' });
   }
