@@ -3,9 +3,11 @@
 import React, { useState } from "react";
 import { Alert, Box, Button, Card, CardContent, Stack, TextField, Typography } from "@mui/material";
 import { useAuth } from "@/context/AuthProvider";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const { login, loading } = useAuth();
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -16,6 +18,7 @@ export default function LoginPage() {
     setError("");
     try {
       await login({ email, password });
+      router.push('/dashboard');
     } catch (err) {
       setError(err.message || "Login failed");
     } finally {
