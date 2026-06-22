@@ -1,6 +1,6 @@
 const { v4: uuidv4 } = require('uuid');
 const { findUserById, updateUserRecord } = require('./userRepository');
-const { withLock } = require('../db/jsonDb');
+const Supabase = require('../services/supabaseService');
 
 const CREDIT_BUCKET_MONTHS = 6;
 
@@ -41,7 +41,7 @@ function normalizeBillingFields(user) {
   };
 }
 
-function ensureUserBillingFields(user, { grandfatherExisting = true } = {}) {
+async function ensureUserBillingFields(user, { grandfatherExisting = true } = {}) {
   if (!user) return null;
   const hasBilling = user.billingType && user.gatewayAccess;
   if (hasBilling) {
@@ -51,33 +51,33 @@ function ensureUserBillingFields(user, { grandfatherExisting = true } = {}) {
   return updateUserRecord(user.id, billing);
 }
 
-function migrateAllUsersBilling() {
-  const fileStore = require('../utils/fileStore');
-  const users = fileStore.read('users.json');
+async function migrateAllUsersBilling() {
+  const { data, error } = await Supabase.selectAll('users');
+  if (error) throw error;
   let changed = 0;
-  for (const user of users) {
+  for (const user of data || []) {
     if (!user.billingType) {
-      ensureUserBillingFields(user, { grandfatherExisting: true });
+      await ensureUserBillingFields(user, { grandfatherExisting: true });
       changed += 1;
     }
   }
   return changed;
 }
 
-function getUserBilling(userId) {
-  const user = findUserById(userId);
+async function getUserBilling(userId) {
+  const user = await findUserById(userId);
   if (!user) return null;
   return ensureUserBillingFields(user, { grandfatherExisting: true });
 }
 
-function setBillingType(userId, billingType) {
+async function setBillingType(userId, billingType) {
   if (!['gateway', 'token'].includes(billingType)) {
     throw new Error('Invalid billing type');
   }
   return updateUserRecord(userId, { billingType });
 }
 
-function activateGatewayAccess(userId, { paid = true, durationMonths = 12 } = {}) {
+async function activateGatewayAccess(userId, { paid = true, durationMonths = 12 } = {}) {
   const now = new Date();
   const expiresAt = new Date(now);
   expiresAt.setMonth(expiresAt.getMonth() + Number(durationMonths) || 12);
@@ -92,7 +92,7 @@ function activateGatewayAccess(userId, { paid = true, durationMonths = 12 } = {}
   });
 }
 
-function deactivateGatewayAccess(userId) {
+async function deactivateGatewayAccess(userId) {
   return updateUserRecord(userId, {
     gatewayAccess: {
       isActive: false,
@@ -103,8 +103,8 @@ function deactivateGatewayAccess(userId) {
   });
 }
 
-function extendGatewayAccess(userId, extraMonths = 12) {
-  const user = getUserBilling(userId);
+async function extendGatewayAccess(userId, extraMonths = 12) {
+  const user = await getUserBilling(userId);
   const baseDate = user.gatewayAccess?.expiresAt ? new Date(user.gatewayAccess.expiresAt) : new Date();
   const start = baseDate > new Date() ? baseDate : new Date();
   const expiresAt = new Date(start);
@@ -125,8 +125,8 @@ function recalculateCreditBalance(buckets) {
     .reduce((sum, b) => sum + Number(b.remaining), 0);
 }
 
-function addCreditBucket(userId, amount, meta = {}) {
-  const user = getUserBilling(userId);
+async function addCreditBucket(userId, amount, meta = {}) {
+  const user = await getUserBilling(userId);
   const purchasedAt = new Date();
   const expiresAt = new Date(purchasedAt);
   expiresAt.setMonth(expiresAt.getMonth() + CREDIT_BUCKET_MONTHS);
@@ -146,8 +146,8 @@ function addCreditBucket(userId, amount, meta = {}) {
   return updateUserRecord(userId, { creditExpiryBuckets: buckets, credits });
 }
 
-function expireOldCreditBuckets(userId) {
-  const user = getUserBilling(userId);
+async function expireOldCreditBuckets(userId) {
+  const user = await getUserBilling(userId);
   const now = Date.now();
   let changed = false;
   const buckets = (user.creditExpiryBuckets || []).map((bucket) => {
@@ -162,49 +162,48 @@ function expireOldCreditBuckets(userId) {
   return updateUserRecord(userId, { creditExpiryBuckets: buckets, credits });
 }
 
-function deductCreditsFromBuckets(userId, amount) {
-  return withLock('users.json', () => {
-    expireOldCreditBuckets(userId);
-    const user = getUserBilling(userId);
-    let remainingToDeduct = Number(amount);
-    const buckets = [...(user.creditExpiryBuckets || [])]
-      .filter((b) => b.status === 'active' && Number(b.remaining) > 0)
-      .sort((a, b) => new Date(a.purchasedAt) - new Date(b.purchasedAt));
+async function deductCreditsFromBuckets(userId, amount) {
+  await expireOldCreditBuckets(userId);
+  const user = await getUserBilling(userId);
+  let remainingToDeduct = Number(amount);
+  const buckets = [...(user.creditExpiryBuckets || [])]
+    .filter((b) => b.status === 'active' && Number(b.remaining) > 0)
+    .sort((a, b) => new Date(a.purchasedAt) - new Date(b.purchasedAt));
 
-    for (const bucket of buckets) {
-      if (remainingToDeduct <= 0) break;
-      const idx = user.creditExpiryBuckets.findIndex((b) => b.id === bucket.id);
-      if (idx < 0) continue;
-      const available = Number(user.creditExpiryBuckets[idx].remaining) || 0;
-      const used = Math.min(available, remainingToDeduct);
-      user.creditExpiryBuckets[idx] = {
-        ...user.creditExpiryBuckets[idx],
-        remaining: available - used,
-      };
-      remainingToDeduct -= used;
-    }
+  const updatedBuckets = [...(user.creditExpiryBuckets || [])];
+  for (const bucket of buckets) {
+    if (remainingToDeduct <= 0) break;
+    const idx = updatedBuckets.findIndex((b) => b.id === bucket.id);
+    if (idx < 0) continue;
+    const available = Number(updatedBuckets[idx].remaining) || 0;
+    const used = Math.min(available, remainingToDeduct);
+    updatedBuckets[idx] = {
+      ...updatedBuckets[idx],
+      remaining: available - used,
+    };
+    remainingToDeduct -= used;
+  }
 
-    if (remainingToDeduct > 0) {
-      const err = new Error('Insufficient credits');
-      err.errorCode = 'INSUFFICIENT_CREDITS';
-      err.statusCode = 402;
-      throw err;
-    }
+  if (remainingToDeduct > 0) {
+    const err = new Error('Insufficient credits');
+    err.errorCode = 'INSUFFICIENT_CREDITS';
+    err.statusCode = 402;
+    throw err;
+  }
 
-    const credits = recalculateCreditBalance(user.creditExpiryBuckets);
-    return updateUserRecord(userId, {
-      creditExpiryBuckets: user.creditExpiryBuckets,
-      credits,
-    });
+  const credits = recalculateCreditBalance(updatedBuckets);
+  return updateUserRecord(userId, {
+    creditExpiryBuckets: updatedBuckets,
+    credits,
   });
 }
 
-function grantCredits(userId, amount) {
+async function grantCredits(userId, amount) {
   return addCreditBucket(userId, amount, { source: 'admin_grant' });
 }
 
-function revokeAllCredits(userId) {
-  const user = getUserBilling(userId);
+async function revokeAllCredits(userId) {
+  const user = await getUserBilling(userId);
   const buckets = (user.creditExpiryBuckets || []).map((b) => ({
     ...b,
     status: 'expired',

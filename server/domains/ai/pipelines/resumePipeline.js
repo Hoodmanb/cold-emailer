@@ -17,8 +17,8 @@ const { resolvePipelineTemplate } = require('../core/templateContext');
 const executeResumePipeline = async (job, profile, config, options = {}) => {
   try {
     const tailoring = resolveTailoringConfig(options.tailoringLevel, 0.4);
-    const { promptSuffix: templateSuffix, postProcess } = resolvePipelineTemplate(options, 'resume');
-    const promptTemplate = promptRegistry.resolvePrompt('resume_generation');
+    const { promptSuffix: templateSuffix, postProcess } = await resolvePipelineTemplate(options, 'resume');
+    const promptTemplate = await promptRegistry.resolvePrompt('resume_generation');
     const userPrompt = promptRegistry.render(promptTemplate, {
       job_description: wrapUntrustedBlock('JOB_DESCRIPTION', job.rawDescription || JSON.stringify(job.parsedData)),
       candidate_profile: wrapUntrustedBlock('CANDIDATE_PROFILE', JSON.stringify(profile, null, 2)),

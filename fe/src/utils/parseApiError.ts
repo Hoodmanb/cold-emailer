@@ -3,15 +3,42 @@ import { AxiosError } from "axios";
 export class ApiError extends Error {
   public originalError: any;
   public statusCode?: number;
+  public errorCode?: string;
+  public errorType?: string;
 
   constructor(cleanMessage: string, originalError: any) {
     super(cleanMessage);
     this.name = "ApiError";
     this.originalError = originalError;
     if (originalError && typeof originalError === "object") {
-      this.statusCode = (originalError as AxiosError).response?.status;
+      const axiosErr = originalError as AxiosError;
+      this.statusCode = axiosErr.response?.status;
+      const data = axiosErr.response?.data as Record<string, unknown> | undefined;
+      if (data && typeof data === "object") {
+        this.errorCode = typeof data.errorCode === "string" ? data.errorCode : undefined;
+        this.errorType = typeof data.type === "string" ? data.type : undefined;
+      }
     }
   }
+}
+
+const AI_CONFIG_ERROR_CODES = new Set([
+  "AI_NOT_CONFIGURED",
+  "API_KEY_MISSING",
+  "PROVIDER_NOT_SET",
+  "MODEL_NOT_SET",
+  "PROVIDER_REQUIRED",
+  "FEATURE_CONFIG_ERROR",
+]);
+
+export function isAiConfigurationError(error: any): boolean {
+  if (!error) return false;
+  const data = error?.response?.data ?? error?.originalError?.response?.data;
+  if (data?.type === "ai_configuration_error") return true;
+  if (data?.errorCode && AI_CONFIG_ERROR_CODES.has(String(data.errorCode))) return true;
+  if (error instanceof ApiError && error.errorCode && AI_CONFIG_ERROR_CODES.has(error.errorCode)) return true;
+  const msg = String(data?.message || data?.error || error?.message || "").toLowerCase();
+  return msg.includes("api key") || msg.includes("settings → ai") || msg.includes("go to settings");
 }
 
 export function parseApiError(error: any): string {
@@ -30,7 +57,19 @@ export function parseApiError(error: any): string {
 
     // Timeout checks
     if (axiosErr.code === "ECONNABORTED" || axiosErr.message?.toLowerCase().includes("timeout")) {
+      const url = String(axiosErr.config?.url || "");
+      if (url.includes("generate-advanced") || url.includes("generate-professional-cv") || url.includes("/workflow/")) {
+        return "Document generation timed out. This can happen when AI is slow or not configured — check Settings → AI Workflows.";
+      }
       return "Request timed out. Please try again";
+    }
+
+    // AI configuration errors
+    if (axiosErr.response?.data) {
+      const data = axiosErr.response.data as Record<string, unknown>;
+      if (data.type === "ai_configuration_error" || (typeof data.errorCode === "string" && AI_CONFIG_ERROR_CODES.has(data.errorCode))) {
+        return String(data.message || data.error || "AI is not configured. Go to Settings → AI Workflows.");
+      }
     }
 
     // Network failures

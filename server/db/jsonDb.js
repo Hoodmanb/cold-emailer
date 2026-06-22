@@ -1,3 +1,5 @@
+// LEGACY SYSTEM - DISABLED. Supabase is now source of truth.
+// Retained for reference only. Startup normalizers no longer call this module.
 const fs = require("fs");
 const path = require("path");
 const { asErrorMessage } = require("../utils/safeError");

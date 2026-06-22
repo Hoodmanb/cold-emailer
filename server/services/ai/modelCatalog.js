@@ -37,7 +37,7 @@ function isBaselineModel(provider, modelId) {
   return (BASELINE_MODELS_BY_PROVIDER[p] || []).some((row) => row.id === id);
 }
 
-function mergeProviderModels(provider) {
+async function mergeProviderModels(provider) {
   const p = normalizeProvider(provider);
   const merged = new Map();
 
@@ -45,9 +45,12 @@ function mergeProviderModels(provider) {
     merged.set(row.id, { id: row.id, name: row.name, source: 'baseline' });
   });
 
-  getCustomModelsByProvider(p).forEach((row) => {
-    merged.set(row.id, { id: row.id, name: row.name, source: 'custom' });
-  });
+  const custom = await getCustomModelsByProvider(p);
+  if (Array.isArray(custom)) {
+    custom.forEach((row) => {
+      merged.set(row.id, { id: row.id, name: row.name, source: 'custom' });
+    });
+  }
 
   return [...merged.values()];
 }
@@ -56,25 +59,27 @@ function getProviders() {
   return [...PROVIDERS];
 }
 
-function getModelsByProvider(provider) {
-  return mergeProviderModels(provider).map(({ id, name }) => ({ id, name }));
+async function getModelsByProvider(provider) {
+  const list = await mergeProviderModels(provider);
+  return list.map(({ id, name }) => ({ id, name }));
 }
 
-function getAllModelsGrouped() {
-  return PROVIDERS.map((provider) => ({
+async function getAllModelsGrouped() {
+  return Promise.all(PROVIDERS.map(async (provider) => ({
     provider,
-    models: mergeProviderModels(provider),
-  }));
+    models: await mergeProviderModels(provider),
+  })));
 }
 
-function isValidModelForProvider(provider, model) {
+async function isValidModelForProvider(provider, model) {
   const p = normalizeProvider(provider);
   const m = String(model || '').trim();
   if (!p || !m) return false;
-  return mergeProviderModels(p).some((row) => row.id === m);
+  const list = await mergeProviderModels(p);
+  return list.some((row) => row.id === m);
 }
 
-function addCustomModel(provider, { id, name }) {
+async function addCustomModel(provider, { id, name }) {
   const p = normalizeProvider(provider);
   const modelId = String(id || '').trim();
   if (!PROVIDERS.includes(p)) {
@@ -82,16 +87,17 @@ function addCustomModel(provider, { id, name }) {
     err.statusCode = 400;
     throw err;
   }
-  if (isValidModelForProvider(p, modelId)) {
+  if (await isValidModelForProvider(p, modelId)) {
     const err = new Error(`Model "${modelId}" is already in the catalog`);
     err.statusCode = 409;
     throw err;
   }
-  persistCustomModel(p, { id: modelId, name: name || modelId });
-  return mergeProviderModels(p).find((row) => row.id === modelId);
+  await persistCustomModel(p, { id: modelId, name: name || modelId });
+  const list = await mergeProviderModels(p);
+  return list.find((row) => row.id === modelId);
 }
 
-function removeCustomModel(provider, modelId) {
+async function removeCustomModel(provider, modelId) {
   const p = normalizeProvider(provider);
   const id = String(modelId || '').trim();
   if (isBaselineModel(p, id)) {
@@ -99,12 +105,13 @@ function removeCustomModel(provider, modelId) {
     err.statusCode = 400;
     throw err;
   }
-  if (!getCustomModelsByProvider(p).some((row) => row.id === id)) {
+  const custom = await getCustomModelsByProvider(p);
+  if (!custom.some((row) => row.id === id)) {
     const err = new Error(`Custom model "${id}" not found`);
     err.statusCode = 404;
     throw err;
   }
-  persistCustomModelRemoval(p, id);
+  await persistCustomModelRemoval(p, id);
   return { provider: p, model: id };
 }
 

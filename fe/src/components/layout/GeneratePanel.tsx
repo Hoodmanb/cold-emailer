@@ -11,7 +11,7 @@ import {
   ChevronRight, RefreshCw, AlertTriangle, Edit3,
 } from "lucide-react";
 import {
-  useRunATS, useGenerateSelected,
+  useRunATS, useGenerateSelected, validateAiFeaturesForTypes,
   type DocumentType, type DocumentFormat, type AtsResult, type PerDocFormats, type PerDocTemplateIds,
 } from "@/hooks/queryHooks/workflow";
 import TemplateSelector from "@/components/templates/TemplateSelector";
@@ -23,6 +23,8 @@ import TailoringSlider from "@/components/documents/TailoringSlider";
 import axiosInstance from "@/hooks/axios";
 import { useBillingStatus } from "@/hooks/queryHooks/billing";
 import useAuthStore from "@/store/useAuthStore";
+import { useRouter } from "next/navigation";
+import { isAiConfigurationError } from "@/utils/parseApiError";
 
 interface GeneratePanelProps {
   jobId: string;
@@ -90,6 +92,7 @@ function ScoreBar({ score }: { score: number }) {
 }
 
 export default function GeneratePanel({ jobId, onComplete }: GeneratePanelProps) {
+  const router = useRouter();
   const { showSnackbar } = useSnackbar();
   const { data: billing } = useBillingStatus();
   const authUser = useAuthStore((s) => s.user);
@@ -105,6 +108,7 @@ export default function GeneratePanel({ jobId, onComplete }: GeneratePanelProps)
   const [templateIds, setTemplateIds] = useState<PerDocTemplateIds>({});
   const [tailoringLevel, setTailoringLevel] = useState<TailoringLevel>("balanced");
   const [errorMsg, setErrorMsg] = useState("");
+  const [isAiConfigError, setIsAiConfigError] = useState(false);
   const [generatedDocs, setGeneratedDocs] = useState<GeneratedDoc[]>([]);
   const [editingDoc, setEditingDoc] = useState<GeneratedDoc | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -112,11 +116,14 @@ export default function GeneratePanel({ jobId, onComplete }: GeneratePanelProps)
   const handleRunAts = async () => {
     setStep("ats-running");
     setErrorMsg("");
+    setIsAiConfigError(false);
     try {
       const result = await runAts(jobId);
       setAts(result);
       setStep("ats-done");
     } catch (err: any) {
+      const aiConfig = isAiConfigurationError(err) || err?.isAiConfig;
+      setIsAiConfigError(Boolean(aiConfig));
       setErrorMsg(err.message || "ATS analysis failed");
       setStep("error");
     }
@@ -139,7 +146,17 @@ export default function GeneratePanel({ jobId, onComplete }: GeneratePanelProps)
     }
     setStep("generating");
     setErrorMsg("");
+    setIsAiConfigError(false);
     try {
+      const configError = await validateAiFeaturesForTypes(selectedTypes);
+      if (configError) {
+        setIsAiConfigError(true);
+        setErrorMsg(configError);
+        setStep("error");
+        showSnackbar(`${configError} Open Settings → AI Workflows to configure.`, "error");
+        return;
+      }
+
       const formats: PerDocFormats = {};
       selectedTypes.forEach((t) => { formats[t] = docFormats[t] || "pdf"; });
 
@@ -159,6 +176,8 @@ export default function GeneratePanel({ jobId, onComplete }: GeneratePanelProps)
         setEditingDoc(docs[0]);
       }
     } catch (err: any) {
+      const aiConfig = isAiConfigurationError(err) || err?.isAiConfig;
+      setIsAiConfigError(Boolean(aiConfig));
       setErrorMsg(err.message || "Generation failed");
       setStep("error");
     }
@@ -189,6 +208,7 @@ export default function GeneratePanel({ jobId, onComplete }: GeneratePanelProps)
     setDocFormats({ ...DEFAULT_FORMATS });
     setTailoringLevel("balanced");
     setErrorMsg("");
+    setIsAiConfigError(false);
     setGeneratedDocs([]);
     setEditingDoc(null);
   };
@@ -371,7 +391,18 @@ export default function GeneratePanel({ jobId, onComplete }: GeneratePanelProps)
 
           {step === "error" && (
             <Stack gap={2}>
-              <Alert severity="error" icon={<AlertTriangle size={16} />} sx={{ borderRadius: 2 }}>{errorMsg || "Something went wrong."}</Alert>
+              <Alert severity={isAiConfigError ? "warning" : "error"} icon={<AlertTriangle size={16} />} sx={{ borderRadius: 2 }}>
+                {errorMsg || "Something went wrong."}
+              </Alert>
+              {isAiConfigError && (
+                <Button
+                  variant="contained"
+                  onClick={() => router.push("/dashboard/settings")}
+                  sx={{ borderRadius: 2, fontWeight: 700 }}
+                >
+                  Open AI Settings
+                </Button>
+              )}
               <Button variant="outlined" startIcon={<RefreshCw size={14} />} onClick={reset} sx={{ borderRadius: 2, fontWeight: 700 }}>Try Again</Button>
             </Stack>
           )}

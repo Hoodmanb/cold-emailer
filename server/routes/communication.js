@@ -3,9 +3,9 @@ const commSettingsRepo = require('../repositories/communicationSettingsRepositor
 
 const router = express.Router();
 
-router.get('/public', (req, res) => {
+router.get('/public', async (req, res) => {
   try {
-    const settings = commSettingsRepo.getSettings();
+    const settings = await commSettingsRepo.getSettings();
     const publicSettings = {};
 
     // Only expose enabled settings

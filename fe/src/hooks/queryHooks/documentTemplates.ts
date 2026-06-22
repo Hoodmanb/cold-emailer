@@ -149,3 +149,90 @@ export function useDeleteDocumentTemplate() {
     },
   });
 }
+
+export function useSubmitForReview() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (templateId: string) => {
+      const res = await axiosInstance.post(`/api/document-templates/${templateId}/submit-review`);
+      return res.data?.data as DocumentTemplate;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+    },
+  });
+}
+
+export function usePreviewDocumentTemplate(templateId: string | null) {
+  return useQuery({
+    queryKey: [...QUERY_KEY, "preview", templateId],
+    queryFn: async () => {
+      if (!templateId) return null;
+      const res = await axiosInstance.get(`/api/document-templates/${templateId}/preview`);
+      return res.data?.data?.html as string;
+    },
+    enabled: Boolean(templateId),
+  });
+}
+
+export function useDocumentTemplate(templateId: string | null) {
+  return useQuery({
+    queryKey: [...QUERY_KEY, "detail", templateId],
+    queryFn: async () => {
+      if (!templateId) return null;
+      try {
+        // Try getting from custom templates
+        const res = await axiosInstance.get(`/api/document-templates/${templateId}`);
+        return res.data?.data as DocumentTemplate;
+      } catch (err) {
+        // If not found, try getting from system templates
+        const res = await axiosInstance.get(`/api/system-templates/${templateId}`);
+        // Map SystemTemplate properties to DocumentTemplate format if needed
+        const sys = res.data?.data;
+        if (sys) {
+          return {
+            id: sys.id,
+            name: sys.name,
+            type: sys.category,
+            category: sys.category,
+            layout: sys.layout,
+            blocks: sys.blocks,
+            style: sys.style,
+            isAdminTemplate: true,
+            isPublic: true,
+            status: "approved",
+            approvalStatus: "approved",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          } as unknown as DocumentTemplate;
+        }
+        throw err;
+      }
+    },
+    enabled: Boolean(templateId),
+    retry: 1,
+  });
+}
+
+export function useGetPreviewData() {
+  return useQuery({
+    queryKey: ["admin-preview-data"],
+    queryFn: async () => {
+      const res = await axiosInstance.get("/api/admin/document-templates/preview-data");
+      return res.data?.data;
+    },
+  });
+}
+
+export function useUpdatePreviewData() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: any) => {
+      const res = await axiosInstance.put("/api/admin/document-templates/preview-data", payload);
+      return res.data?.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-preview-data"] });
+    },
+  });
+}

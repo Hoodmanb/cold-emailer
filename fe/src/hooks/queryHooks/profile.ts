@@ -52,7 +52,7 @@ export const useProjects = () => {
     // placeholderData: [], // Use placeholder instead of initialData if you want default [] while loading
   });
 
-  console.log(`[useProjects] Hook render | status: ${query.status} | fetchStatus: ${query.fetchStatus} | isFetching: ${query.isFetching}`);
+  // console.log(`[useProjects] Hook render | status: ${query.status} | fetchStatus: ${query.fetchStatus} | isFetching: ${query.isFetching}`);
 
   return {
     data: query.data || EMPTY_ARRAY,

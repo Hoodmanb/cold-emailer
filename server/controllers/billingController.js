@@ -11,9 +11,11 @@ const { findUserById } = require('../repositories/userRepository');
 const { successResponse } = require('../utils/response');
 const { addCredits, activateGatewayFromPayment } = require('../services/billing/billingService');
 
-const getPublicConfig = (_req, res) => {
-  const gateway = getGatewaySettings();
-  const packs = listCreditPacks();
+const getPublicConfig = async (_req, res) => {
+  const gateway = await getGatewaySettings();
+  const packs = await listCreditPacks();
+  const { getBillingSettings } = require('../repositories/billingSettingsRepository');
+  const settings = await getBillingSettings();
   return successResponse(res, {
     message: 'Billing config loaded',
     data: {
@@ -30,24 +32,24 @@ const getPublicConfig = (_req, res) => {
         price,
         currency,
       })),
-      featureCosts: billingService.listFeatureCosts(),
+      featureCosts: billingService.listFeatureCosts(settings),
       paystackPublicKey: paystackService.getPublicKey(),
     },
   });
 };
 
-const getBillingStatus = (req, res) => {
-  const summary = billingService.getBillingSummary(req.user.id);
+const getBillingStatus = async (req, res) => {
+  const summary = await billingService.getBillingSummary(req.user.id);
   return successResponse(res, {
     message: 'Billing status loaded',
     data: summary,
   });
 };
 
-const estimateCost = (req, res) => {
+const estimateCost = async (req, res) => {
   const { featureId, tailoringLevel } = req.body || {};
-  const cost = billingService.estimateFeatureCost(featureId, { tailoringLevel });
-  const balance = billingService.getCreditBalance(req.user.id);
+  const cost = await billingService.estimateFeatureCost(featureId, { tailoringLevel });
+  const balance = await billingService.getCreditBalance(req.user.id);
   return successResponse(res, {
     message: 'Cost estimate calculated',
     data: {
@@ -60,15 +62,15 @@ const estimateCost = (req, res) => {
 };
 
 const initializeGatewayPayment = async (req, res) => {
-  const user = findUserById(req.user.id);
-  const gateway = getGatewaySettings();
+  const user = await findUserById(req.user.id);
+  const gateway = await getGatewaySettings();
   if (gateway.active === false) {
     res.status(400);
     throw new Error('Gateway plan is currently unavailable');
   }
 
   const reference = `gw_${req.user.id}_${Date.now()}`;
-  const tx = createTransaction({
+  const tx = await createTransaction({
     userId: req.user.id,
     type: 'gateway',
     amount: gateway.price,
@@ -89,7 +91,7 @@ const initializeGatewayPayment = async (req, res) => {
     callbackUrl: process.env.PAYSTACK_CALLBACK_URL || undefined,
   });
 
-  updateTransaction(tx.id, { paystackReference: init.reference, authorizationUrl: init.authorization_url });
+  await updateTransaction(tx.id, { paystackReference: init.reference, authorizationUrl: init.authorization_url });
 
   return successResponse(res, {
     message: 'Gateway checkout initialized',
@@ -108,15 +110,16 @@ const initializeCreditPayment = async (req, res) => {
     throw new Error('packId is required');
   }
 
-  const pack = listCreditPacks().find((p) => String(p.id) === String(packId));
+  const packs = await listCreditPacks();
+  const pack = packs.find((p) => String(p.id) === String(packId));
   if (!pack) {
     res.status(404);
     throw new Error('Credit pack not found');
   }
 
-  const user = findUserById(req.user.id);
+  const user = await findUserById(req.user.id);
   const reference = `cr_${req.user.id}_${Date.now()}`;
-  const tx = createTransaction({
+  const tx = await createTransaction({
     userId: req.user.id,
     type: 'credits',
     packId: pack.id,
@@ -140,7 +143,7 @@ const initializeCreditPayment = async (req, res) => {
     callbackUrl: process.env.PAYSTACK_CALLBACK_URL || undefined,
   });
 
-  updateTransaction(tx.id, { paystackReference: init.reference, authorizationUrl: init.authorization_url });
+  await updateTransaction(tx.id, { paystackReference: init.reference, authorizationUrl: init.authorization_url });
 
   return successResponse(res, {
     message: 'Credit checkout initialized',
@@ -160,22 +163,22 @@ const verifyPayment = async (req, res) => {
     throw new Error('reference is required');
   }
 
-  const existing = findTransactionByReference(reference);
+  const existing = await findTransactionByReference(reference);
   if (existing && existing.status === 'completed') {
     return successResponse(res, {
       message: 'Payment already verified',
-      data: { transaction: existing, billing: billingService.getBillingSummary(existing.userId) },
+      data: { transaction: existing, billing: await billingService.getBillingSummary(existing.userId) },
     });
   }
 
   const verified = await paystackService.verifyTransaction(reference);
   if (verified.status !== 'success') {
-    if (existing) updateTransaction(existing.id, { status: 'failed', paystackData: verified });
+    if (existing) await updateTransaction(existing.id, { status: 'failed', paystackData: verified });
     res.status(400);
     throw new Error('Payment was not successful');
   }
 
-  const tx = existing || findTransactionByReference(reference);
+  const tx = existing || await findTransactionByReference(reference);
   if (!tx) {
     res.status(404);
     throw new Error('Transaction record not found');
@@ -184,11 +187,11 @@ const verifyPayment = async (req, res) => {
   if (tx.status === 'completed') {
     return successResponse(res, {
       message: 'Payment already verified',
-      data: { transaction: tx, billing: billingService.getBillingSummary(tx.userId) },
+      data: { transaction: tx, billing: await billingService.getBillingSummary(tx.userId) },
     });
   }
 
-  updateTransaction(tx.id, {
+  await updateTransaction(tx.id, {
     status: 'completed',
     paystackReference: verified.reference,
     paystackData: verified,
@@ -196,17 +199,17 @@ const verifyPayment = async (req, res) => {
   });
 
   if (tx.type === 'gateway') {
-    const gateway = getGatewaySettings();
-    activateGatewayFromPayment(tx.userId, gateway.durationMonths || 12);
+    const gateway = await getGatewaySettings();
+    await activateGatewayFromPayment(tx.userId, gateway.durationMonths || 12);
   } else if (tx.type === 'credits') {
-    addCredits(tx.userId, tx.packId);
+    await addCredits(tx.userId, tx.packId);
   }
 
   return successResponse(res, {
     message: 'Payment verified successfully',
     data: {
-      transaction: findTransactionByReference(reference),
-      billing: billingService.getBillingSummary(tx.userId),
+      transaction: await findTransactionByReference(reference),
+      billing: await billingService.getBillingSummary(tx.userId),
     },
   });
 };
@@ -222,19 +225,19 @@ const paystackWebhook = async (req, res) => {
   const data = req.body?.data;
   if (event === 'charge.success' && data?.reference) {
     try {
-      const existing = findTransactionByReference(data.reference);
+      const existing = await findTransactionByReference(data.reference);
       if (existing && existing.status !== 'completed') {
-        updateTransaction(existing.id, {
+        await updateTransaction(existing.id, {
           status: 'completed',
           paystackReference: data.reference,
           paystackData: data,
           completedAt: new Date().toISOString(),
         });
         if (existing.type === 'gateway') {
-          const gateway = getGatewaySettings();
-          activateGatewayFromPayment(existing.userId, gateway.durationMonths || 12);
+          const gateway = await getGatewaySettings();
+          await activateGatewayFromPayment(existing.userId, gateway.durationMonths || 12);
         } else if (existing.type === 'credits') {
-          addCredits(existing.userId, existing.packId);
+          await addCredits(existing.userId, existing.packId);
         }
       }
     } catch (err) {
@@ -245,9 +248,9 @@ const paystackWebhook = async (req, res) => {
   return res.status(200).json({ received: true });
 };
 
-const listUserTransactions = (req, res) => {
+const listUserTransactions = async (req, res) => {
   const { listTransactions } = require('../repositories/billingRepository');
-  const rows = listTransactions({ userId: req.user.id });
+  const rows = await listTransactions({ userId: req.user.id });
   return successResponse(res, {
     message: 'Transactions loaded',
     data: rows,

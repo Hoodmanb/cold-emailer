@@ -1,4 +1,5 @@
 const { fillPlaceholders, extractPlaceholders } = require('../../utils/placeholderParser');
+const { renderTemplate } = require('../../utils/renderJsonTemplate');
 
 const SAMPLE_VALUES = {
   name: 'Jane Doe',
@@ -8,6 +9,55 @@ const SAMPLE_VALUES = {
   location: 'London, UK',
   email: 'jane.doe@example.com',
   customField: 'Sample value',
+};
+
+const MOCK_PROFILE = {
+  name: 'Jane Doe',
+  email: 'jane.doe@example.com',
+  phone: '+1 (555) 019-2834',
+  location: 'London, UK',
+  summary: 'Experienced Software Engineer with a passion for building clean, performant applications. Strong expertise in JavaScript, Node.js, and React.',
+  experience: [
+    {
+      role: 'Senior Software Engineer',
+      company: 'Acme Corp',
+      startDate: '2022-01',
+      endDate: 'Present',
+      description: 'Led a team of 5 developers to rebuild the core SaaS platform.\nImplemented unit testing, increasing coverage from 20% to 85%.'
+    },
+    {
+      role: 'Software Engineer',
+      company: 'Tech Solutions Ltd',
+      startDate: '2019-06',
+      endDate: '2021-12',
+      description: 'Maintained and added features to high-traffic consumer websites.\nOptimized SQL queries to reduce page load time by 30%.'
+    }
+  ],
+  education: [
+    {
+      degree: 'B.S. in Computer Science',
+      institution: 'University of Westminster',
+      startDate: '2015-09',
+      endDate: '2019-05'
+    }
+  ],
+  skills: [
+    { name: 'JavaScript' },
+    { name: 'Node.js' },
+    { name: 'React' },
+    { name: 'SQL' },
+    { name: 'HTML/CSS' }
+  ],
+  projects: [
+    {
+      title: 'Open Source UI Library',
+      description: 'Created a highly accessible React component library with 1,000+ stars.',
+      link: 'https://github.com/janedoe/ui-lib'
+    }
+  ],
+  certificates: [
+    { name: 'AWS Certified Solutions Architect', authority: 'Amazon Web Services', date: '2023-04' }
+  ]
 };
 
 function escapeHtml(text) {
@@ -69,6 +119,18 @@ function renderPageHtml(pageContent, pageIndex, totalPages) {
 }
 
 function generatePreviewPages(template = {}) {
+  // If the template defines block/layout JSON properties, render using the JSON engine
+  if (template.layout || template.blocks) {
+    const html = renderTemplate(template, MOCK_PROFILE);
+    const result = {
+      previewPages: [{ page: 1, html, placeholders: [] }],
+      version: (template.version || 0) + 1
+    };
+    result.previewPage1 = html;
+    return result;
+  }
+
+  // Fallback for legacy text-based/email templates
   const content =
     template.content ||
     (Array.isArray(template.structure) ? template.structure.join('\n\n') : '') ||

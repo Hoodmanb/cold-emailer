@@ -14,14 +14,14 @@ function renderTemplate(template, variables = {}) {
   return rendered;
 }
 
-function resolvePrompt(featureId) {
+async function resolvePrompt(featureId, userId) {
   const featureDef = AI_FEATURES.find((f) => f.id === featureId);
   if (!featureDef) {
     throw new Error(`[prompt-registry] Unsupported AI feature ID: '${featureId}'`);
   }
 
   try {
-    const settings = getAiSettings() || {};
+    const settings = (await getAiSettings(userId)) || {};
     const config = settings.featureMap?.[featureId];
     if (config && config.useCustomPrompt && config.customPrompt) {
       return config.customPrompt;

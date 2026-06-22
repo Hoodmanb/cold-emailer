@@ -25,6 +25,8 @@ import {
   Cpu,
   Settings,
   MessageSquare,
+  ShieldCheck,
+  Sliders,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -48,6 +50,8 @@ const NAV_ITEMS: Array<{
   { label: "Users", href: "/dashboard/admin/users", icon: Users, helpId: "nav.users" },
   { label: "Communication", href: "/dashboard/admin/communication", icon: Settings, helpId: "nav.communication" },
   { label: "Feedback & Cases", href: "/dashboard/admin/feedback", icon: MessageSquare, helpId: "nav.feedback" },
+  { label: "Template Moderation", href: "/dashboard/admin/moderation", icon: ShieldCheck, helpId: "nav.moderation" },
+  { label: "Template Preview Data", href: "/dashboard/admin/preview-data", icon: Sliders, helpId: "nav.previewData" },
 ];
 
 function isActive(pathname: string, href: string, exact?: boolean) {

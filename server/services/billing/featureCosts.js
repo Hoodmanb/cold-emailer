@@ -18,9 +18,10 @@ const TAILORING_MULTIPLIERS = {
   aggressive: 1.5,
 };
 
-function getBaseFeatureCost(featureId) {
+function getBaseFeatureCost(featureId, settings = {}) {
   const id = String(featureId || '').trim();
-  return BASE_FEATURE_COSTS[id] ?? 1;
+  const dbCosts = settings.featureCosts || {};
+  return dbCosts[id] ?? BASE_FEATURE_COSTS[id] ?? 1;
 }
 
 function getTailoringMultiplier(tailoringLevel) {
@@ -28,14 +29,16 @@ function getTailoringMultiplier(tailoringLevel) {
   return TAILORING_MULTIPLIERS[level] ?? 1;
 }
 
-function calculateFeatureCost(featureId, options = {}) {
-  const base = getBaseFeatureCost(featureId);
+function calculateFeatureCost(featureId, settings = {}, options = {}) {
+  const base = getBaseFeatureCost(featureId, settings);
   const multiplier = getTailoringMultiplier(options.tailoringLevel);
   return Math.max(1, Math.ceil(base * multiplier));
 }
 
-function listFeatureCosts() {
-  return Object.entries(BASE_FEATURE_COSTS).map(([featureId, baseCost]) => ({
+function listFeatureCosts(settings = {}) {
+  const dbCosts = settings.featureCosts || {};
+  const mergedCosts = { ...BASE_FEATURE_COSTS, ...dbCosts };
+  return Object.entries(mergedCosts).map(([featureId, baseCost]) => ({
     featureId,
     baseCost,
     tailoringMultipliers: TAILORING_MULTIPLIERS,

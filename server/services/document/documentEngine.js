@@ -1,8 +1,8 @@
 /**
- * Document Engine — Core Service
+ * Document Engine — Core Service (Refactored to Block-based JSON)
  *
  * Pipeline:
- *   (normalized model) → render HTML via Handlebars template (with CSS injected)
+ *   (normalized model) → render HTML via JSON template engine
  *                      → convert to PDF (puppeteer) or DOCX (docx)
  *                      → persist to disk
  *                      → return { artifactId, downloadUrl, previewUrl, fileName, mime, sizeBytes }
@@ -11,13 +11,8 @@
 const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
-
-let Handlebars;
-try {
-  Handlebars = require('handlebars');
-} catch {
-  throw new Error('[documentEngine] handlebars is not installed. Run: npm install handlebars');
-}
+const documentTemplateRepo = require('../../repositories/documentTemplateRepository');
+const { renderTemplate } = require('../../utils/renderJsonTemplate');
 
 const { Document, Packer, Paragraph, TextRun } = require('docx');
 let puppeteer;
@@ -25,7 +20,6 @@ try { puppeteer = require('puppeteer'); } catch { puppeteer = null; }
 
 const SERVER_ROOT = path.resolve(__dirname, '..', '..');
 const ARTIFACTS_DIR = path.join(SERVER_ROOT, 'storage', 'artifacts');
-const TEMPLATES_DIR = path.join(SERVER_ROOT, 'templates');
 
 const MIME = {
   html: 'text/html',
@@ -33,152 +27,101 @@ const MIME = {
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 };
 
-// ── Dynamic Registry ────────────────────────────────────────────────────────
-let TEMPLATE_REGISTRY = [];
-let PARTIALS_LOADED = false;
-let GLOBAL_CSS = '';
+const fallbackTemplate = {
+  name: 'Default ATS Classic',
+  layout: {
+    type: 'single-column',
+    blocks: ['profile', 'experience', 'education', 'skills', 'projects', 'certificates']
+  },
+  blocks: {
+    profile: { type: 'profile', title: 'Profile Summary' },
+    experience: { type: 'experience', title: 'Professional Experience' },
+    education: { type: 'education', title: 'Education' },
+    skills: { type: 'skills', title: 'Key Skills' },
+    projects: { type: 'projects', title: 'Projects' },
+    certificates: { type: 'certificates', title: 'Certifications' }
+  },
+  style: {
+    fontFamily: 'Inter, "Segoe UI", sans-serif',
+    primaryColor: '#111111',
+    fontSize: 12,
+    spacing: 12
+  }
+};
 
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
-function loadGlobalCss() {
-  if (GLOBAL_CSS) return GLOBAL_CSS;
-  const stylesDir = path.join(TEMPLATES_DIR, 'styles');
-  const vars = fs.existsSync(path.join(stylesDir, '_variables.css')) ? fs.readFileSync(path.join(stylesDir, '_variables.css'), 'utf8') : '';
-  const typo = fs.existsSync(path.join(stylesDir, '_typography.css')) ? fs.readFileSync(path.join(stylesDir, '_typography.css'), 'utf8') : '';
-  const print = fs.existsSync(path.join(stylesDir, '_print.css')) ? fs.readFileSync(path.join(stylesDir, '_print.css'), 'utf8') : '';
-  GLOBAL_CSS = [vars, typo, print].join('\n\n');
-  return GLOBAL_CSS;
-}
-
-function scanPartials(dir, baseDir = dir) {
-  if (!fs.existsSync(dir)) return;
-  const files = fs.readdirSync(dir);
-  for (const file of files) {
-    const fullPath = path.join(dir, file);
-    const stat = fs.statSync(fullPath);
-    if (stat.isDirectory()) {
-      scanPartials(fullPath, baseDir);
-    } else if (file.endsWith('.hbs')) {
-      const relativePath = path.relative(baseDir, fullPath);
-      const partialName = relativePath.replace(/\\/g, '/').replace(/\.hbs$/, '');
-      const content = fs.readFileSync(fullPath, 'utf8');
-      Handlebars.registerPartial(partialName, content);
-    }
-  }
-}
-
-function buildTemplateRegistry() {
-  TEMPLATE_REGISTRY = [];
-  const themes = fs.readdirSync(TEMPLATES_DIR);
-  for (const theme of themes) {
-    const themePath = path.join(TEMPLATES_DIR, theme);
-    if (!fs.statSync(themePath).isDirectory()) continue;
-    if (['partials', 'styles', 'scripts', 'assets'].includes(theme)) continue;
-
-    const docTypes = fs.readdirSync(themePath);
-    for (const docType of docTypes) {
-      const docTypePath = path.join(themePath, docType);
-      if (!fs.statSync(docTypePath).isDirectory()) continue;
-
-      const metaPath = path.join(docTypePath, 'meta.json');
-      if (fs.existsSync(metaPath)) {
-        try {
-          const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
-          meta.dirPath = docTypePath;
-          meta.theme = theme;
-          meta.documentType = docType;
-          TEMPLATE_REGISTRY.push(meta);
-        } catch (err) {
-          console.error(`Failed to parse meta.json at ${metaPath}`, err);
-        }
-      }
-    }
-  }
-}
-
-function initializeEngine() {
-  if (!PARTIALS_LOADED) {
-    const partialsDir = path.join(TEMPLATES_DIR, 'partials');
-    scanPartials(partialsDir);
-    PARTIALS_LOADED = true;
-  }
-  buildTemplateRegistry();
-  loadGlobalCss();
-}
-
-// ── Handlebars Helpers ────────────────────────────────────────────────────────
-Handlebars.registerHelper('scoreClass', function(score) {
-  if (score >= 75) return 'high';
-  if (score >= 50) return 'mid';
-  return 'low';
-});
-
-Handlebars.registerHelper('concat', function() {
-  const args = Array.prototype.slice.call(arguments, 0, -1);
-  return args.join('');
-});
-
 // ── Template Resolution ───────────────────────────────────────────────────────
-const templateCache = new Map();
-
-function getTemplateMeta(featureId, themeId) {
-  if (TEMPLATE_REGISTRY.length === 0) initializeEngine();
-
-  // Filter templates that support this featureId
-  const candidates = TEMPLATE_REGISTRY.filter(t => t.featureId === featureId);
-  if (candidates.length === 0) {
-    throw new Error(`No template found for featureId: "${featureId}"`);
-  }
-
+async function getTemplateMeta(themeId) {
   if (themeId && themeId !== 'random') {
-    const exact = candidates.find(t => t.theme === themeId || t.id === themeId);
-    if (exact) return exact;
+    try {
+      const exact = await documentTemplateRepo.getById(themeId);
+      if (exact) return exact;
+    } catch (_err) {
+      // ignore
+    }
   }
 
-  if (themeId === 'random') {
-    return candidates[Math.floor(Math.random() * candidates.length)];
+  // Retrieve first public CV template as fallback
+  try {
+    const candidates = await documentTemplateRepo.listPublic();
+    const cvTemplates = candidates.filter(t => t.type === 'cv');
+    return cvTemplates[0] || candidates[0] || fallbackTemplate;
+  } catch (_err) {
+    return fallbackTemplate;
   }
-
-  // Default to the first candidate
-  return candidates.find(t => t.isDefault) || candidates[0];
 }
 
-function loadTemplate(meta) {
-  const cacheKey = `${meta.id}::${meta.theme}`;
-  if (templateCache.has(cacheKey)) return templateCache.get(cacheKey);
+function modelToPreviewData(model) {
+  if (!model || typeof model !== 'object') return {};
+  if (model.name || model.email) return model;
 
-  const templatePath = path.join(meta.dirPath, 'template.hbs');
-  const source = fs.readFileSync(templatePath, 'utf-8');
-  const compiled = Handlebars.compile(source);
-
-  // Load template specific CSS
-  const cssPath = path.join(meta.dirPath, 'styles.css');
-  const templateCss = fs.existsSync(cssPath) ? fs.readFileSync(cssPath, 'utf8') : '';
-
-  const result = { compiled, templateCss };
-  templateCache.set(cacheKey, result);
-  return result;
+  const contact = model.contact && typeof model.contact === 'object' ? model.contact : {};
+  return {
+    name: contact.name || '',
+    email: contact.email || '',
+    phone: contact.phone || '',
+    location: contact.location || '',
+    summary: model.summary || '',
+    linkedinUrl: contact.linkedin || contact.linkedinUrl || '',
+    githubUrl: contact.website || model.githubUrl || '',
+    experience: Array.isArray(model.experience)
+      ? model.experience.map((exp) => ({
+        role: exp.title || exp.role || '',
+        title: exp.title || exp.role || '',
+        company: exp.company || '',
+        startDate: exp.startDate || '',
+        endDate: exp.endDate || 'Present',
+        description: Array.isArray(exp.bullets)
+          ? exp.bullets.map((b) => `- ${b}`).join('\n')
+          : (exp.description || ''),
+      }))
+      : [],
+    education: Array.isArray(model.education)
+      ? model.education.map((edu) => ({
+        degree: edu.degree || '',
+        fieldOfStudy: edu.fieldOfStudy || '',
+        institution: edu.institution || '',
+        startDate: edu.startDate || edu.year || '',
+        endDate: edu.endDate || edu.year || '',
+      }))
+      : [],
+    skills: Array.isArray(model.skills)
+      ? model.skills.map((s) => (typeof s === 'string' ? { name: s } : { name: s.name || s }))
+      : [],
+    certificates: Array.isArray(model.certifications)
+      ? model.certifications.map((c) => (typeof c === 'string' ? { name: c } : c))
+      : [],
+    projects: Array.isArray(model.projects) ? model.projects : [],
+  };
 }
 
 // ── HTML Rendering ────────────────────────────────────────────────────────────
-function renderHtml(featureId, model, options = {}) {
-  const meta = getTemplateMeta(featureId, options.themeId);
-  const { compiled, templateCss } = loadTemplate(meta);
-
-  // Inject specific variables
-  const enriched = { 
-    ...model,
-    globalCss: GLOBAL_CSS,
-    templateCss: templateCss
-  };
-
-  if (featureId === 'ats_analysis') {
-    enriched.scoreClass = model.score >= 75 ? 'high' : model.score >= 50 ? 'mid' : 'low';
-  }
-
-  return compiled(enriched);
+async function renderHtml(model, options = {}) {
+  const template = await getTemplateMeta(options.themeId);
+  return renderTemplate(template, modelToPreviewData(model));
 }
 
 // ── PDF generation (puppeteer) ────────────────────────────────────────────────
@@ -193,12 +136,13 @@ async function htmlToPdf(html) {
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    return await page.pdf({
+    const pdfResult = await page.pdf({
       format: 'A4',
       printBackground: true,
       preferCSSPageSize: true,
-      margin: { top: '0', right: '0', bottom: '0', left: '0' }, // Handled by body padding
+      margin: { top: '0', right: '0', bottom: '0', left: '0' },
     });
+    return Buffer.isBuffer(pdfResult) ? pdfResult : Buffer.from(pdfResult);
   } finally {
     await browser.close();
   }
@@ -226,7 +170,8 @@ async function htmlToDocx(html) {
     sections: [{ properties: { page: { margin: { top: 720, right: 720, bottom: 720, left: 720 } } }, children }],
   });
 
-  return Packer.toBuffer(doc);
+  const buffer = await Packer.toBuffer(doc);
+  return Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
 }
 
 // ── Artifact persistence ──────────────────────────────────────────────────────
@@ -257,13 +202,8 @@ function persistArtifact({ buffer, featureId, format, userId, templateName }) {
 
 // ── Main API ──────────────────────────────────────────────────────────────────
 async function generateDocument({ featureId, model, format = 'pdf', userId, themeId }) {
-  const meta = getTemplateMeta(featureId, themeId);
-  
-  if (!meta.formats.includes(format)) {
-    throw new Error(`Format "${format}" is not supported for ${meta.name}`);
-  }
-
-  const html = renderHtml(featureId, model, { themeId });
+  const template = await getTemplateMeta(themeId);
+  const html = await renderHtml(model, { themeId });
 
   let buffer;
   if (format === 'html') {
@@ -278,21 +218,25 @@ async function generateDocument({ featureId, model, format = 'pdf', userId, them
 
   return persistArtifact({
     buffer, featureId, format, userId,
-    templateName: meta.id,
+    templateName: template.name || template.id || 'JSONTemplate',
   });
 }
 
-function renderPreviewHtml(featureId, model, themeId) {
-  return renderHtml(featureId, model, { themeId });
+async function renderPreviewHtml(featureId, model, themeId) {
+  return renderHtml(model, { themeId });
 }
 
 function resolveArtifactPath(relativePath) {
   return path.join(SERVER_ROOT, relativePath);
 }
 
+// Minimal placeholder registry methods for system compatibility
 function getRegistry() {
-  if (TEMPLATE_REGISTRY.length === 0) initializeEngine();
-  return TEMPLATE_REGISTRY;
+  return [fallbackTemplate];
+}
+
+function initializeEngine() {
+  // No-op in JSON engine
 }
 
 module.exports = {

@@ -7,7 +7,7 @@ import {
 } from "@mui/material";
 import { Plus, Search, Trash2, X, Globe } from "lucide-react";
 import {
-  useDocumentTemplates,
+  usePublicDocumentTemplates,
   useCreateDocumentTemplate,
   useDeleteDocumentTemplate,
   useApproveDocumentTemplate,
@@ -19,14 +19,40 @@ import PlaceholderHighlight, { PlaceholderPreview } from "@/components/template/
 import TemplatePreview from "@/components/template/TemplatePreview";
 import { useSnackbar } from "@/context/SnackbarContext";
 import useAuthStore from "@/store/useAuthStore";
-import type { DocumentTemplate, DocumentTemplateType } from "@/types/documentTemplate";
+import type { DocumentTemplate, DocumentTemplateType, TemplateLayout, TemplateBlock, TemplateStyle } from "@/types/documentTemplate";
 
 const PLACEHOLDER_HINT = "Use placeholders like {{name}}, {{company}}, {{role}}, {{experience}}";
+
+// Default layout for new templates
+const DEFAULT_LAYOUT: TemplateLayout = {
+  type: "single-column",
+  blocks: ["profile", "experience", "education", "skills"]
+};
+
+// Default blocks for new templates
+const DEFAULT_BLOCKS: Record<string, TemplateBlock> = {
+  profile: { type: "profile", title: "Profile" },
+  experience: { type: "experience", title: "Professional Experience" },
+  education: { type: "education", title: "Education" },
+  skills: { type: "skills", title: "Skills" }
+};
+
+// Default style for new templates
+const DEFAULT_STYLE: TemplateStyle = {
+  fontFamily: 'Inter, "Segoe UI", sans-serif',
+  primaryColor: "#111111",
+  fontSize: 12,
+  spacing: 12
+};
 
 export default function CommunityTemplatesSection() {
   const { showSnackbar } = useSnackbar();
   const userId = useAuthStore((s) => s.userProfile?.id);
-  const { data, isLoading, refetch } = useDocumentTemplates();
+  const userRole = useAuthStore((s) => s.user?.role);
+  const isAdmin = String(userRole).toLowerCase() === "admin";
+  
+  // Use public templates endpoint which filters by visibility rules
+  const { data, isLoading, refetch } = usePublicDocumentTemplates();
   const createMutation = useCreateDocumentTemplate();
   const deleteMutation = useDeleteDocumentTemplate();
   const approveMutation = useApproveDocumentTemplate();
@@ -45,18 +71,13 @@ export default function CommunityTemplatesSection() {
     isPublic: false,
   });
 
-  // Helper to filter only approved templates
-  const onlyApproved = (templates: DocumentTemplate[]) =>
-    templates.filter((t) => t.approvalStatus === "approved");
-
-  // Filter out pending approval templates for community view
+  // Backend now filters public templates - no need for client-side filtering
   const templates = useMemo(() => {
     const all = data?.templates || [];
     const q = search.toLowerCase();
-    const filtered = all.filter((t) =>
+    return all.filter((t) =>
       (!q || t.name.toLowerCase().includes(q) || (t.category || "").toLowerCase().includes(q))
     );
-    return onlyApproved(filtered);
   }, [data, search]);
 
   const handleCreate = async () => {
@@ -68,13 +89,17 @@ export default function CommunityTemplatesSection() {
       await createMutation.mutateAsync({
         name: form.name.trim(),
         type: form.type,
-        content: form.content,
+        // JSON-based template structure
+        layout: DEFAULT_LAYOUT,
+        blocks: DEFAULT_BLOCKS,
+        style: DEFAULT_STYLE,
+        description: form.content,
         aiRules: form.aiRules,
         templateKind: form.templateKind,
         category: form.category,
-        structure: form.content.split("\n").map((s) => s.trim()).filter(Boolean),
-        style: {},
         isPublic: form.isPublic,
+        status: form.isPublic ? "pending_approval" : "draft",
+        approvalStatus: form.isPublic ? "pending_approval" : "draft",
       });
       showSnackbar(form.isPublic ? "Template submitted for approval" : "Template created", "success");
       setCreateOpen(false);
@@ -131,11 +156,14 @@ export default function CommunityTemplatesSection() {
                       Delete
                     </Button>
                   )}
-                  {tpl.approvalStatus === "pending_approval" && (
+                  {isAdmin && tpl.approvalStatus === "pending_approval" && (
                     <>
                       <Button size="small" color="success" onClick={() => approveMutation.mutate(tpl.id)}>Approve</Button>
                       <Button size="small" color="warning" onClick={() => rejectMutation.mutate({ id: tpl.id })}>Reject</Button>
                     </>
+                  )}
+                  {!isAdmin && tpl.approvalStatus === "pending_approval" && String(tpl.createdBy) === String(userId) && (
+                    <Chip size="small" label="Pending Approval" color="warning" />
                   )}
                 </Stack>
               </Stack>
@@ -190,7 +218,7 @@ export default function CommunityTemplatesSection() {
             </DialogTitle>
             <DialogContent>
               <TemplatePreview
-                url={`/api/document-templates/${preview.id}/preview?page=1`}
+                url={`/api/document-templates/${preview.id}/preview.html`}
                 title={preview.name}
               />
             </DialogContent>

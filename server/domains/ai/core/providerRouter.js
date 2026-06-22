@@ -15,20 +15,32 @@ const {
   mapAxiosToExternalApiError,
 } = require('../../../utils/externalApiErrorMapper');
 
-function resolveProviderApiKey(providerName) {
+async function resolveProviderApiKey(providerName) {
   const name = String(providerName || '').trim().toLowerCase();
   if (getBillingExecutionMode() === 'token') {
     const systemKey = resolveSystemApiKey(name);
     if (systemKey) return systemKey;
   }
-  const stored = getDecryptedKey(name);
+  const stored = await getDecryptedKey(name);
   if (stored) return stored;
   return null;
 }
 
+function normalizeClientParams(params = {}) {
+  const { temperature, max_tokens, options = {}, ...rest } = params;
+  return {
+    ...rest,
+    options: {
+      ...options,
+      ...(temperature !== undefined ? { temperature } : {}),
+      ...(max_tokens !== undefined ? { max_tokens } : {}),
+    },
+  };
+}
+
 function wrapProviderClient(providerName, clientFn) {
   return async (params = {}) => {
-    const apiKey = resolveProviderApiKey(providerName);
+    const apiKey = await resolveProviderApiKey(providerName);
     const endpoint = getProviderEndpoint(providerName);
 
     if (!apiKey) {
@@ -40,7 +52,7 @@ function wrapProviderClient(providerName, clientFn) {
     }
 
     try {
-      return await clientFn({ ...params, apiKey });
+      return await clientFn(normalizeClientParams({ ...params, apiKey }));
     } catch (err) {
       if (err instanceof ExternalApiError) throw err;
       throw mapAxiosToExternalApiError(err, providerName, endpoint);

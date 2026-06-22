@@ -1,5 +1,6 @@
 import { useState } from "react";
 import axiosInstance from "../axios";
+import { parseApiError, isAiConfigurationError } from "@/utils/parseApiError";
 import type { WorkflowResult, DocumentFormat, TailoringLevel } from "@/types";
 import type { PerDocTemplateIds } from "@/types/documentTemplate";
 
@@ -43,6 +44,38 @@ export interface GenerateSelectedResult {
 export type PerDocFormats = Partial<Record<DocumentType, DocumentFormat>>;
 export type { PerDocTemplateIds };
 
+const WORKFLOW_AI_TIMEOUT_MS = 180_000;
+
+const DOC_TYPE_TO_FEATURE: Record<DocumentType, string> = {
+  resume: "resume_generation",
+  "professional-cv": "professional_cv_generation",
+  "cover-letter": "cover_letter_generation",
+  email: "email_generation",
+};
+
+export async function validateAiFeaturesForTypes(types: DocumentType[]): Promise<string | null> {
+  for (const type of types) {
+    const featureId = DOC_TYPE_TO_FEATURE[type];
+    if (!featureId) continue;
+    try {
+      await axiosInstance.get(`/api/settings/ai/validate-feature/${encodeURIComponent(featureId)}`, {
+        timeout: 15_000,
+        headers: { "X-Bypass-Global-Toast": "true" },
+      });
+    } catch (err: any) {
+      return parseApiError(err);
+    }
+  }
+  return null;
+}
+
+function workflowRequestConfig() {
+  return {
+    timeout: WORKFLOW_AI_TIMEOUT_MS,
+    headers: { "X-Bypass-Global-Toast": "true" },
+  };
+}
+
 // ── Full auto-workflow (legacy — keep for backward compat) ───────────────────
 export const useRunWorkflow = () => {
   const [loading, setLoading] = useState(false);
@@ -53,16 +86,16 @@ export const useRunWorkflow = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await axiosInstance.post("/api/workflow/run", { jobId, recipientData });
+      const res = await axiosInstance.post("/api/workflow/run", { jobId, recipientData }, workflowRequestConfig());
       if (res.data?.data) {
         setResult(res.data.data);
         return res.data.data as WorkflowResult;
       }
       throw new Error(res.data?.message || "Workflow failed");
     } catch (err: any) {
-      const msg = err.message || "Unknown error";
+      const msg = parseApiError(err);
       setError(msg);
-      throw new Error(msg);
+      throw Object.assign(new Error(msg), { isAiConfig: isAiConfigurationError(err) });
     } finally {
       setLoading(false);
     }
@@ -82,7 +115,7 @@ export const useRunATS = () => {
     setError(null);
     setAts(null);
     try {
-      const res = await axiosInstance.post("/api/workflow/run-ats", { jobId });
+      const res = await axiosInstance.post("/api/workflow/run-ats", { jobId }, workflowRequestConfig());
       // Support both { data: { ats } } and { ats } structures
       const atsData = res?.data?.data?.ats || res?.data?.ats;
       if (atsData) {
@@ -91,9 +124,9 @@ export const useRunATS = () => {
       }
       throw new Error(res?.data?.message || "ATS analysis failed");
     } catch (err: any) {
-      const msg = err.message || "ATS analysis failed";
+      const msg = parseApiError(err);
       setError(msg);
-      throw new Error(msg);
+      throw Object.assign(new Error(msg), { isAiConfig: isAiConfigurationError(err) });
     } finally {
       setLoading(false);
     }
@@ -126,16 +159,16 @@ export const useGenerateSelected = () => {
         tailoringLevel,
         recipientData,
         templateIds,
-      });
+      }, workflowRequestConfig());
       if (res.data?.success) {
         setResult(res.data.data);
         return res.data.data as GenerateSelectedResult;
       }
       throw new Error(res.data?.message || "Generation failed");
     } catch (err: any) {
-      const msg = err.message || "Generation failed";
+      const msg = parseApiError(err);
       setError(msg);
-      throw new Error(msg);
+      throw Object.assign(new Error(msg), { isAiConfig: isAiConfigurationError(err) });
     } finally {
       setLoading(false);
     }
@@ -153,12 +186,12 @@ export const useRegenerate = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await axiosInstance.post("/api/workflow/regenerate", { jobId, type });
+      const res = await axiosInstance.post("/api/workflow/regenerate", { jobId, type }, workflowRequestConfig());
       return res.data.data;
     } catch (err: any) {
-      const msg = err.message || "Regeneration failed";
+      const msg = parseApiError(err);
       setError(msg);
-      throw err;
+      throw Object.assign(new Error(msg), { isAiConfig: isAiConfigurationError(err) });
     } finally {
       setLoading(false);
     }

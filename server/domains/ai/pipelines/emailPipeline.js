@@ -17,8 +17,8 @@ const { resolvePipelineTemplate } = require('../core/templateContext');
 const executeEmailPipeline = async (job, profile, recipientData = {}, config, options = {}) => {
   try {
     const tailoring = resolveTailoringConfig(options.tailoringLevel, 0.7);
-    const { promptSuffix: templateSuffix, postProcess } = resolvePipelineTemplate(options, 'email');
-    const promptTemplate = promptRegistry.resolvePrompt('email_generation');
+    const { promptSuffix: templateSuffix, postProcess } = await resolvePipelineTemplate(options, 'email');
+    const promptTemplate = await promptRegistry.resolvePrompt('email_generation');
     const userPrompt = promptRegistry.render(promptTemplate, {
       job_title: job?.title || 'the position',
       company_name: job?.company || 'the company',

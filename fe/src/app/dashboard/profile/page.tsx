@@ -176,13 +176,26 @@ export default function ProfilePage() {
       <Box p={{ xs: 2, sm: 4 }} bgcolor="background.paper" borderRadius={4} border="1px solid" borderColor="divider" boxShadow="0 4px 20px rgba(0,0,0,0.03)">
         <Stack gap={4}>
           <Stack gap={3}>
-            <Stack direction="row" alignItems="center" gap={1.5}>
-              <Box sx={{ p: 1, borderRadius: 2, bgcolor: "primary.main", color: "primary.contrastText", display: "flex" }}>
-                <User2 size={22} />
-              </Box>
-              <Typography variant="h6" fontWeight={800}>
-                Basic Information
-              </Typography>
+            <Stack direction="row" alignItems="center" justifyContent="space-between">
+              <Stack direction="row" alignItems="center" gap={1.5}>
+                <Box sx={{ p: 1, borderRadius: 2, bgcolor: "primary.main", color: "primary.contrastText", display: "flex" }}>
+                  <User2 size={22} />
+                </Box>
+                <Typography variant="h6" fontWeight={800}>
+                  Basic Information
+                </Typography>
+              </Stack>
+
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={savingProfile ? <CircularProgress size={16} color="inherit" /> : <Save size={16} />}
+                disabled={savingProfile}
+                onClick={() => saveProfilePartial({})}
+                sx={{ borderRadius: 2, textTransform: "none", fontWeight: 700 }}
+              >
+                {savingProfile ? "Saving..." : "Save Changes"}
+              </Button>
             </Stack>
 
             <Stack direction={{ xs: "column", sm: "row" }} gap={2.5}>
@@ -219,6 +232,7 @@ export default function ProfilePage() {
           </Stack>
 
           <Divider sx={{ opacity: 0.6 }} />
+          {/* ... rest of the component ... */}
 
           <CollapsibleSection title="Contact & Social Links" defaultExpanded={true}>
             <Stack gap={3}>

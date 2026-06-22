@@ -1,13 +1,12 @@
-const BaseRepository = require('../infrastructure/db/BaseRepository');
+const Supabase = require('../services/supabaseService');
 const { encrypt, decrypt } = require("../utils/encryption");
-const fileStore = require("../utils/fileStore");
 
-const FILENAME = "admin_smtp.json";
-const adminSmtpRepo = new BaseRepository(FILENAME);
+const TABLE_NAME = 'admin_smtp';
 
-const getAllAdminSmtps = () => {
-  const raw = adminSmtpRepo.readAll();
-  if (!Array.isArray(raw)) return [];
+const getAllAdminSmtps = async () => {
+  const { data, error } = await Supabase.select(TABLE_NAME);
+  if (error) throw error;
+  const raw = Array.isArray(data) ? data : [];
   return raw
     .filter((s) => s && typeof s === "object")
     .map((s) => ({
@@ -24,18 +23,18 @@ const getAllAdminSmtps = () => {
     .filter((s) => s.username);
 };
 
-const getAdminSmtpById = (id) => {
-  const all = getAllAdminSmtps();
+const getAdminSmtpById = async (id) => {
+  const all = await getAllAdminSmtps();
   return all.find((s) => String(s.id) === String(id)) || null;
 };
 
-const getActiveAdminSmtp = () => {
-  const all = getAllAdminSmtps();
+const getActiveAdminSmtp = async () => {
+  const all = await getAllAdminSmtps();
   return all.find((s) => s.isActive === true) || null;
 };
 
-const createAdminSmtp = (data) => {
-  const existing = getAllAdminSmtps();
+const createAdminSmtp = async (data) => {
+  const existing = await getAllAdminSmtps();
   const isActive = existing.length === 0 || !!data.isActive;
 
   let password = data.password || null;
@@ -57,60 +56,64 @@ const createAdminSmtp = (data) => {
     isActive,
   };
 
-  const record = adminSmtpRepo.create(newSmtp);
+  const { data: inserted, error } = await Supabase.insert(TABLE_NAME, newSmtp);
+  if (error) throw error;
+  const record = inserted ? inserted[0] : null;
 
-  if (isActive) {
-    setActiveAdminSmtp(record.id);
+  if (isActive && record) {
+    await setActiveAdminSmtp(record.id);
   }
 
   return record;
 };
 
-const updateAdminSmtp = (id, updates) => {
-  const result = adminSmtpRepo.update(id, updates);
-
-  fileStore.update(FILENAME, (s) => String(s.id) === String(id), (s) => {
-    const next = {};
-    if (updates.password && !updates.iv) {
-      const { encryptedPassword, iv } = encrypt(updates.password);
-      next.password = encryptedPassword;
-      next.iv = iv;
-    }
-    if (updates.name !== undefined) next.name = String(updates.name || "").trim();
-    if (updates.username !== undefined) next.username = String(updates.username || "").trim().toLowerCase();
-    if (updates.host !== undefined) next.host = String(updates.host || "").trim();
-    if (updates.port !== undefined) next.port = Number(updates.port) || 587;
-    if (updates.secure !== undefined) next.secure = !!updates.secure;
-    return next;
-  });
-
-  if (updates.isActive) {
-    setActiveAdminSmtp(id);
+const updateAdminSmtp = async (id, updates) => {
+  // Handle password encryption if needed
+  if (updates.password && !updates.iv) {
+    const { encryptedPassword, iv } = encrypt(updates.password);
+    updates.password = encryptedPassword;
+    updates.iv = iv;
   }
 
-  return getAdminSmtpById(id);
+  const { data, error } = await Supabase.update(TABLE_NAME, { id }, updates);
+  if (error) throw error;
+  const updatedRecord = data && data.length ? data[0] : null;
+
+  if (updates.isActive && updatedRecord) {
+    await setActiveAdminSmtp(id);
+  }
+
+  return await getAdminSmtpById(id);
 };
 
-const deleteAdminSmtp = (id) => {
-  const wasActive = getAdminSmtpById(id)?.isActive;
-  const count = adminSmtpRepo.delete(id);
-  
+const deleteAdminSmtp = async (id) => {
+  const wasActive = (await getAdminSmtpById(id))?.isActive;
+  const { data, error } = await Supabase.delete(TABLE_NAME, { id });
+  if (error) throw error;
+  const count = data ? data.length : 0;
+
   if (wasActive) {
-    const remaining = getAllAdminSmtps();
+    const remaining = await getAllAdminSmtps();
     if (remaining.length > 0) {
-      setActiveAdminSmtp(remaining[0].id);
+      await setActiveAdminSmtp(remaining[0].id);
     }
   }
   return count;
 };
 
-const setActiveAdminSmtp = (id) => {
-  const all = getAllAdminSmtps();
-  const next = all.map((s) => ({
-    ...s,
-    isActive: String(s.id) === String(id),
-  }));
-  fileStore.write(FILENAME, next);
+const setActiveAdminSmtp = async (id) => {
+  // Deactivate all
+  const all = await getAllAdminSmtps();
+  const deactivatePromises = all.map((s) => {
+    if (s.isActive) {
+      return Supabase.update(TABLE_NAME, { id: s.id }, { isActive: false });
+    }
+    return Promise.resolve();
+  });
+  await Promise.all(deactivatePromises);
+
+  // Activate target
+  await Supabase.update(TABLE_NAME, { id }, { isActive: true });
 };
 
 const getDecryptedPassword = (smtp) => {

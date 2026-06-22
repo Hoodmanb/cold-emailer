@@ -1,11 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
+const Supabase = require('../services/supabaseService');
 const { UPLOAD_RELATIVE } = require('../utils/artifactSecurity');
-const fileStore = require('../utils/fileStore');
 
-const FILE = 'artifacts.json';
 const MAX_INLINE_BYTES = 500 * 1024;
+const TABLE_NAME = 'artifacts';
 
 function ensureUploadDir(absDir) {
   if (!fs.existsSync(absDir)) {
@@ -13,7 +13,27 @@ function ensureUploadDir(absDir) {
   }
 }
 
-function createArtifact(input) {
+function fromRow(row) {
+  if (!row) return null;
+  const meta = row.metadata && typeof row.metadata === 'object' ? row.metadata : {};
+  const storageType = meta.storageType || (meta.base64Data ? 'base64' : row.storage_path ? 'file' : null);
+  return {
+    id: row.id,
+    userId: row.user_id,
+    filename: row.filename || 'file',
+    mimetype: row.mime_type || 'application/octet-stream',
+    mime_type: row.mime_type || 'application/octet-stream',
+    storageType,
+    base64Data: meta.base64Data || null,
+    filePath: row.storage_path || null,
+    storage_path: row.storage_path || null,
+    size: meta.size || null,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
+async function createArtifact(input) {
   const { buffer, filename, mimetype, userId } = input;
   if (!buffer || !Buffer.isBuffer(buffer)) {
     throw new Error('buffer is required');
@@ -29,7 +49,7 @@ function createArtifact(input) {
 
   let storageType;
   let base64Data = null;
-  let filePathRel = null;
+  let storagePath = null;
 
   if (buffer.length <= MAX_INLINE_BYTES) {
     storageType = 'base64';
@@ -39,34 +59,40 @@ function createArtifact(input) {
     ensureUploadDir(absUploadDir);
     const absFile = path.join(absUploadDir, storedFileName);
     fs.writeFileSync(absFile, buffer);
-    filePathRel = path.join(UPLOAD_RELATIVE, storedFileName).replace(/\\/g, '/');
+    storagePath = path.join(UPLOAD_RELATIVE, storedFileName).replace(/\\/g, '/');
   }
 
+  const now = new Date().toISOString();
   const record = {
     id,
-    userId: String(userId),
+    user_id: String(userId),
     filename: filename || 'file',
-    mimetype: mimetype || 'application/octet-stream',
-    storageType,
-    size: buffer.length,
-    createdAt: new Date().toISOString(),
-    ...(storageType === 'base64' ? { base64Data } : { filePath: filePathRel }),
+    mime_type: mimetype || 'application/octet-stream',
+    storage_path: storagePath,
+    metadata: {
+      storageType,
+      size: buffer.length,
+      ...(base64Data ? { base64Data } : {}),
+    },
+    created_at: now,
+    updated_at: now,
   };
 
-  fileStore.append(FILE, record, userId);
-  return record;
+  const { data, error } = await Supabase.insert(TABLE_NAME, record, userId);
+  if (error) throw error;
+  return fromRow(data?.[0] || record);
 }
 
-function listArtifacts(userId) {
-  return ensureArray(fileStore.read(FILE, userId));
+async function listArtifacts(userId) {
+  const { data, error } = await Supabase.select(TABLE_NAME, {}, userId);
+  if (error) throw error;
+  return (data || []).map(fromRow);
 }
 
-function getArtifact(id, userId) {
-  return listArtifacts(userId).find((a) => String(a.id) === String(id)) || null;
-}
-
-function ensureArray(data) {
-  return Array.isArray(data) ? data : [];
+async function getArtifact(id, userId) {
+  const { data, error } = await Supabase.selectOne(TABLE_NAME, { id }, userId);
+  if (error) throw error;
+  return fromRow(data);
 }
 
 function toPublic(artifact) {

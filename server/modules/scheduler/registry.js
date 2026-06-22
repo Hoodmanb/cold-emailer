@@ -55,7 +55,7 @@ register('resume-generation', async (schedule) => {
     throw new Error('jobId is required in payload for resume-generation');
   }
 
-  const profile = getProfile();
+  const profile = await getProfile(schedule.userId);
   if (!profile || (!profile.name && !profile.summary)) {
     throw new Error('Profile is incomplete – cannot generate resume');
   }
@@ -78,7 +78,7 @@ register('cover-letter-generation', async (schedule) => {
     throw new Error('jobId is required in payload for cover-letter-generation');
   }
 
-  const profile = getProfile();
+  const profile = await getProfile(schedule.userId);
   if (!profile || (!profile.name && !profile.summary)) {
     throw new Error('Profile is incomplete – cannot generate cover letter');
   }
@@ -101,7 +101,7 @@ register('ats-analysis', async (schedule) => {
     throw new Error('jobId is required in payload for ats-analysis');
   }
 
-  const profile = getProfile();
+  const profile = await getProfile(schedule.userId);
   const result = await runAtsOnly({ jobId, profile });
   return { success: true, atsScore: result.atsScore, data: result };
 });
@@ -115,7 +115,8 @@ register('cold-email-send', async (schedule) => {
   }
 
   // Idempotency: Check if an email has already been sent to this recipient for this schedule
-  const sentEmails = emailRepo.listEmails({ jobId }) || [];
+  const userId = schedule.userId;
+  const sentEmails = (await emailRepo.listEmails({ jobId, userId })) || [];
   const alreadySent = sentEmails.some(
     (e) => e.to.toLowerCase() === to.toLowerCase() && 
            e.subject === subject && 
@@ -128,14 +129,14 @@ register('cold-email-send', async (schedule) => {
     return { success: true, message: 'Email already sent (idempotency skip)' };
   }
 
-  const emailRecord = emailRepo.saveEmail({
+  const emailRecord = await emailRepo.saveEmail({
     jobId: jobId || null,
     scheduleId: schedule.id, // Store schedule ID in email record
     to,
     subject,
     body,
     status: 'approved', // Pre-approve to allow direct sending
-  });
+  }, userId);
 
   const result = await sendEmail({
     to,
@@ -145,10 +146,10 @@ register('cold-email-send', async (schedule) => {
   });
 
   if (result.success) {
-    emailRepo.markSent(emailRecord.id, result);
+    await emailRepo.markSent(emailRecord.id, result, userId);
     return { success: true, messageId: result.messageId };
   } else {
-    emailRepo.updateEmail(emailRecord.id, { status: 'failed', sendResult: result });
+    await emailRepo.updateEmail(emailRecord.id, { status: 'failed', sendResult: result }, userId);
     throw new Error(result.message || 'SMTP delivery failed');
   }
 });
@@ -162,7 +163,8 @@ register('follow-up-email', async (schedule) => {
   }
 
   // Idempotency: Check if an email has already been sent to this recipient for this schedule
-  const sentEmails = emailRepo.listEmails({ jobId }) || [];
+  const userId = schedule.userId;
+  const sentEmails = (await emailRepo.listEmails({ jobId, userId })) || [];
   const alreadySent = sentEmails.some(
     (e) => e.to.toLowerCase() === to.toLowerCase() && 
            e.subject === subject && 
@@ -175,14 +177,14 @@ register('follow-up-email', async (schedule) => {
     return { success: true, message: 'Follow-up already sent (idempotency skip)' };
   }
 
-  const emailRecord = emailRepo.saveEmail({
+  const emailRecord = await emailRepo.saveEmail({
     jobId: jobId || null,
     scheduleId: schedule.id,
     to,
     subject,
     body,
     status: 'approved',
-  });
+  }, userId);
 
   const result = await sendEmail({
     to,
@@ -192,10 +194,10 @@ register('follow-up-email', async (schedule) => {
   });
 
   if (result.success) {
-    emailRepo.markSent(emailRecord.id, result);
+    await emailRepo.markSent(emailRecord.id, result, userId);
     return { success: true, messageId: result.messageId };
   } else {
-    emailRepo.updateEmail(emailRecord.id, { status: 'failed', sendResult: result });
+    await emailRepo.updateEmail(emailRecord.id, { status: 'failed', sendResult: result }, userId);
     throw new Error(result.message || 'SMTP delivery failed');
   }
 });

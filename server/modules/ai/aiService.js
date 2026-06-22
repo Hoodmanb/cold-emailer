@@ -1,13 +1,12 @@
 const axios = require('axios');
 const coreAI = require('../../services/aiService');
-const aiStandards = require('../../services/ai/aiGenerationStandards');
 
-const generateResume = async (job, profile) => coreAI.generateResume(job, profile);
+const generateResume = async (job, profile, options) => coreAI.generateResume(job, profile, options);
 
-const generateCoverLetter = async (job, profile) => coreAI.generateCoverLetter(job, profile);
+const generateCoverLetter = async (job, profile, options) => coreAI.generateCoverLetter(job, profile, options);
 
-const generateEmail = async (job, profile, _model, recipientData = {}) =>
-  coreAI.generateEmail(job, profile, recipientData);
+const generateEmail = async (job, profile, _model, recipientData = {}, options = {}) =>
+  coreAI.generateEmail(job, profile, recipientData, options);
 
 const analyzeJob = async (job, profile) => coreAI.analyzeATS(job, profile);
 
@@ -32,48 +31,10 @@ const generateText = async (prompt, _model, options = {}) => {
   return result.data;
 };
 
-/**
- * Extract job details from a base64 screenshot image using a multimodal model.
- */
-const extractJobFromImage = async (base64Image, mimeType) => {
-  const promptTemplate = coreAI.resolveActivePrompt('job_extraction_image');
-  
-  const messages = [
-    {
-      role: 'user',
-      content: [
-        { type: 'text', text: promptTemplate },
-        { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64Image}` } }
-      ]
-    }
-  ];
+const extractJobFromImage = async (base64Image, mimeType, forcedModel = null) =>
+  coreAI.extractJobFromImage(base64Image, mimeType, forcedModel);
 
-  const raw = await coreAI.generateForFeature({
-    featureId: 'job_extraction_image',
-    messages,
-    options: { temperature: 0.1, max_tokens: 1500 },
-  });
-
-  const parsed = aiStandards.parseStructuredJsonFromModel(raw.data, {
-    dedupeArrays: ['skills', 'atsKeywords'],
-  });
-  if (!parsed || typeof parsed !== 'object') {
-    throw new Error('Failed to parse AI extraction from image');
-  }
-  let out = { ...parsed };
-  if (out.data && typeof out.data === 'object') {
-    out = { ...out.data, schemaVersion: out.schemaVersion || aiStandards.SCHEMA_VERSION };
-  }
-  if (!out.schemaVersion) out.schemaVersion = aiStandards.SCHEMA_VERSION;
-  if (Array.isArray(out.skills)) out.skills = aiStandards.dedupeStringArray(out.skills);
-  if (Array.isArray(out.atsKeywords)) out.atsKeywords = aiStandards.dedupeStringArray(out.atsKeywords);
-  return out;
-};
-
-const summarizeProject = async (projectData) => {
-  const result = await coreAI.generateProjectSummary(projectData);
-  return result;
-};
+const summarizeProject = async (projectData) => coreAI.generateProjectSummary(projectData);
 
 module.exports = {
   generateResume,

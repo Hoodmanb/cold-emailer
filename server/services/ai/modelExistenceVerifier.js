@@ -11,9 +11,9 @@ function normalizeProvider(provider) {
   return String(provider || '').trim().toLowerCase();
 }
 
-function resolveVerificationApiKey(provider) {
+async function resolveVerificationApiKey(provider) {
   const name = normalizeProvider(provider);
-  return resolveSystemApiKey(name) || getDecryptedKey(name);
+  return resolveSystemApiKey(name) || (await getDecryptedKey(name));
 }
 
 function geminiModelCandidates(modelId) {
@@ -264,7 +264,7 @@ async function verifyModelExists(provider, modelId) {
     return { valid: false, message: 'Provider and model id are required' };
   }
 
-  const apiKey = resolveVerificationApiKey(normalizedProvider);
+  const apiKey = await resolveVerificationApiKey(normalizedProvider);
   if (!apiKey) {
     return {
       valid: false,

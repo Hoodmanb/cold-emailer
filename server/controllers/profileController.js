@@ -7,6 +7,8 @@ const { normalizeProfilePayload } = require("../utils/profileNormalize");
 const { log, ACTION_TYPES } = require("../logs/auditLogger");
 const { successResponse } = require("../utils/response");
 const { requireUserId } = require("../utils/requireUserId");
+const Supabase = require("../services/supabaseService");
+const { uploadBuffer } = require("../utils/cloudinaryClient");
 
 const screenshotUpload = multer({
   storage: multer.memoryStorage(),
@@ -19,17 +21,17 @@ const screenshotUpload = multer({
   },
 });
 
-const getProfileHandler = (req, res) => {
+const getProfileHandler = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
   return successResponse(res, {
     status: 200,
     message: "Profile retrieved successfully",
-    data: getProfile(userId),
+    data: await getProfile(userId),
   });
 };
 
-const updateProfileHandler = (req, res) => {
+const updateProfileHandler = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
   if (!req.body || typeof req.body !== "object") {
@@ -37,19 +39,19 @@ const updateProfileHandler = (req, res) => {
     err.status = 400;
     throw err;
   }
-  updateProfile(normalizeProfilePayload(req.body), userId);
-  log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: "Career profile updated" });
+  await updateProfile(normalizeProfilePayload(req.body), userId);
+  await log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: "Career profile updated" });
   return successResponse(res, {
     status: 200,
     message: "Profile updated successfully",
-    data: getProfile(userId),
+    data: await getProfile(userId),
   });
 };
 
-const getProjectsHandler = (req, res) => {
+const getProjectsHandler = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
-  const projects = getAllProjects(userId);
+  const projects = await getAllProjects(userId);
   console.log(`[profileController] Fetched ${projects.length} projects for user ${req.user?.id}`);
   return successResponse(res, {
     status: 200,
@@ -59,11 +61,11 @@ const getProjectsHandler = (req, res) => {
   });
 };
 
-const createProjectHandler = (req, res) => {
+const createProjectHandler = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
-  const created = createProject(req.body, userId);
-  log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: "Project created" });
+  const created = await createProject(req.body, userId);
+  await log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: "Project created" });
   return successResponse(res, {
     status: 201,
     message: "Project created successfully",
@@ -71,17 +73,17 @@ const createProjectHandler = (req, res) => {
   });
 };
 
-const updateProjectHandler = (req, res) => {
+const updateProjectHandler = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
   const { projectId } = req.params;
-  const updated = updateProject(projectId, req.body, userId);
+  const updated = await updateProject(projectId, req.body, userId);
   if (!updated) {
     const err = new Error("Project not found");
     err.status = 404;
     throw err;
   }
-  log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: "Project updated" });
+  await log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: "Project updated" });
   return successResponse(res, {
     status: 200,
     message: "Project updated successfully",
@@ -89,17 +91,17 @@ const updateProjectHandler = (req, res) => {
   });
 };
 
-const deleteProjectHandler = (req, res) => {
+const deleteProjectHandler = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
   const { projectId } = req.params;
-  const removedCount = deleteProject(projectId, userId);
+  const removedCount = await deleteProject(projectId, userId);
   if (removedCount === 0) {
     const err = new Error("Project not found");
     err.status = 404;
     throw err;
   }
-  log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: "Project deleted" });
+  await log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: "Project deleted" });
   return successResponse(res, {
     status: 200,
     message: "Project deleted successfully",
@@ -107,36 +109,57 @@ const deleteProjectHandler = (req, res) => {
   });
 };
 
-const uploadScreenshotHandler = (req, res) => {
+const uploadScreenshotHandler = async (req, res) => {
   if (!req.file) {
     const err = new Error("Please upload a valid screenshot image");
     err.status = 400;
     throw err;
   }
-  const base64 = req.file.buffer.toString("base64");
-  const value = `data:${req.file.mimetype};base64,${base64}`;
+
+  // 1️⃣ Upload to Cloudinary
+  const { public_id, url, format, bytes } = await uploadBuffer(
+    req.file.buffer,
+    req.file.originalname,
+    req.file.mimetype,
+    "screenshots"
+  );
+
+  // 2️⃣ Store metadata in Supabase
+  const { data, error } = await Supabase.insert(
+    "uploads",
+    { public_id, url, format, bytes },
+    req.user.id
+  );
+
+  if (error) {
+    const err = new Error("Failed to record upload metadata");
+    err.status = 500;
+    throw err;
+  }
+
   return successResponse(res, {
     status: 201,
     message: "Screenshot uploaded successfully",
-    data: { value, fileName: req.file.originalname },
+    data: { id: data[0].id, url, public_id, format, bytes },
   });
 };
 
-const getSkillsHandler = (req, res) => {
+const getSkillsHandler = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
+  const profile = await getProfile(userId);
   return successResponse(res, {
     status: 200,
     message: "Skills retrieved successfully",
-    data: getProfile(userId).skills || [],
+    data: profile.skills || [],
   });
 };
 
-const createSkillHandler = (req, res) => {
+const createSkillHandler = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
   const { normalizeSkillsInput } = require("../utils/profileNormalize");
-  const profile = getProfile(userId);
+  const profile = await getProfile(userId);
   const rawInput = req.body?.name || req.body?.skills;
 
   if (!rawInput) throw new Error("Skill name or skills array required");
@@ -156,10 +179,10 @@ const createSkillHandler = (req, res) => {
   }
 
   if (added.length > 0) {
-    updateProfile({ skills: existingSkills }, userId);
+    await updateProfile({ skills: existingSkills }, userId);
   }
 
-  log(ACTION_TYPES.PROFILE_UPDATED, { 
+  await log(ACTION_TYPES.PROFILE_UPDATED, { 
     module: "profile", 
     details: `Added ${added.length} skill(s): ${added.map(s => s.name).join(", ")}` 
   });
@@ -171,20 +194,21 @@ const createSkillHandler = (req, res) => {
   });
 };
 
-const getCertificatesHandler = (req, res) => {
+const getCertificatesHandler = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
+  const profile = await getProfile(userId);
   return successResponse(res, {
     status: 200,
     message: "Certificates retrieved successfully",
-    data: getProfile(userId).certificates || [],
+    data: profile.certificates || [],
   });
 };
 
-const createCertificateHandler = (req, res) => {
+const createCertificateHandler = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
-  const profile = getProfile(userId);
+  const profile = await getProfile(userId);
   const certificates = Array.isArray(profile.certificates) ? profile.certificates : [];
   const { normalizeCertificates } = require("../utils/profileNormalize");
 
@@ -196,9 +220,9 @@ const createCertificateHandler = (req, res) => {
   }
 
   certificates.push(normalized[0]);
-  updateProfile({ certificates }, userId);
+  await updateProfile({ certificates }, userId);
 
-  log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: "Certificate added" });
+  await log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: "Certificate added" });
   return successResponse(res, {
     status: 201,
     message: "Certificate added successfully",
@@ -206,20 +230,20 @@ const createCertificateHandler = (req, res) => {
   });
 };
 
-const updateCertificateHandler = (req, res) => {
+const updateCertificateHandler = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
   const { certId } = req.params;
-  const profile = getProfile(userId);
+  const profile = await getProfile(userId);
   const certificates = (profile.certificates || []).map((c) =>
     String(c.id) === String(certId) ? { ...c, ...req.body, id: certId } : c
   );
   
   const { normalizeCertificates } = require("../utils/profileNormalize");
   const normalized = normalizeCertificates(certificates);
-  updateProfile({ certificates: normalized }, userId);
+  await updateProfile({ certificates: normalized }, userId);
 
-  log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: "Certificate updated" });
+  await log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: "Certificate updated" });
   return successResponse(res, {
     status: 200,
     message: "Certificate updated successfully",
@@ -227,15 +251,15 @@ const updateCertificateHandler = (req, res) => {
   });
 };
 
-const deleteCertificateHandler = (req, res) => {
+const deleteCertificateHandler = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
   const { certId } = req.params;
-  const profile = getProfile(userId);
+  const profile = await getProfile(userId);
   const certificates = (profile.certificates || []).filter((c) => String(c.id) !== String(certId));
-  updateProfile({ certificates }, userId);
+  await updateProfile({ certificates }, userId);
 
-  log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: "Certificate removed" });
+  await log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: "Certificate removed" });
   return successResponse(res, {
     status: 200,
     message: "Certificate removed successfully",
@@ -243,7 +267,7 @@ const deleteCertificateHandler = (req, res) => {
   });
 };
 
-const updateSkillHandler = (req, res) => {
+const updateSkillHandler = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
   const { skillId } = req.params;
@@ -260,7 +284,7 @@ const updateSkillHandler = (req, res) => {
     throw err;
   }
 
-  const profile = getProfile(userId);
+  const profile = await getProfile(userId);
   const skills = (profile.skills || []).map((s) =>
     String(s.id) === String(skillId) ? { ...s, name } : s
   );
@@ -274,9 +298,9 @@ const updateSkillHandler = (req, res) => {
     throw err;
   }
 
-  updateProfile({ skills: normalized }, userId);
+  await updateProfile({ skills: normalized }, userId);
 
-  log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: `Skill updated: ${name}` });
+  await log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: `Skill updated: ${name}` });
   return successResponse(res, {
     status: 200,
     message: "Skill updated successfully",
@@ -284,10 +308,10 @@ const updateSkillHandler = (req, res) => {
   });
 };
 
-const getEmailConfigHandler = (req, res) => {
+const getEmailConfigHandler = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
-  const profile = getProfile(userId);
+  const profile = await getProfile(userId);
   return successResponse(res, {
     status: 200,
     message: "Email config retrieved successfully",
@@ -299,7 +323,7 @@ const getEmailConfigHandler = (req, res) => {
   });
 };
 
-const updateEmailConfig = (req, res) => {
+const updateEmailConfig = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
   const body = req.body && typeof req.body === "object" ? req.body : {};
@@ -317,10 +341,10 @@ const updateEmailConfig = (req, res) => {
     throw err;
   }
 
-  updateProfile(normalizeProfilePayload(updates), userId);
-  log(ACTION_TYPES.EMAIL_CONFIG_UPDATED, { module: "profile", details: "Email sender config updated" });
+  await updateProfile(normalizeProfilePayload(updates), userId);
+  await log(ACTION_TYPES.EMAIL_CONFIG_UPDATED, { module: "profile", details: "Email sender config updated" });
 
-  const profile = getProfile(userId);
+  const profile = await getProfile(userId);
   return successResponse(res, {
     status: 200,
     message: "Email config updated successfully",
@@ -332,15 +356,15 @@ const updateEmailConfig = (req, res) => {
   });
 };
 
-const deleteSkillHandler = (req, res) => {
+const deleteSkillHandler = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
   const { skillId } = req.params;
-  const profile = getProfile(userId);
+  const profile = await getProfile(userId);
   const skills = (profile.skills || []).filter((s) => String(s.id) !== String(skillId));
-  updateProfile({ skills }, userId);
+  await updateProfile({ skills }, userId);
 
-  log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: "Skill removed" });
+  await log(ACTION_TYPES.PROFILE_UPDATED, { module: "profile", details: "Skill removed" });
   return successResponse(res, {
     status: 200,
     message: "Skill removed successfully",
@@ -348,20 +372,20 @@ const deleteSkillHandler = (req, res) => {
   });
 };
 
-const getPreferencesHandler = (req, res) => {
+const getPreferencesHandler = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
   return successResponse(res, {
     status: 200,
     message: "Preferences retrieved successfully",
-    data: getSettings(userId),
+    data: await getSettings(userId),
   });
 };
 
-const updatePreferencesHandler = (req, res) => {
+const updatePreferencesHandler = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
-  const updated = updateSettings(req.body, userId);
+  const updated = await updateSettings(req.body, userId);
   return successResponse(res, {
     status: 200,
     message: "Preferences updated successfully",
@@ -369,7 +393,7 @@ const updatePreferencesHandler = (req, res) => {
   });
 };
 
-const deleteAccountHandler = (req, res) => {
+const deleteAccountHandler = async (req, res) => {
   const userId = req.user?.id;
   if (!userId) {
     const err = new Error("Unauthenticated request");
@@ -377,15 +401,13 @@ const deleteAccountHandler = (req, res) => {
     throw err;
   }
 
-  // 1. Audit the destructive event
-  log(ACTION_TYPES.ACCOUNT_DELETED, { 
+  await log(ACTION_TYPES.ACCOUNT_DELETED, { 
     module: "profile", 
     details: `User permanently deleted account (ID: ${userId})` 
   });
 
-  // 2. Clear out user data
   const { deleteUserAndCleanup } = require("../repositories/userRepository");
-  deleteUserAndCleanup(userId);
+  await deleteUserAndCleanup(userId);
 
   return successResponse(res, {
     status: 200,

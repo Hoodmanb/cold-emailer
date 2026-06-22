@@ -4,13 +4,16 @@ const logger = require('../../utils/logger');
 const { buildMailAttachments } = require('./artifactMail');
 const { buildDocumentAttachments } = require('./documentAttachmentMail');
 const { recordSendContext } = require('../../services/contextUsageService');
+const { getCurrentUserId } = require('../../middleware/requestContext');
+const { getProfile } = require('../../repositories/profileRepository');
+const { fillPlaceholders } = require('../../utils/placeholderParser');
 
 /**
  * Send an email using the user's configured Gmail SMTP.
  * Credentials are read from user.json and decrypted on-the-fly.
  */
 const sendEmail = async (payload) => {
-  const { to, subject, body, templateId } = payload;
+  const { to, subject, body, templateId, userId } = payload;
   try {
     const config = smtpRepo.getActiveSmtp();
 
@@ -42,11 +45,33 @@ const sendEmail = async (payload) => {
       ...(await buildDocumentAttachments(payload)),
     ];
 
+    // Safe variable interpolation for email body and subject without Handlebars
+    const currentUserId = userId || getCurrentUserId();
+    let finalSubject = subject;
+    let finalBody = body;
+
+    if (currentUserId) {
+      try {
+        const profile = await getProfile(currentUserId);
+        const interpolationData = {
+          name: profile.name || '',
+          email: profile.email || '',
+          phone: profile.phone || profile.phoneNumber || '',
+          location: profile.location || '',
+          ...profile
+        };
+        finalSubject = fillPlaceholders(subject, interpolationData);
+        finalBody = fillPlaceholders(body, interpolationData);
+      } catch (_err) {
+        logger.warn('[emailService] failed to fetch profile for placeholder interpolation', _err.message);
+      }
+    }
+
     const mailOptions = {
       from: config.email,
       to,
-      subject,
-      html: body,
+      subject: finalSubject,
+      html: finalBody,
     };
 
     if (mailAttachments.length > 0) {

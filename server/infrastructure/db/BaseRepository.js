@@ -1,7 +1,7 @@
 /**
- * CareerBot Abstract Base Repository Class
- * Consolidates dynamic user scoping, schema validations,
- * and standard CRUD operations into a single reusable component.
+ * LEGACY SYSTEM - DISABLED. Supabase is now source of truth.
+ * Use SupabaseRepository (infrastructure/db/SupabaseRepository.js) instead.
+ * Retained for reference only — no production code should import this class.
  */
 const fileStore = require('../../utils/fileStore');
 const { OBJECT_FILES, defaultFor } = fileStore;

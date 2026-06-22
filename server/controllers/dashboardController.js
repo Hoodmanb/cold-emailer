@@ -4,14 +4,14 @@ const emailRepo = require('../repositories/emailRepository');
 const { readLogs, ACTION_TYPES } = require('../logs/auditLogger');
 const { requireUserId } = require('../utils/requireUserId');
 
-const getDashboardStats = (req, res) => {
+const getDashboardStats = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
 
-  const jobs = jobRepo.listJobs(userId);
-  const documents = documentRepo.listDocuments(undefined, userId);
-  const emails = emailRepo.listEmails({ userId });
-  const logs = readLogs({ limit: 50 });
+  const jobs = await jobRepo.listJobs(userId);
+  const documents = await documentRepo.listDocuments(undefined, userId);
+  const emails = await emailRepo.listEmails({ userId });
+  const logs = await readLogs({ limit: 50 });
 
   const totalJobs = jobs.length;
   const documentsGenerated = documents.length;

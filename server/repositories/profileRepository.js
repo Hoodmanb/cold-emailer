@@ -1,12 +1,8 @@
-/**
- * Hardened Scoped Profile Repository
- * Enforces career profile schema structures while preserving default shapes.
- */
 const SCHEMAS = require('../shared/validators/schemas');
+const Supabase = require('../services/supabaseService');
 const projectRepo = require('./projectRepository');
-const fileStore = require('../utils/fileStore');
 
-const FILENAME = 'profiles.json';
+const TABLE = 'profiles';
 
 const DEFAULT_PROFILE = {
   name: '',
@@ -25,19 +21,24 @@ const DEFAULT_PROFILE = {
   links: { github: '', linkedin: '', portfolio: '' },
 };
 
-const getProfile = (userId) => {
-  const profile = fileStore.read(FILENAME, userId);
-  const normalized =
-    profile && typeof profile === 'object' && !Array.isArray(profile) ? profile : {};
-  const projects = projectRepo.getAllProjects(userId);
+async function getProfileRow(userId) {
+  const { data, error } = await Supabase.selectOne(TABLE, { id: userId });
+  if (error) throw error;
+  return data;
+}
+
+const getProfile = async (userId) => {
+  const row = await getProfileRow(userId);
+  const normalized = row?.data && typeof row.data === 'object' ? row.data : {};
+  const projects = await projectRepo.getAllProjects(userId);
   return { ...DEFAULT_PROFILE, ...normalized, projects };
 };
 
-const updateProfile = (data, userId) => {
+const updateProfile = async (data, userId) => {
   if (!data || typeof data !== 'object') {
     throw new Error('Profile update payload must be an object');
   }
-  const current = getProfile(userId);
+  const current = await getProfile(userId);
   const { projects, ...cleanData } = data;
   const next = { ...current, ...cleanData };
   delete next.projects;
@@ -46,7 +47,17 @@ const updateProfile = (data, userId) => {
     SCHEMAS.profile.validate(next);
   }
 
-  fileStore.write(FILENAME, next, userId);
+  const { data: upserted, error } = await Supabase.upsert(
+    TABLE,
+    {
+      id: userId,
+      data: next,
+      updated_at: new Date().toISOString(),
+    },
+    userId,
+    'id',
+  );
+  if (error) throw error;
   return getProfile(userId);
 };
 

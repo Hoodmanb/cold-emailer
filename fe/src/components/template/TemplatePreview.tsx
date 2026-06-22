@@ -14,6 +14,7 @@ type Props = {
  * Renders template previews from the backend.
  * - Image previews (webp/png) use an <img> tag via the proxied asset URL.
  * - HTML previews are fetched with auth and rendered in an iframe via srcDoc.
+ *   Supports both JSON-wrapped HTML ({ data: { html: "..." } }) and direct HTML responses.
  */
 export default function TemplatePreview({ url, title }: Props) {
   const resolvedUrl = resolveBackendAssetUrl(url);
@@ -37,13 +38,42 @@ export default function TemplatePreview({ url, title }: Props) {
           headers: { "X-Bypass-Global-Toast": "true" },
         });
         const contentType = String(response.headers?.["content-type"] || "");
-        if (contentType.includes("text/html") && String(response.data).trimStart().startsWith("<!DOCTYPE")) {
+        const responseData = String(response.data || "");
+
+        // Handle direct HTML response (system templates endpoint returns HTML directly)
+        if (contentType.includes("text/html") && responseData.trimStart().startsWith("<!DOCTYPE")) {
+          if (!cancelled) {
+            setHtml(responseData);
+            setLoading(false);
+          }
+          return;
+        }
+
+        // Handle app shell fallback (indicates routing issue)
+        if (contentType.includes("text/html") && responseData.trimStart().startsWith("<!doctype html>") && responseData.includes("<div id=\"root\">")) {
           throw new Error("Preview URL returned the app shell instead of template HTML");
         }
-        if (!cancelled) {
-          setHtml(String(response.data || ""));
-          setLoading(false);
+
+        // Handle JSON-wrapped HTML response (document-templates endpoint)
+        if (contentType.includes("application/json")) {
+          try {
+            const jsonData = JSON.parse(responseData);
+            const htmlContent = jsonData?.data?.html || jsonData?.html || "";
+            if (htmlContent) {
+              if (!cancelled) {
+                setHtml(htmlContent);
+                setLoading(false);
+              }
+              return;
+            }
+            throw new Error("No HTML content found in response");
+          } catch {
+            throw new Error("Failed to parse JSON response");
+          }
         }
+
+        // Unexpected response
+        throw new Error(`Unexpected content type: ${contentType}`);
       } catch (e: unknown) {
         if (!cancelled) {
           const message = e instanceof Error ? e.message : "Failed to load preview";

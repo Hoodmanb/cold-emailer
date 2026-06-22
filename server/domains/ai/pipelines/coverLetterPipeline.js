@@ -17,8 +17,8 @@ const { resolvePipelineTemplate } = require('../core/templateContext');
 const executeCoverLetterPipeline = async (job, profile, config, options = {}) => {
   try {
     const tailoring = resolveTailoringConfig(options.tailoringLevel, 0.6);
-    const { promptSuffix: templateSuffix, postProcess } = resolvePipelineTemplate(options, 'cover-letter');
-    const promptTemplate = promptRegistry.resolvePrompt('cover_letter_generation');
+    const { promptSuffix: templateSuffix, postProcess } = await resolvePipelineTemplate(options, 'cover-letter');
+    const promptTemplate = await promptRegistry.resolvePrompt('cover_letter_generation');
     const userPrompt = promptRegistry.render(promptTemplate, {
       job_title: job.title || 'the position',
       company_name: job.company || 'the company',

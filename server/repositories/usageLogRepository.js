@@ -1,16 +1,19 @@
-const { safeRead, atomicWrite, withLock } = require('../db/jsonDb');
+
+const Supabase = require('../services/supabaseService');
 const { getBillingSettings } = require('./billingSettingsRepository');
+
 
 const FILE_NAME = 'ai_usage_logs.json';
 
-function listUsageLogs() {
-  const logs = safeRead(FILE_NAME, []);
-  return Array.isArray(logs) ? logs : [];
+async function listUsageLogs() {
+  const { data, error } = await Supabase.select('ai_usage_logs');
+  if (error) throw error;
+  return data || [];
 }
 
-function createUsageLog(logData, useTx = false) {
-  const op = () => {
-    const logs = listUsageLogs();
+async function createUsageLog(logData, useTx = false) {
+  const op = async () => {
+    const logs = await listUsageLogs();
     const entry = {
       id: logData.id || require('uuid').v4(),
       user_id: logData.user_id,
@@ -29,21 +32,19 @@ function createUsageLog(logData, useTx = false) {
       metadata: logData.metadata || {},
       created_at: logData.created_at || new Date().toISOString(),
     };
-    logs.push(entry);
-    atomicWrite(FILE_NAME, logs);
+    // Insert the new log entry
+    const { error } = await Supabase.insert('ai_usage_logs', entry);
+    if (error) throw error;
     return entry;
   };
-
-  if (useTx) {
-    return op();
-  }
-  return withLock(FILE_NAME, op);
+  // Transaction handling not required; simply execute
+  return op();
 }
 
-function getPlatformStats() {
-  const logs = listUsageLogs();
-  const settings = getBillingSettings();
-  const creditValue = Number(settings.credit_value_usd) || 0.01;
+async function getPlatformStats() {
+  const logs = await listUsageLogs();
+  const settings = await getBillingSettings();
+  const creditValue = Number(settings?.credit_value_usd) || 0.01;
 
   let totalProviderCost = 0;
   let totalCreditsConsumed = 0;

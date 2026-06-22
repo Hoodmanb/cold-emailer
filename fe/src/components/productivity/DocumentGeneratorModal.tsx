@@ -50,6 +50,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
 import { downloadAuthenticatedFile } from "@/utils/downloadUtils";
 import TemplateSelector from "@/components/templates/TemplateSelector";
+import { useRouter } from "next/navigation";
+import { isAiConfigurationError, parseApiError } from "@/utils/parseApiError";
+import Alert from "@mui/material/Alert";
 
 type ResumeTemplateMeta = { id: string; label: string; description?: string; file?: string; isDefault?: boolean };
 
@@ -143,7 +146,34 @@ const DOC_TYPES = [
 const STYLES = ["Modern", "Minimalist", "Creative", "Corporate", "Technical"];
 const AUDIENCES = ["Recruiter", "Technical Manager", "CEO/Founder", "Potential Client", "General"];
 
+const AI_GENERATION_TIMEOUT_MS = 120_000;
+
+function resolveFeatureIdForDocType(docType: string): string {
+  const t = String(docType || "").toLowerCase().replace(/\s+/g, "-");
+  if (t.includes("professional-cv") || t === "cv") return "professional_cv_generation";
+  if (t.includes("cover-letter")) return "cover_letter_generation";
+  if (t === "resume") return "resume_generation";
+  return "advanced_doc_generation";
+}
+
+async function validateAiFeatureReady(featureId: string): Promise<string | null> {
+  try {
+    await axiosInstance.get(`/api/settings/ai/validate-feature/${encodeURIComponent(featureId)}`, {
+      timeout: 15_000,
+      headers: { "X-Bypass-Global-Toast": "true" },
+    });
+    return null;
+  } catch (err: any) {
+    return (
+      err.response?.data?.message ||
+      err.response?.data?.error ||
+      "AI is not configured for this document type. Set up your provider and model in Settings → AI Workflows."
+    );
+  }
+}
+
 export default function DocumentGeneratorModal() {
+  const router = useRouter();
   const { activeModal, closeModal, openModal, modalData } = useProductivity();
   const isOpen = activeModal === "generator";
   const { profile, loading: loadingProfile } = useGetProfile();
@@ -175,6 +205,7 @@ export default function DocumentGeneratorModal() {
   const [resumeTemplateId, setResumeTemplateId] = useState<string>("random");
   const [lastResumeBlob, setLastResumeBlob] = useState<Blob | null>(null);
   const [lastResumeFilename, setLastResumeFilename] = useState<string>("");
+  const [generateError, setGenerateError] = useState<{ message: string; isAiConfig: boolean } | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -189,6 +220,7 @@ export default function DocumentGeneratorModal() {
       setTemplateId(null);
       setLastResumeBlob(null);
       setLastResumeFilename("");
+      setGenerateError(null);
       return;
     }
     if (modalData?.docType) {
@@ -232,9 +264,20 @@ export default function DocumentGeneratorModal() {
     }
 
     setGenerating(true);
+    setGenerateError(null);
     try {
       const usesTemplatedResumeExport =
         docType === "resume" && ["pdf", "html", "docx"].includes(format);
+
+      if (!usesTemplatedResumeExport) {
+        const featureId = resolveFeatureIdForDocType(docType);
+        const configError = await validateAiFeatureReady(featureId);
+        if (configError) {
+          setGenerateError({ message: configError, isAiConfig: true });
+          showSnackbar(configError, "error");
+          return;
+        }
+      }
 
       if (usesTemplatedResumeExport) {
         if (!profile?.name?.trim()) {
@@ -315,7 +358,10 @@ export default function DocumentGeneratorModal() {
 
       console.log("[GENERATOR] Sending request to /api/documents/generate-advanced", payload);
 
-      const res = await axiosInstance.post("/api/documents/generate-advanced", payload);
+      const res = await axiosInstance.post("/api/documents/generate-advanced", payload, {
+        timeout: AI_GENERATION_TIMEOUT_MS,
+        headers: { "X-Bypass-Global-Toast": "true" },
+      });
 
       console.log("[GENERATOR] Response received:", res.data);
 
@@ -329,12 +375,16 @@ export default function DocumentGeneratorModal() {
       }
     } catch (err: any) {
       console.error("[GENERATOR] Error:", err);
-      const msg = err.response?.data?.message || err.response?.data?.error || err.message || "Generation failed. Configure API keys in Settings.";
-      if (msg.toLowerCase().includes("api key") || msg.toLowerCase().includes("settings")) {
-        showSnackbar(`${msg} Go to Settings → AI Workflows.`, "error");
-      } else {
-        showSnackbar(msg, "error");
-      }
+      const aiConfig = isAiConfigurationError(err);
+      const msg = parseApiError(err);
+      setGenerateError({
+        message: msg,
+        isAiConfig: aiConfig,
+      });
+      showSnackbar(
+        aiConfig ? `${msg} Open Settings → AI Workflows to configure.` : msg,
+        "error"
+      );
     } finally {
       setGenerating(false);
     }
@@ -473,9 +523,18 @@ export default function DocumentGeneratorModal() {
 
               {/* Experience Selection */}
               <Box>
-                <Typography variant="subtitle2" fontWeight={800} gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <Briefcase size={18} /> WORK EXPERIENCE
-                </Typography>
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+                  <Typography variant="subtitle2" fontWeight={800} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Briefcase size={18} /> WORK EXPERIENCE
+                  </Typography>
+                  {profile.experience && profile.experience.length > 0 && (
+                    <Chip
+                      size="small"
+                      label={selectedExperience.length === (profile.experience?.length ?? 0) ? "Deselect All" : "Select All"}
+                      onClick={() => selectedExperience.length === (profile.experience?.length ?? 0) ? setSelectedExperience([]) : setSelectedExperience(profile.experience?.map(e => e.id) ?? [])}
+                    />
+                  )}
+                </Box>
                 {profile.experience?.length ? (
                   <Grid container spacing={2}>
                     {profile.experience.map((exp) => (
@@ -494,9 +553,19 @@ export default function DocumentGeneratorModal() {
                             else setSelectedExperience([...selectedExperience, exp.id]);
                           }}
                         >
-                          <Box sx={{ p: 2 }}>
-                            <Typography variant="subtitle2" fontWeight={800}>{exp.title}</Typography>
-                            <Typography variant="caption" color="text.secondary">{exp.company} • {exp.startDate} - {exp.current ? "Present" : exp.endDate}</Typography>
+                          <Box sx={{ p: 2, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <Box>
+                              <Typography variant="subtitle2" fontWeight={800}>{exp.title}</Typography>
+                              <Typography variant="caption" color="text.secondary">{exp.company} • {exp.startDate} - {exp.current ? "Present" : exp.endDate}</Typography>
+                            </Box>
+                            <Checkbox
+                              checked={selectedExperience.includes(exp.id)}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                if (e.target.checked) setSelectedExperience([...selectedExperience, exp.id]);
+                                else setSelectedExperience(selectedExperience.filter(id => id !== exp.id));
+                              }}
+                            />
                           </Box>
                         </Card>
                       </Grid>
@@ -511,9 +580,18 @@ export default function DocumentGeneratorModal() {
 
               {/* Projects Selection */}
               <Box>
-                <Typography variant="subtitle2" fontWeight={800} gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <FolderKanban size={18} /> PROJECTS
-                </Typography>
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+                  <Typography variant="subtitle2" fontWeight={800} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <FolderKanban size={18} /> PROJECTS
+                  </Typography>
+                  {profile.projects && profile.projects.length > 0 && (
+                    <Chip
+                      size="small"
+                      label={selectedProjects.length === (profile.projects?.length ?? 0) ? "Deselect All" : "Select All"}
+                      onClick={() => selectedProjects.length === (profile.projects?.length ?? 0) ? setSelectedProjects([]) : setSelectedProjects(profile.projects?.map(p => p.id) ?? [])}
+                    />
+                  )}
+                </Box>
                 {profile.projects?.length ? (
                   <Grid container spacing={2}>
                     {profile.projects.map((proj) => (
@@ -532,11 +610,21 @@ export default function DocumentGeneratorModal() {
                             else setSelectedProjects([...selectedProjects, proj.id]);
                           }}
                         >
-                          <Box sx={{ p: 2 }}>
-                            <Typography variant="subtitle2" fontWeight={800}>{proj.title}</Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                              {proj.description}
-                            </Typography>
+                          <Box sx={{ p: 2, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <Box>
+                              <Typography variant="subtitle2" fontWeight={800}>{proj.title}</Typography>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                                {proj.description}
+                              </Typography>
+                            </Box>
+                            <Checkbox
+                              checked={selectedProjects.includes(proj.id)}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                if (e.target.checked) setSelectedProjects([...selectedProjects, proj.id]);
+                                else setSelectedProjects(selectedProjects.filter(id => id !== proj.id));
+                              }}
+                            />
                           </Box>
                         </Card>
                       </Grid>
@@ -554,6 +642,13 @@ export default function DocumentGeneratorModal() {
                 <Typography variant="subtitle2" fontWeight={800} gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <Sparkles size={18} /> SKILLS
                 </Typography>
+                {profile.skills && profile.skills.length > 0 && (
+                  <Chip
+                    size="small"
+                    label={selectedSkills.length === (profile.skills?.length ?? 0) ? "Deselect All" : "Select All"}
+                    onClick={() => selectedSkills.length === (profile.skills?.length ?? 0) ? setSelectedSkills([]) : setSelectedSkills(profile.skills?.map(s => s.name) ?? [])}
+                  />
+                )}
                 <Stack direction="row" gap={1} flexWrap="wrap">
                   {profile.skills?.map((skill) => (
                     <Chip
@@ -576,25 +671,35 @@ export default function DocumentGeneratorModal() {
 
               {/* Certificates Selection */}
               <Box>
-                <Typography variant="subtitle2" fontWeight={800} gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <Award size={18} /> CERTIFICATES
-                </Typography>
-                <Stack direction="row" gap={1} flexWrap="wrap">
-                  {profile.certificates?.map((cert) => (
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+                  <Typography variant="subtitle2" fontWeight={800} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Award size={18} /> CERTIFICATES
+                  </Typography>
+                  {profile.certificates && profile.certificates.length > 0 && (
                     <Chip
-                      key={cert.id}
-                      label={cert.title || cert.awarder}
-                      color={selectedCerts.includes(cert.id) ? "primary" : "default"}
-                      onClick={() => {
-                        if (selectedCerts.includes(cert.id)) setSelectedCerts(selectedCerts.filter(id => id !== cert.id));
-                        else setSelectedCerts([...selectedCerts, cert.id]);
-                      }}
-                      variant={selectedCerts.includes(cert.id) ? "filled" : "outlined"}
-                      sx={{ borderRadius: 2 }}
+                      size="small"
+                      label={selectedCerts.length === (profile.certificates?.length ?? 0) ? "Deselect All" : "Select All"}
+                      onClick={() => selectedCerts.length === (profile.certificates?.length ?? 0) ? setSelectedCerts([]) : setSelectedCerts(profile.certificates?.map(c => c.id) ?? [])}
                     />
-                  ))}
-                  {!profile.certificates?.length && <Typography variant="body2" color="text.disabled" sx={{ fontStyle: "italic" }}>No certificates found.</Typography>}
-                </Stack>
+                  )}
+
+                  <Stack direction="row" gap={1} flexWrap="wrap">
+                    {profile.certificates?.map((cert) => (
+                      <Chip
+                        key={cert.id}
+                        label={cert.title || cert.awarder}
+                        color={selectedCerts.includes(cert.id) ? "primary" : "default"}
+                        onClick={() => {
+                          if (selectedCerts.includes(cert.id)) setSelectedCerts(selectedCerts.filter(id => id !== cert.id));
+                          else setSelectedCerts([...selectedCerts, cert.id]);
+                        }}
+                        variant={selectedCerts.includes(cert.id) ? "filled" : "outlined"}
+                        sx={{ borderRadius: 2 }}
+                      />
+                    ))}
+                    {!profile.certificates?.length && <Typography variant="body2" color="text.disabled" sx={{ fontStyle: "italic" }}>No certificates found.</Typography>}
+                  </Stack>
+                </Box>
               </Box>
             </Stack>
           )}
@@ -812,7 +917,29 @@ export default function DocumentGeneratorModal() {
           )}
         </Box>
 
-        <Box sx={{ p: 2, borderTop: "1px solid", borderColor: "divider", display: "flex", justifyContent: "space-between", bgcolor: "background.paper" }}>
+        <Box sx={{ p: 2, borderTop: "1px solid", borderColor: "divider", display: "flex", flexDirection: "column", gap: 1.5, bgcolor: "background.paper" }}>
+          {generateError && activeStep >= 3 && (
+            <Alert
+              severity={generateError.isAiConfig ? "warning" : "error"}
+              action={
+                generateError.isAiConfig ? (
+                  <Button
+                    color="inherit"
+                    size="small"
+                    onClick={() => {
+                      closeModal();
+                      router.push("/dashboard/settings");
+                    }}
+                  >
+                    Open AI Settings
+                  </Button>
+                ) : undefined
+              }
+            >
+              {generateError.message}
+            </Alert>
+          )}
+          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
           <Button
             startIcon={<ChevronLeft />}
             onClick={handleBack}
@@ -848,6 +975,7 @@ export default function DocumentGeneratorModal() {
           ) : (
             <Button variant="outlined" onClick={closeModal}>Finish</Button>
           )}
+          </Box>
         </Box>
       </DialogContent>
     </Dialog>

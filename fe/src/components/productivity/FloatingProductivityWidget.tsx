@@ -131,14 +131,11 @@ export default function FloatingProductivityWidget() {
     applyPosition({ side, y: posRef.current.y }, true);
     dragStartRef.current = null;
     setDragging(false);
-  };
 
-  const handleClick = (event: React.MouseEvent) => {
-    if (dragMovedRef.current || dragging) {
-      event.stopPropagation();
-      return;
+    // Only toggle if it was a click, not a drag
+    if (!dragMovedRef.current && !isOpen) {
+      setIsOpen(true);
     }
-    toggleOpen();
   };
 
   const toggleOpen = () => setIsOpen((prev) => !prev);
@@ -259,7 +256,7 @@ export default function FloatingProductivityWidget() {
         </AnimatePresence>
 
         <IconButton
-          onClick={handleClick}
+          // REMOVED: onClick={handleClick}
           sx={{
             width: WIDGET_SIZE,
             height: WIDGET_SIZE,

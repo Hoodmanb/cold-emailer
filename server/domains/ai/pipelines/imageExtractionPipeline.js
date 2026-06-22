@@ -7,7 +7,7 @@ const { parseStructuredOutput, dedupeStringArray } = require('../core/parseStruc
 const aiStandards = require('../../../services/ai/aiGenerationStandards');
 
 const executeImageExtractionPipeline = async (base64Image, mimeType, config) => {
-  const promptTemplate = promptRegistry.resolvePrompt('job_extraction_image');
+  const promptTemplate = await promptRegistry.resolvePrompt('job_extraction_image');
   const provider = resolveProvider(config.provider);
 
   const messages = [

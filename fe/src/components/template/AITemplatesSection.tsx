@@ -5,15 +5,17 @@ import {
   Box, Grid, Card, CardContent, Typography, Chip, Button, Skeleton, Stack,
   TextField, InputAdornment, Dialog, DialogTitle, DialogContent, IconButton, Paper,
 } from "@mui/material";
-import { Search, Eye, X, Sparkles } from "lucide-react";
+import { Search, Eye, X, Sparkles, Layout, Wand2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGetSystemTemplates, SystemTemplate } from "@/hooks/queryHooks/systemTemplates";
 import TemplatePreview from "@/components/template/TemplatePreview";
 import TemplateBadges from "@/components/template/TemplateBadges";
 import { useProductivity } from "@/context/ProductivityContext";
+import { useRouter } from "next/navigation";
 
 function AITemplateCard({ template, onPreview }: { template: SystemTemplate; onPreview: (t: SystemTemplate) => void }) {
   const { openModal } = useProductivity();
+  const router = useRouter();
   return (
     <Card elevation={0} sx={{ height: "100%", border: "1px solid", borderColor: "divider", borderRadius: 3 }}>
       <CardContent>
@@ -21,14 +23,17 @@ function AITemplateCard({ template, onPreview }: { template: SystemTemplate; onP
           <TemplateBadges template={{ templateKind: "ai", isPublic: false, featured: template.premium }} />
           <Typography variant="h6" fontWeight={700}>{template.name}</Typography>
           <Typography variant="caption" color="text.secondary" sx={{ textTransform: "capitalize" }}>
-            {template.theme} · {template.category.replace("_", " ")}
+            {template.theme ?? "General"} · {(template.category ?? "").replace("_", " ")}
           </Typography>
-          <Stack direction="row" gap={1}>
+          <Stack direction="row" gap={1} flexWrap="wrap">
             <Button size="small" variant="outlined" startIcon={<Eye size={14} />} onClick={() => onPreview(template)}>
               Preview
             </Button>
-            <Button size="small" variant="contained" onClick={() => openModal("generator", { templateId: template.id })}>
+            <Button size="small" variant="contained" startIcon={<Wand2 size={14} />} onClick={() => openModal("generator", { templateId: template.id })}>
               Use Template
+            </Button>
+            <Button size="small" variant="outlined" color="secondary" startIcon={<Layout size={14} />} onClick={() => router.push(`/dashboard/templates/builder?templateId=${template.id}`)}>
+              Customize
             </Button>
           </Stack>
         </Stack>
@@ -46,9 +51,9 @@ export default function AITemplatesSection() {
     const q = search.toLowerCase();
     return (templates || []).filter((t) =>
       !q ||
-      t.name.toLowerCase().includes(q) ||
-      t.category.toLowerCase().includes(q) ||
-      t.theme.toLowerCase().includes(q),
+      t.name?.toLowerCase().includes(q) ||
+      t.category?.toLowerCase().includes(q) ||
+      t.theme?.toLowerCase().includes(q),
     );
   }, [templates, search]);
 
@@ -85,7 +90,7 @@ export default function AITemplatesSection() {
         <Grid container spacing={3}>
           <AnimatePresence>
             {filtered.map((t) => (
-              <Grid key={t.id} size={{ xs: 12, sm: 6, md: 4 }}>
+              <Grid key={t.id} size={{ xs: 12, sm: 6, md: 4 }} component={motion.div} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}>
                 <AITemplateCard template={t} onPreview={setPreviewTemplate} />
               </Grid>
             ))}

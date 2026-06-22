@@ -13,61 +13,96 @@ const { executeProfessionalCvFromProfile, executeProfessionalCvPipeline } = requ
 const { assertFeatureReady } = require('./ai/providerValidation');
 const billingService = require('./billing/billingService');
 const { getCurrentUserId } = require('../middleware/requestContext');
+const { ExternalApiError } = require('../shared/errors/customErrors');
+const { RESUME_FALLBACK } = require('../domains/ai/pipelines/resumePipeline');
+const { COVER_LETTER_FALLBACK } = require('../domains/ai/pipelines/coverLetterPipeline');
+const { EMAIL_FALLBACK } = require('../domains/ai/pipelines/emailPipeline');
+const { CV_FALLBACK } = require('../domains/ai/pipelines/professionalCvPipeline');
+const { ATS_FALLBACK } = require('../domains/ai/pipelines/atsPipeline');
+
+const FALLBACK_STRINGS = new Set([
+  RESUME_FALLBACK,
+  COVER_LETTER_FALLBACK,
+  EMAIL_FALLBACK,
+  CV_FALLBACK,
+]);
+
+function isAiFallbackResult(result) {
+  if (typeof result === 'string') {
+    if (FALLBACK_STRINGS.has(result)) return true;
+    if (result.includes('[Draft unavailable]')) return true;
+  }
+  if (result && typeof result === 'object' && result.meta?.source === 'fallback') {
+    return true;
+  }
+  if (result && typeof result === 'object' && result.score === ATS_FALLBACK.score && result.meta?.source === 'fallback') {
+    return true;
+  }
+  return false;
+}
 
 async function withBilling(featureId, options, fn) {
   const userId = getCurrentUserId();
   if (!userId) {
-    assertFeatureReady(featureId);
+    await assertFeatureReady(featureId);
     return fn();
   }
-  const prep = billingService.assertCanExecuteAI(userId, featureId, options);
+  const prep = await billingService.assertCanExecuteAI(userId, featureId, options);
   try {
-    assertFeatureReady(featureId);
+    await assertFeatureReady(featureId);
     const result = await fn();
-    billingService.completeAIExecution(userId, featureId, options, prep);
+    if (isAiFallbackResult(result)) {
+      await billingService.completeAIExecution(userId, featureId, options, { ...prep, charged: false, cost: 0 });
+      throw new ExternalApiError(
+        'AI generation failed and returned fallback content',
+        'ai',
+        { reason: 'ai_fallback', featureId },
+      );
+    }
+    await billingService.completeAIExecution(userId, featureId, options, prep);
     return result;
   } catch (err) {
-    billingService.completeAIExecution(userId, featureId, options, { ...prep, charged: false, cost: 0 });
+    await billingService.completeAIExecution(userId, featureId, options, { ...prep, charged: false, cost: 0 });
     throw err;
   }
 }
 
 const generateResume = async (job, profile, options = {}) =>
   withBilling('resume_generation', options, async () => {
-    const config = resolveFeatureConfig('resume_generation');
+    const config = await resolveFeatureConfig('resume_generation');
     return executeResumePipeline(job, profile, config, options);
   });
 
 const generateProfessionalCv = async (jobOrProfile, profileOrOptions = {}, options = {}) =>
   withBilling('professional_cv_generation', options, async () => {
-    const config = resolveFeatureConfig('professional_cv_generation');
+    const config = await resolveFeatureConfig('professional_cv_generation');
     if (jobOrProfile && (jobOrProfile.rawDescription || jobOrProfile.parsedData || jobOrProfile.title)) {
       return executeProfessionalCvPipeline(jobOrProfile, profileOrOptions, config, options);
     }
-    return executeProfessionalCvFromProfile(jobOrProfile, profileOrOptions, config);
+    return executeProfessionalCvFromProfile(jobOrProfile, config, profileOrOptions);
   });
 
 const generateCoverLetter = async (job, profile, options = {}) =>
   withBilling('cover_letter_generation', options, async () => {
-    const config = resolveFeatureConfig('cover_letter_generation');
+    const config = await resolveFeatureConfig('cover_letter_generation');
     return executeCoverLetterPipeline(job, profile, config, options);
   });
 
 const generateEmail = async (job, profile, recipientData = {}, options = {}) =>
   withBilling('email_generation', options, async () => {
-    const config = resolveFeatureConfig('email_generation');
+    const config = await resolveFeatureConfig('email_generation');
     return executeEmailPipeline(job, profile, recipientData, config, options);
   });
 
 const analyzeATS = async (job, profile) =>
   withBilling('ats_analysis', {}, async () => {
-    const config = resolveFeatureConfig('ats_analysis');
+    const config = await resolveFeatureConfig('ats_analysis');
     return executeAtsPipelineSafe(job, profile, config);
   });
 
 const extractJobFromImage = async (base64Image, mimeType, forcedModel = null) =>
   withBilling('job_extraction_image', {}, async () => {
-    const resolvedConfig = resolveFeatureConfig('job_extraction_image');
+    const resolvedConfig = await resolveFeatureConfig('job_extraction_image');
     const config = {
       provider: resolvedConfig.provider,
       model: forcedModel || resolvedConfig.model,
@@ -82,7 +117,7 @@ const generateForFeature = async ({ featureId, prompt, messages, options = {} })
   }
 
   return withBilling(normalizedFeatureId, options, async () => {
-    const { config } = assertFeatureReady(normalizedFeatureId);
+    const { config } = await assertFeatureReady(normalizedFeatureId);
     const { resolveProvider } = require('../domains/ai/core/providerRouter');
     const provider = resolveProvider(config.provider);
 
@@ -90,7 +125,7 @@ const generateForFeature = async ({ featureId, prompt, messages, options = {} })
     if (!Array.isArray(messages) || !messages.length) {
       let content = String(prompt || '');
       if (!content) {
-        content = resolveActivePrompt(normalizedFeatureId);
+        content = await resolveActivePrompt(normalizedFeatureId);
       }
       finalMessages = [{ role: 'user', content }];
     }
@@ -111,7 +146,7 @@ const chatForFeature = async ({ featureId = 'chatbot_assistant', messages, optio
     throw new Error("messages array is required for chat");
   }
   const normalizedFeatureId = String(featureId || "chatbot_assistant").trim();
-  const systemPrompt = resolveActivePrompt(normalizedFeatureId);
+  const systemPrompt = await resolveActivePrompt(normalizedFeatureId);
   const finalMessages = [
     { role: 'system', content: systemPrompt },
     ...messages
@@ -120,7 +155,7 @@ const chatForFeature = async ({ featureId = 'chatbot_assistant', messages, optio
 };
 
 const generateProjectSummary = async (projectData = {}) => {
-  const promptTemplate = resolveActivePrompt('project_summary_generation');
+  const promptTemplate = await resolveActivePrompt('project_summary_generation');
   const projectBlock = JSON.stringify(projectData && typeof projectData === 'object' ? projectData : {}, null, 2);
   const prompt = `${promptTemplate}\n\nPROJECT DATA:\n${projectBlock}`;
   return generateForFeature({

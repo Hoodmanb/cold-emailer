@@ -1,38 +1,64 @@
 const { v4: uuidv4 } = require('uuid');
-const fileStore = require('../utils/fileStore');
+const Supabase = require('../services/supabaseService');
 const { ensureArray } = require('../utils/jsonNormalizer');
 
-const FILE = 'categories.json';
+const TABLE_NAME = 'categories';
 
-const listCategories = (userId) => ensureArray(fileStore.read(FILE, userId));
+function fromRow(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    category: row.name || row.category || '',
+  };
+}
 
-const getCategory = (id, userId) =>
-  listCategories(userId).find((c) => String(c.id) === String(id)) || null;
+const listCategories = async (userId) => {
+  const { data, error } = await Supabase.select(TABLE_NAME, {}, userId);
+  if (error) throw error;
+  return ensureArray(data).map(fromRow);
+};
 
-const getCategoryByName = (name, userId) => {
+const getCategory = async (id, userId) => {
+  const list = await listCategories(userId);
+  return list.find((c) => String(c.id) === String(id)) || null;
+};
+
+const getCategoryByName = async (name, userId) => {
   const normalizedName = String(name || '').trim().toLowerCase();
   if (!normalizedName) return null;
-  return (
-    listCategories(userId).find(
-      (c) => String(c.category || '').toLowerCase() === normalizedName,
-    ) || null
-  );
+  const list = await listCategories(userId);
+  return list.find((c) => String(c.name || c.category || '').toLowerCase() === normalizedName) || null;
 };
 
-const createCategory = (data, userId) => {
+const createCategory = async (data, userId) => {
+  const categoryName = String(data.category || data.name || '').trim();
   const category = {
     id: uuidv4(),
-    createdAt: new Date().toISOString(),
-    category: data.category,
+    created_at: new Date().toISOString(),
+    name: categoryName,
+    user_id: String(userId),
   };
-  return fileStore.append(FILE, category, userId);
+  const { data: inserted, error } = await Supabase.insert(TABLE_NAME, category, userId);
+  if (error) throw error;
+  return fromRow(inserted ? inserted[0] : category);
 };
 
-const updateCategory = (id, updates, userId) =>
-  fileStore.update(FILE, (c) => c.id === id, () => ({ ...updates }), userId);
+const updateCategory = async (id, updates, userId) => {
+  const payload = { ...updates };
+  if (payload.category !== undefined && payload.name === undefined) {
+    payload.name = payload.category;
+    delete payload.category;
+  }
+  const { data, error } = await Supabase.update(TABLE_NAME, { id }, payload, userId);
+  if (error) throw error;
+  return data && data.length ? fromRow(data[0]) : null;
+};
 
-const deleteCategory = (id, userId) =>
-  fileStore.remove(FILE, (c) => c.id === id, userId);
+const deleteCategory = async (id, userId) => {
+  const { data, error } = await Supabase.delete(TABLE_NAME, { id }, userId);
+  if (error) throw error;
+  return data ? data.length : 0;
+};
 
 module.exports = {
   listCategories,

@@ -26,16 +26,22 @@ export default function AdminUsagePage() {
       render: (row) => `${row.provider}/${row.model}`,
     },
     {
-      id: "cost",
-      label: "Cost (USD)",
+      id: "feature_cost",
+      label: "Feature Cost",
       align: "right",
-      render: (row) => row.actual_provider_cost.toFixed(4),
+      render: (row) => row.metadata?.feature_cost ?? 0,
     },
     {
-      id: "credits",
-      label: "Credits",
+      id: "token_cost",
+      label: "Token Cost",
       align: "right",
-      render: (row) => row.charged_credits,
+      render: (row) => row.metadata?.token_cost ?? row.charged_credits,
+    },
+    {
+      id: "total_credits",
+      label: "Total Credits",
+      align: "right",
+      render: (row) => row.metadata?.total_cost ?? row.charged_credits,
     },
     {
       id: "date",

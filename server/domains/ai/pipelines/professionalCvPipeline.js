@@ -17,8 +17,8 @@ const CV_FALLBACK =
 const executeProfessionalCvPipeline = async (jobOrContext, profile, config, options = {}) => {
   try {
     const tailoring = resolveTailoringConfig(options.tailoringLevel, 0.45);
-    const { promptSuffix: templateSuffix, postProcess } = resolvePipelineTemplate(options, 'professional-cv');
-    const promptTemplate = promptRegistry.resolvePrompt('professional_cv_generation');
+    const { promptSuffix: templateSuffix, postProcess } = await resolvePipelineTemplate(options, 'professional-cv');
+    const promptTemplate = await promptRegistry.resolvePrompt('professional_cv_generation');
 
     const jobDescription = jobOrContext?.rawDescription
       || JSON.stringify(jobOrContext?.parsedData || {})

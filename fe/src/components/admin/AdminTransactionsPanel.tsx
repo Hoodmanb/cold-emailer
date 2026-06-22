@@ -18,7 +18,11 @@ export default function AdminTransactionsPanel({ limit = 20 }: Props) {
     queryFn: () => adminApi.get<AdminTransaction[]>("/api/admin/transactions"),
   });
 
-  const rows = data.slice(0, limit);
+  // Defensive: adminApi may return axios response wrapper instead of array
+  const transactions = Array.isArray(data)
+    ? data
+    : (data as any)?.data ?? [];
+  const rows = transactions.slice(0, limit);
 
   const columns: DataTableColumn<AdminTransaction>[] = [
     { id: "type", label: "Type", render: (row) => row.type },

@@ -1,9 +1,8 @@
 "use client";
 
 import React from "react";
-import { ThemeProvider, CssBaseline } from "@mui/material";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import lightTheme from "../styles/theme";
+import ThemeRegistry from "./ThemeRegistry";
 
 import { SnackbarProvider } from "../context/SnackbarContext";
 import { ProductivityProvider } from "../context/ProductivityContext";
@@ -44,8 +43,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider theme={lightTheme}>
-        <CssBaseline />
+      <ThemeRegistry>
         <SnackbarProvider>
           <AuthProvider>
             <ProductivityProvider>
@@ -55,7 +53,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             </ProductivityProvider>
           </AuthProvider>
         </SnackbarProvider>
-      </ThemeProvider>
+      </ThemeRegistry>
     </QueryClientProvider>
   );
 }

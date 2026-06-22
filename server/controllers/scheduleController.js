@@ -1,44 +1,49 @@
 const scheduleRepo = require('../repositories/scheduleRepository');
 const templateRepo = require('../repositories/templateRepository');
 const attachmentsRepo = require('../modules/documents/attachments/repository');
-// const { runScheduler } = require('../modules/email/scheduler'); // Legacy scheduler removed
-const { getCurrentUserId } = require('../middleware/requestContext');
+const { runScheduler } = require('../modules/email/scheduler');
+const { requireUserId } = require('../utils/requireUserId');
 
-function resolveTemplateField(value) {
+async function resolveTemplateField(value, userId) {
   if (!value) return null;
   if (typeof value === 'object' && value.subject && value.body) return value;
-  const tpl = templateRepo.getTemplate(value);
+  const tpl = await templateRepo.getTemplate(value, userId);
   if (!tpl) return null;
   return { subject: tpl.subject, body: tpl.body, templateId: tpl._id || tpl.id };
 }
 
-const listSchedules = (req, res) => {
-  const schedules = scheduleRepo.listSchedules();
+const listSchedules = async (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  const schedules = await scheduleRepo.listSchedules(userId);
   return res.status(200).json({ message: 'retrieved successfully', data: schedules });
 };
 
-const getSchedule = (req, res) => {
-  const schedule = scheduleRepo.getSchedule(req.params.id);
+const getSchedule = async (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  const schedule = await scheduleRepo.getSchedule(req.params.id, userId);
   if (!schedule) return res.status(404).json({ message: 'No schedule found' });
   return res.status(200).json({ message: 'retrieved successfully', data: schedule });
 };
 
-const createSchedule = (req, res) => {
+const createSchedule = async (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
   const body = { ...req.body };
-  body.template = resolveTemplateField(body.template);
-  body.templateOne = resolveTemplateField(body.templateOne);
-  body.templateTwo = resolveTemplateField(body.templateTwo);
-  body.templateThree = resolveTemplateField(body.templateThree);
+  body.template = await resolveTemplateField(body.template, userId);
+  body.templateOne = await resolveTemplateField(body.templateOne, userId);
+  body.templateTwo = await resolveTemplateField(body.templateTwo, userId);
+  body.templateThree = await resolveTemplateField(body.templateThree, userId);
 
   if (!body.template?.subject || !body.template?.body) {
     return res.status(400).json({ message: 'Main template (subject and body) is required.' });
   }
   try {
-    const schedule = scheduleRepo.createSchedule(body);
-    const userId = getCurrentUserId();
-    if (userId && Array.isArray(body.attachmentRecords)) {
+    const schedule = await scheduleRepo.createSchedule(body, userId);
+    if (Array.isArray(body.attachmentRecords)) {
       for (const record of body.attachmentRecords) {
-        attachmentsRepo.addAttachment({
+        await attachmentsRepo.addAttachment({
           userId,
           ...record,
           parentId: schedule.id,
@@ -52,30 +57,34 @@ const createSchedule = (req, res) => {
   }
 };
 
-const updateSchedule = (req, res) => {
-  const existing = scheduleRepo.getSchedule(req.params.id);
+const updateSchedule = async (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  const existing = await scheduleRepo.getSchedule(req.params.id, userId);
   if (!existing) return res.status(404).json({ message: 'Schedule not found' });
 
   const body = { ...req.body };
-  if (body.template !== undefined) body.template = resolveTemplateField(body.template);
-  if (body.templateOne !== undefined) body.templateOne = resolveTemplateField(body.templateOne);
-  if (body.templateTwo !== undefined) body.templateTwo = resolveTemplateField(body.templateTwo);
-  if (body.templateThree !== undefined) body.templateThree = resolveTemplateField(body.templateThree);
+  if (body.template !== undefined) body.template = await resolveTemplateField(body.template, userId);
+  if (body.templateOne !== undefined) body.templateOne = await resolveTemplateField(body.templateOne, userId);
+  if (body.templateTwo !== undefined) body.templateTwo = await resolveTemplateField(body.templateTwo, userId);
+  if (body.templateThree !== undefined) body.templateThree = await resolveTemplateField(body.templateThree, userId);
 
   try {
-    const updated = scheduleRepo.updateSchedule(req.params.id, { ...existing, ...body, id: existing.id });
+    const updated = await scheduleRepo.updateSchedule(req.params.id, { ...existing, ...body, id: existing.id }, userId);
     return res.status(200).json({ message: 'updated successfully', data: updated });
   } catch (error) {
     return res.status(500).json({ message: 'Internal Server Error', error: error.message });
   }
 };
 
-const addRecipient = (req, res) => {
+const addRecipient = async (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
   const { id } = req.params;
   const { email } = req.body;
 
   try {
-    const updated = scheduleRepo.addRecipientToSchedule(id, email);
+    const updated = await scheduleRepo.addRecipientToSchedule(id, email, userId);
     if (!updated) return res.status(404).json({ message: 'Schedule not found' });
     return res.status(201).json({ message: 'Recipient added successfully' });
   } catch (error) {
@@ -92,8 +101,10 @@ const runSchedule = async (req, res) => {
   }
 };
 
-const deleteSchedule = (req, res) => {
-  const count = scheduleRepo.deleteSchedule(req.params.id);
+const deleteSchedule = async (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  const count = await scheduleRepo.deleteSchedule(req.params.id, userId);
   if (count === 0) return res.status(404).json({ message: 'Schedule not found' });
   return res.status(204).send();
 };

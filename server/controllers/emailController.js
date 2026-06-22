@@ -4,18 +4,18 @@ const { sendEmail } = require('../modules/email/emailService');
 const { log, ACTION_TYPES } = require('../logs/auditLogger');
 const { requireUserId } = require('../utils/requireUserId');
 
-const listEmails = (req, res) => {
+const listEmails = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
   const { jobId } = req.query;
-  const emails = emailRepo.listEmails({ jobId, userId });
+  const emails = await emailRepo.listEmails({ jobId, userId });
   return res.status(200).json({ message: 'retrieved successfully', data: emails });
 };
 
-const getEmail = (req, res) => {
+const getEmail = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
-  const email = emailRepo.getEmail(req.params.id, userId);
+  const email = await emailRepo.getEmail(req.params.id, userId);
   if (!email) return res.status(404).json({ message: 'Email not found' });
   return res.status(200).json({ message: 'retrieved successfully', data: email });
 };
@@ -30,7 +30,7 @@ const sendSingle = async (req, res) => {
   let payload = { to, subject, body, attachment, attachments, artifactId, artifactIds, templateId };
 
   if (emailId) {
-    const draft = emailRepo.getEmail(emailId, userId);
+    const draft = await emailRepo.getEmail(emailId, userId);
     if (!draft) return res.status(404).json({ message: 'Email draft not found' });
     if (draft.status !== 'approved') {
       return res.status(400).json({
@@ -50,7 +50,7 @@ const sendSingle = async (req, res) => {
   }
 
   if (payload.templateId && (!payload.subject || !payload.body)) {
-    const tpl = templateRepo.getTemplate(payload.templateId, userId);
+    const tpl = await templateRepo.getTemplate(payload.templateId, userId);
     if (!tpl) {
       return res.status(400).json({ message: 'Template not found', errors: { templateId: 'invalid template id' } });
     }
@@ -72,18 +72,18 @@ const sendSingle = async (req, res) => {
   const result = await sendEmail(payload);
 
   if (emailId) {
-    emailRepo.markSent(emailId, result, userId);
+    await emailRepo.markSent(emailId, result, userId);
   }
 
   if (result.success) {
-    log(ACTION_TYPES.EMAIL_SENT, {
+    await log(ACTION_TYPES.EMAIL_SENT, {
       module: 'email',
       entityId: emailId || null,
       entityType: 'email',
       details: `Email sent to ${payload.to}`,
     });
   } else {
-    log(ACTION_TYPES.EMAIL_FAILED, {
+    await log(ACTION_TYPES.EMAIL_FAILED, {
       module: 'email',
       entityId: emailId || null,
       details: result.message,
@@ -105,7 +105,7 @@ const sendBulk = async (req, res) => {
   let subjectFinal = subject;
   let bodyFinal = body;
   if (templateId && (!subjectFinal || !bodyFinal)) {
-    const tpl = templateRepo.getTemplate(templateId, userId);
+    const tpl = await templateRepo.getTemplate(templateId, userId);
     if (!tpl) {
       return res.status(400).json({ message: 'Template not found' });
     }
@@ -145,15 +145,15 @@ const sendBulk = async (req, res) => {
   });
 };
 
-const approveEmail = (req, res) => {
+const approveEmail = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
-  const email = emailRepo.getEmail(req.params.id, userId);
+  const email = await emailRepo.getEmail(req.params.id, userId);
   if (!email) return res.status(404).json({ message: 'Email not found' });
 
-  const approved = emailRepo.approveEmail(req.params.id, userId);
+  const approved = await emailRepo.approveEmail(req.params.id, userId);
 
-  log(ACTION_TYPES.DRAFT_APPROVED, {
+  await log(ACTION_TYPES.DRAFT_APPROVED, {
     module: 'email',
     entityId: req.params.id,
     entityType: 'email',
@@ -163,17 +163,17 @@ const approveEmail = (req, res) => {
   return res.status(200).json({ message: 'Email approved for sending', data: approved });
 };
 
-const updateEmail = (req, res) => {
+const updateEmail = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
-  const email = emailRepo.getEmail(req.params.id, userId);
+  const email = await emailRepo.getEmail(req.params.id, userId);
   if (!email) return res.status(404).json({ message: 'Email not found' });
 
   const wasEdited = req.body.body !== undefined && req.body.body !== email.body;
-  const updated = emailRepo.updateEmail(req.params.id, req.body, userId);
+  const updated = await emailRepo.updateEmail(req.params.id, req.body, userId);
 
   if (wasEdited) {
-    log(ACTION_TYPES.DRAFT_EDITED, {
+    await log(ACTION_TYPES.DRAFT_EDITED, {
       module: 'email',
       entityId: req.params.id,
       entityType: 'email',
@@ -184,10 +184,10 @@ const updateEmail = (req, res) => {
   return res.status(200).json({ message: 'updated successfully', data: updated });
 };
 
-const deleteEmail = (req, res) => {
+const deleteEmail = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
-  const count = emailRepo.deleteEmail(req.params.id, userId);
+  const count = await emailRepo.deleteEmail(req.params.id, userId);
   if (count === 0) return res.status(404).json({ message: 'Email not found' });
   return res.status(200).json({ message: 'deleted successfully' });
 };

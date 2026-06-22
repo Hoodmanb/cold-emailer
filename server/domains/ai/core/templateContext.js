@@ -6,13 +6,13 @@ const templateService = require('../../../services/templates/templateService');
 const { buildTemplatePromptSuffix } = require('../../../services/templates/templatePromptHelper');
 const { applyTemplate } = require('../../../services/templates/templateEngine');
 
-function resolvePipelineTemplate(options = {}, documentType) {
+async function resolvePipelineTemplate(options = {}, documentType) {
   if (!options?.templateId) {
     return { template: null, promptSuffix: '', postProcess: (output) => output };
   }
 
   try {
-    const template = templateService.resolveTemplateForGeneration(options.templateId, documentType);
+    const template = await templateService.resolveTemplateForGeneration(options.templateId, documentType);
     if (!template) {
       return { template: null, promptSuffix: '', postProcess: (output) => output };
     }

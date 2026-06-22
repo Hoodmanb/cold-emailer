@@ -1,19 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const { getRegistry } = require('../services/document/documentEngine');
+const ctrl = require('../controllers/systemTemplateController');
+const { asyncHandler } = require('../middleware/asyncHandler');
 
-router.get('/', (req, res) => {
-  try {
-    const registry = getRegistry();
-    // Return all metadata
-    return res.status(200).json({
-      message: 'retrieved successfully',
-      data: registry
-    });
-  } catch (error) {
-    console.error('Error fetching system templates:', error);
-    return res.status(500).json({ message: 'Error fetching templates' });
-  }
-});
+// GET /api/system-templates - List all system/AI templates
+router.get('/', asyncHandler(ctrl.getSystemTemplates));
+
+// GET /api/system-templates/:id - Get a single system template
+router.get('/:id', asyncHandler(ctrl.getSystemTemplate));
+
+// GET /api/system-templates/:id/preview - Preview a system template (returns HTML)
+router.get('/:id/preview', asyncHandler(ctrl.previewSystemTemplate));
 
 module.exports = router;

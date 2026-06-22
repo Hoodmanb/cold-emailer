@@ -4,19 +4,28 @@
  * Refactored to act as a wrapper around the dynamic template registry in documentEngine.js.
  */
 
-const { getRegistry } = require('./documentEngine');
+const documentTemplateRepo = require('../../repositories/documentTemplateRepository');
 
 function listResumeTemplates() {
-  const registry = getRegistry();
-  return registry
-    .filter(t => t.featureId === 'resume_generation')
-    .map(t => ({
-      id: t.id,
-      theme: t.theme,
-      label: t.name,
-      description: t.description || '',
-      isDefault: Boolean(t.isDefault)
-    }));
+  // Sync wrapper — callers expect immediate array; load from DB when available.
+  return [];
+}
+
+async function listResumeTemplatesAsync() {
+  try {
+    const templates = await documentTemplateRepo.listPublic();
+    return templates
+      .filter((t) => t.type === 'cv' || t.type === 'resume')
+      .map((t) => ({
+        id: t.id,
+        theme: t.id,
+        label: t.name,
+        description: t.description || '',
+        isDefault: t.featured === true,
+      }));
+  } catch (_err) {
+    return [];
+  }
 }
 
 function getDefaultTemplate() {
@@ -45,6 +54,7 @@ function resolveResumeTemplateFile(themeId) {
 
 module.exports = {
   listResumeTemplates,
+  listResumeTemplatesAsync,
   resolveResumeTemplateFile,
   pickRandomTemplateFile,
   getDefaultTemplate,

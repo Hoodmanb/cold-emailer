@@ -3,60 +3,102 @@ const { findUserById, updateUserRecord } = require('../../repositories/userRepos
 const { getCurrentUserId } = require('../../middleware/requestContext');
 const { seedDefaultTemplates } = require('./defaultTemplates');
 
-function ensureSeeded() {
+async function ensureSeeded() {
   return seedDefaultTemplates(documentTemplateRepo);
 }
 
-function getAllTemplates(filters = {}) {
-  ensureSeeded();
+async function getAllTemplates(filters = {}) {
+  await ensureSeeded();
   const userId = getCurrentUserId();
-  let templates = userId
-    ? documentTemplateRepo.listForUser(userId)
-    : documentTemplateRepo.listAll().filter((t) => t.isPublic);
+  
+  let templates;
+  if (filters.publicOnly) {
+    templates = await documentTemplateRepo.listPublic();
+  } else if (userId) {
+    templates = await documentTemplateRepo.listForUser(userId);
+  } else {
+    templates = await documentTemplateRepo.listPublic();
+  }
 
   if (filters.type) {
     const normalized = documentTemplateRepo.normalizeType(filters.type);
     if (normalized) templates = templates.filter((t) => t.type === normalized);
   }
 
-  if (filters.publicOnly) {
-    templates = templates.filter((t) => t.isPublic);
-  }
-
   return templates;
 }
 
-function getTemplateById(id) {
-  ensureSeeded();
+async function getTemplateById(id) {
+  await ensureSeeded();
   const userId = getCurrentUserId();
-  const template = documentTemplateRepo.getById(id);
+  const template = await documentTemplateRepo.getById(id);
   if (!template) return null;
-  if (!template.isPublic && userId && String(template.createdBy) !== String(userId)) {
-    return null;
-  }
+  
+  const isAuthorized = 
+    template.isAdminTemplate || 
+    (template.isPublic && template.isApproved) ||
+    (userId && String(template.userId) === String(userId));
+    
+  if (!isAuthorized) return null;
   return template;
 }
 
-function createTemplate(data) {
-  ensureSeeded();
+async function createTemplate(data) {
+  await ensureSeeded();
   const userId = getCurrentUserId();
   return documentTemplateRepo.create(data, userId);
 }
 
-function updateTemplate(id, data) {
-  ensureSeeded();
+async function checkOwnershipOrAdmin(templateId, userId) {
+  if (!userId) {
+    const err = new Error('Authentication required');
+    err.statusCode = 401;
+    throw err;
+  }
+  const template = await documentTemplateRepo.getById(templateId);
+  if (!template) {
+    const err = new Error('Template not found');
+    err.statusCode = 404;
+    throw err;
+  }
+  
+  if (template.isAdminTemplate) {
+    const user = await findUserById(userId);
+    if (user?.role !== 'admin') {
+      const err = new Error('Not authorized to modify admin templates');
+      err.statusCode = 403;
+      throw err;
+    }
+    return template;
+  }
+  
+  if (String(template.userId) !== String(userId)) {
+    const user = await findUserById(userId);
+    if (user?.role !== 'admin') {
+      const err = new Error('Not authorized to modify this template');
+      err.statusCode = 403;
+      throw err;
+    }
+  }
+  return template;
+}
+
+async function updateTemplate(id, data) {
+  await ensureSeeded();
   const userId = getCurrentUserId();
+  await checkOwnershipOrAdmin(id, userId);
   return documentTemplateRepo.update(id, data, userId);
 }
 
-function deleteTemplate(id) {
-  ensureSeeded();
+async function deleteTemplate(id) {
+  await ensureSeeded();
   const userId = getCurrentUserId();
-  const removed = documentTemplateRepo.remove(id, userId);
+  await checkOwnershipOrAdmin(id, userId);
+  const removed = await documentTemplateRepo.remove(id, userId);
   if (removed && userId) {
-    const user = findUserById(userId);
+    const user = await findUserById(userId);
     if (user && Array.isArray(user.starredTemplates)) {
-      updateUserRecord(userId, {
+      await updateUserRecord(userId, {
         starredTemplates: user.starredTemplates.filter((tid) => String(tid) !== String(id)),
       });
     }
@@ -64,85 +106,106 @@ function deleteTemplate(id) {
   return removed;
 }
 
-function getUserStarredIds(userId) {
+async function getUserStarredIds(userId) {
   if (!userId) return [];
-  const user = findUserById(userId);
+  const user = await findUserById(userId);
   return Array.isArray(user?.starredTemplates) ? user.starredTemplates : [];
 }
 
-function starTemplate(userId, templateId) {
+async function starTemplate(userId, templateId) {
   if (!userId || !templateId) throw new Error('userId and templateId are required');
-  const template = documentTemplateRepo.getById(templateId);
+  const template = await documentTemplateRepo.getById(templateId);
   if (!template) throw new Error('Template not found');
 
-  const user = findUserById(userId);
+  const user = await findUserById(userId);
   if (!user) throw new Error('User not found');
 
   const starred = Array.isArray(user.starredTemplates) ? [...user.starredTemplates] : [];
   if (!starred.some((id) => String(id) === String(templateId))) {
     starred.push(String(templateId));
   }
-  updateUserRecord(userId, { starredTemplates: starred });
+  await updateUserRecord(userId, { starredTemplates: starred });
   return starred;
 }
 
-function unstarTemplate(userId, templateId) {
+async function unstarTemplate(userId, templateId) {
   if (!userId || !templateId) throw new Error('userId and templateId are required');
-  const user = findUserById(userId);
+  const user = await findUserById(userId);
   if (!user) throw new Error('User not found');
 
   const starred = (Array.isArray(user.starredTemplates) ? user.starredTemplates : [])
     .filter((id) => String(id) !== String(templateId));
-  updateUserRecord(userId, { starredTemplates: starred });
+  await updateUserRecord(userId, { starredTemplates: starred });
   return starred;
 }
 
-function getStarredTemplates(userId) {
-  ensureSeeded();
-  const starredIds = getUserStarredIds(userId);
+async function getStarredTemplates(userId) {
+  await ensureSeeded();
+  const starredIds = await getUserStarredIds(userId);
   if (!starredIds.length) return [];
 
-  const all = getAllTemplates();
+  const all = await getAllTemplates();
   const byId = new Map(all.map((t) => [String(t.id), t]));
   return starredIds.map((id) => byId.get(String(id))).filter(Boolean);
 }
 
-function getApprovedPublicTemplates() {
-  ensureSeeded();
+async function getApprovedPublicTemplates() {
+  await ensureSeeded();
   return documentTemplateRepo.listApprovedPublic();
 }
 
-function getCommunityTemplates(userId) {
-  ensureSeeded();
+async function getCommunityTemplates(userId) {
+  await ensureSeeded();
   return documentTemplateRepo.listCommunityForUser(userId);
 }
 
-function getAiTemplates(userId) {
-  ensureSeeded();
-  return getAllTemplates({ publicOnly: false }).filter(
-    (t) => String(t.createdBy) !== String(userId) || t.templateKind === 'ai' || t.templateKind === 'hybrid',
+async function getAiTemplates(userId) {
+  await ensureSeeded();
+  return (await getAllTemplates({ publicOnly: false })).filter(
+    (t) => String(t.userId) !== String(userId) || t.isAdminTemplate,
   );
 }
 
-function getPendingApprovalTemplates() {
-  ensureSeeded();
+async function getPendingApprovalTemplates() {
+  await ensureSeeded();
   return documentTemplateRepo.listPendingApproval();
 }
 
-function approveTemplate(id, userId) {
-  ensureSeeded();
+async function approveTemplate(id, userId) {
+  await ensureSeeded();
   return documentTemplateRepo.approve(id, userId);
 }
 
-function rejectTemplate(id, userId, reason) {
-  ensureSeeded();
+async function rejectTemplate(id, userId, reason) {
+  await ensureSeeded();
   return documentTemplateRepo.reject(id, userId, reason);
 }
 
-function resolveTemplateForGeneration(templateId, documentType) {
+async function listUserTemplates(targetUserId) {
+  await ensureSeeded();
+  const userId = getCurrentUserId();
+  const currentUser = userId ? await findUserById(userId) : null;
+  const isAdmin = currentUser?.role === 'admin';
+  
+  if (String(userId) !== String(targetUserId) && !isAdmin) {
+    throw new Error('Not authorized to access user templates');
+  }
+  
+  const all = await documentTemplateRepo.listAll();
+  return all.filter(t => String(t.userId) === String(targetUserId));
+}
+
+async function submitTemplateForReview(id) {
+  await ensureSeeded();
+  const userId = getCurrentUserId();
+  await checkOwnershipOrAdmin(id, userId);
+  return documentTemplateRepo.submitForApproval(id, userId);
+}
+
+async function resolveTemplateForGeneration(templateId, documentType) {
   if (!templateId) return null;
   try {
-    const template = getTemplateById(templateId);
+    const template = await getTemplateById(templateId);
     if (!template) {
       console.warn(`[templateService] Template ${templateId} not found`);
       return null;
@@ -176,4 +239,6 @@ module.exports = {
   getAiTemplates,
   approveTemplate,
   rejectTemplate,
+  listUserTemplates,
+  submitTemplateForReview,
 };

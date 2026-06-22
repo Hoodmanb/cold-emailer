@@ -9,6 +9,7 @@ const {
   hydrateDocument,
   applyContentUpdate,
 } = require('./documentPersistenceService');
+const { getCurrentUserId } = require('../../middleware/requestContext');
 
 const VALID_SOURCES = new Set([
   'widget',
@@ -29,9 +30,9 @@ function normalizeSource(source) {
 /**
  * Create and persist a document through the unified registry.
  * @param {object} input
- * @returns {object} hydrated document
+ * @returns {Promise<object>} hydrated document
  */
-function createDocument(input = {}) {
+async function createDocument(input = {}) {
   if (!input || typeof input !== 'object') {
     throw new Error('[DocumentRegistry] createDocument requires a payload object');
   }
@@ -50,29 +51,34 @@ function createDocument(input = {}) {
     throw new Error('[DocumentRegistry] document type is required');
   }
 
-  const created = documentRepo.saveDocument(payload);
+  const userId = getCurrentUserId();
+  const created = await documentRepo.saveDocument(payload, userId);
   return hydrateDocument(created);
 }
 
-function updateDocument(id, updates = {}) {
+async function updateDocument(id, updates = {}) {
   if (!id) throw new Error('[DocumentRegistry] document id is required');
-  const existing = documentRepo.getDocument(id);
+  const userId = getCurrentUserId();
+  const existing = await documentRepo.getDocument(id, userId);
   if (!existing) return null;
   const normalized = applyContentUpdate(existing, updates);
-  const updated = documentRepo.updateDocument(id, normalized);
+  const updated = await documentRepo.updateDocument(id, normalized, userId);
   return hydrateDocument(updated);
 }
 
-function getDocument(id) {
-  return documentRepo.getDocument(id);
+async function getDocument(id) {
+  const userId = getCurrentUserId();
+  return documentRepo.getDocument(id, userId);
 }
 
-function listDocuments(jobId) {
-  return documentRepo.listDocuments(jobId);
+async function listDocuments(jobId) {
+  const userId = getCurrentUserId();
+  return documentRepo.listDocuments(jobId, userId);
 }
 
-function duplicateDocument(id) {
-  const copy = documentRepo.duplicateDocument(id);
+async function duplicateDocument(id) {
+  const userId = getCurrentUserId();
+  const copy = await documentRepo.duplicateDocument(id, userId);
   if (!copy) return null;
   return hydrateDocument({
     ...copy,

@@ -60,6 +60,16 @@ const feedbackController = require('../controllers/feedbackController');
 router.get('/feedback', asyncHandler(feedbackController.listFeedbackAdmin));
 router.patch('/feedback/:id/status', asyncHandler(feedbackController.updateFeedbackStatusAdmin));
 
+// ─── Document Templates Moderation ──────────────────────────────────────────
+const docTplCtrl = require('../controllers/documentTemplateController');
+router.get('/document-templates/pending', asyncHandler(docTplCtrl.listPendingTemplates));
+router.post('/document-templates/:id/approve', asyncHandler(docTplCtrl.approveTemplate));
+router.post('/document-templates/:id/reject', asyncHandler(docTplCtrl.rejectTemplate));
+
+// ─── Template Preview Data ────────────────────────────────────────────────
+router.get('/document-templates/preview-data', asyncHandler(adminController.getPreviewDataAdmin));
+router.put('/document-templates/preview-data', asyncHandler(adminController.updatePreviewDataAdmin));
+
 router.post('/consistency-check', asyncHandler(adminController.runConsistencyCheck));
 
 module.exports = router;

@@ -69,11 +69,11 @@ const LinkHeader: React.FC<LinksProps> = ({
   const getActiveStyle = (section: string) => {
     return pathname === section
       ? {
-          color: "black",
-          backgroundColor: "#0F172A1A",
-          borderRadius: "10px",
-          width: "90%",
-        }
+        color: "black",
+        backgroundColor: "#0F172A1A",
+        borderRadius: "10px",
+        width: "90%",
+      }
       : "";
   };
 
@@ -147,9 +147,9 @@ const LinkWithSubHeader: React.FC<LinkWithSubHeaderProps> = ({
   const getActiveStyle = (section: string) => {
     return pathname === section
       ? {
-          fontWeight: "bold",
-          backgroundColor: "#0F172A1A",
-        }
+        fontWeight: "bold",
+        backgroundColor: "#0F172A1A",
+      }
       : "";
   };
 

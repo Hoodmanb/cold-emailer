@@ -6,22 +6,23 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test": "TEST_STORAGE_PATH=./server/tests/tmp node --test server/tests/**/*.test.js"
+    "test": "TEST_STORAGE_PATH=./server/tests/tmp node --test server/tests/**/*.test.js",
+    "admin:promote": "node storage/data/promoteAdmin.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.108.1",
     "@upstash/qstash": "^2.11.0",
     "axios": "^1.7.9",
-    "bcryptjs": "^3.0.3",
+    "cloudinary": "^2.0.0",
     "cors": "^2.8.5",
     "cron-parser": "^5.5.0",
     "docx": "^9.6.1",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "handlebars": "^4.7.9",
     "jsonwebtoken": "^9.0.3",
     "marked": "^18.0.3",
     "multer": "^2.1.1",
-    "nodemailer": "^8.0.7",
+    "nodemailer": "^9.0.1",
     "puppeteer": "^24.43.1",
     "uuid": "^14.0.0",
     "zod": "^4.4.3"

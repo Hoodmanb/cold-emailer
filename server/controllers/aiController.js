@@ -3,17 +3,20 @@ const { getAllModelsGrouped } = require('../services/ai/modelCatalog');
 const { getProfile } = require('../repositories/profileRepository');
 const { getJob } = require('../repositories/jobRepository');
 const { log, ACTION_TYPES } = require('../logs/auditLogger');
+const { requireUserId } = require('../utils/requireUserId');
 
 const generate = async (req, res, next) => {
   try {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
     const { type, model, jobId, jobData, userProfile, recipientData } = req.body;
 
     if (!type) {
       return res.status(400).json({ success: false, message: 'type is required' });
     }
 
-    const profile = userProfile || getProfile();
-    const job = jobId ? getJob(jobId) : jobData;
+    const profile = userProfile || await getProfile(userId);
+    const job = jobId ? await getJob(jobId, userId) : jobData;
 
     if (!job) {
       return res.status(404).json({ success: false, message: 'Job not found' });
@@ -37,25 +40,25 @@ const generate = async (req, res, next) => {
         break;
       default:
         return res.status(400).json({ success: false, message: `Unknown generation type: ${type}` });
-      }
+    }
 
-      log(ACTION_TYPES.AI_GENERATED, {
-        module: type,
-        jobId: jobId || null,
-        model: model || 'feature-mapped',
-        details: `Direct generate called for type: ${type}`,
-      });
+    await log(ACTION_TYPES.AI_GENERATED, {
+      module: type,
+      jobId: jobId || null,
+      model: model || 'feature-mapped',
+      details: `Direct generate called for type: ${type}`,
+    });
 
-      return res.status(200).json({ success: true, message: 'generated successfully', data: result });
+    return res.status(200).json({ success: true, message: 'generated successfully', data: result });
   } catch (err) {
-    log(ACTION_TYPES.AI_FAILED, { module: req.body?.type || 'unknown', model: req.body?.model || 'feature-mapped', details: err.message });
+    await log(ACTION_TYPES.AI_FAILED, { module: req.body?.type || 'unknown', model: req.body?.model || 'feature-mapped', details: err.message });
     next(err);
   }
 };
 
-const getModelList = (req, res, next) => {
+const getModelList = async (req, res, next) => {
   try {
-    return res.status(200).json({ success: true, message: 'retrieved successfully', data: getAllModelsGrouped() });
+    return res.status(200).json({ success: true, message: 'retrieved successfully', data: (await getAllModelsGrouped()) || [] });
   } catch (err) {
     next(err);
   }

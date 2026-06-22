@@ -1,3 +1,5 @@
+// LEGACY SYSTEM - DISABLED. Supabase is now source of truth.
+// This module is retained for reference only. No production code should import it.
 const fs = require("fs");
 const path = require("path");
 const { v4: uuidv4 } = require("uuid");

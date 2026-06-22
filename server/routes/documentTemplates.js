@@ -7,13 +7,24 @@ const { requireAdmin } = require('../middleware/requireAdmin');
 router.get('/public', asyncHandler(ctrl.getPublicTemplates));
 router.get('/pending', requireAdmin, asyncHandler(ctrl.listPendingTemplates));
 router.get('/starred', asyncHandler(ctrl.getStarredTemplates));
+router.get('/user/:id', asyncHandler(ctrl.listUserTemplatesHandler));
 router.get('/', asyncHandler(ctrl.listTemplates));
 router.post('/', asyncHandler(ctrl.createTemplateHandler));
+
+// Preview endpoints:
+// - /preview renders raw template data from POST body
+// - /:id/preview.html returns raw HTML for iframe embedding
+// - /:id/preview returns JSON with html field
+router.post('/preview', asyncHandler(ctrl.renderTemplatePreview));
+router.get('/:id/preview.html', asyncHandler(ctrl.getTemplatePreviewHtml));
 router.get('/:id/preview', asyncHandler(ctrl.getTemplatePreview));
+
 router.post('/:id/approve', requireAdmin, asyncHandler(ctrl.approveTemplate));
 router.post('/:id/reject', requireAdmin, asyncHandler(ctrl.rejectTemplate));
+router.post('/:id/submit-review', asyncHandler(ctrl.submitReviewHandler));
 router.get('/:id', asyncHandler(ctrl.getTemplate));
 router.put('/:id', asyncHandler(ctrl.updateTemplateHandler));
+router.patch('/:id', asyncHandler(ctrl.updateTemplateHandler));
 router.delete('/:id', asyncHandler(ctrl.deleteTemplateHandler));
 router.post('/:id/star', asyncHandler(ctrl.starTemplate));
 router.delete('/:id/star', asyncHandler(ctrl.unstarTemplate));

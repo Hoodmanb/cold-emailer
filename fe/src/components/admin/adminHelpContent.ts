@@ -36,6 +36,19 @@ export const ADMIN_HELP = {
     description: "Approve or reject user‑submitted templates.",
     details: "Admins can manage pending templates, view submitter info, and control approval workflow."
   },
+  "admin.previewData": {
+    title: "Template Preview Data",
+    description: "Edit system-wide resume/CV preview dataset.",
+    details: "This JSON data is merged with logged-in user profile details to generate templates previews consistently."
+  },
+  "nav.moderation": {
+    title: "Moderation Queue",
+    description: "Moderate user templates before they go public.",
+  },
+  "nav.previewData": {
+    title: "Preview Data",
+    description: "Manage default profile data for templates.",
+  },
 
   // Overview stats
   "stat.aiCostToday": {

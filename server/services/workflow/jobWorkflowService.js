@@ -37,9 +37,9 @@ function resolveTemplateIdForType(templateIds, type) {
   return id ? String(id) : null;
 }
 
-function buildTemplateFields(templateId, documentType) {
+async function buildTemplateFields(templateId, documentType) {
   if (!templateId) return {};
-  const template = templateService.resolveTemplateForGeneration(templateId, documentType);
+  const template = await templateService.resolveTemplateForGeneration(templateId, documentType);
   if (!template) return {};
   return {
     templateId: template.id,
@@ -72,20 +72,21 @@ const runAiStep = async (stepName, fn, fallbackValue) => {
  * @param {object} [options.recipientData] - Optional recipient for email personalization
  * @returns {object} Workflow result with all generated drafts
  */
-const runJobWorkflow = async ({ jobId, profile, recipientData = {} }) => {
+const runJobWorkflow = async ({ jobId, profile, recipientData = {}, userId }) => {
+  if (!userId) throw new Error('userId is required for workflow execution');
   const startTime = Date.now();
 
   // ── Audit: Workflow started ────────────────────────────────
   log(ACTION_TYPES.WORKFLOW_STARTED, {
     module: 'workflow',
     jobId,
-    model: aiService.resolveFeatureConfig('resume_generation').model,
+    model: (await aiService.resolveFeatureConfig('resume_generation')).model,
     details: 'Full pipeline started',
   });
 
   try {
     // ── Step 1: Load job ──────────────────────────────────────
-    const job = jobRepo.getJob(jobId);
+    const job = await jobRepo.getJob(jobId, userId);
     if (!job) throw new Error(`Job ${jobId} not found`);
 
     // ── Step 2: Parse job description ────────────────────────
@@ -96,7 +97,7 @@ const runJobWorkflow = async ({ jobId, profile, recipientData = {} }) => {
         company: job.company,
         location: job.location,
       });
-      jobRepo.updateJob(jobId, { parsedData });
+      await jobRepo.updateJob(jobId, { parsedData }, userId);
     }
 
     // ── Step 3: Local ATS score ───────────────────────────────
@@ -115,21 +116,21 @@ const runJobWorkflow = async ({ jobId, profile, recipientData = {} }) => {
     } catch (_err) {
       atsResult = scoreATS(parsedData, profile);
     }
-    jobRepo.updateJob(jobId, { atsScore: atsResult.score, atsBreakdown: atsResult });
+    await jobRepo.updateJob(jobId, { atsScore: atsResult.score, atsBreakdown: atsResult }, userId);
 
     // ── Step 4: AI Resume (draft) ─────────────────────────────
-    const resumeConfig = aiService.resolveFeatureConfig('resume_generation');
+    const resumeConfig = await aiService.resolveFeatureConfig('resume_generation');
     const resumeContent = await runAiStep(
       'resume_generation',
       () => aiService.generateResume({ ...job, parsedData }, profile)
     );
 
-    const resumeDoc = documentRegistry.createDocument({
+    const resumeDoc = await documentRegistry.createDocument({
       jobId, type: 'resume', content: resumeContent, model: resumeConfig.model, status: 'draft',
       source: 'workflow',
     });
 
-    jobRepo.linkDocument(jobId, resumeDoc.id);
+    await jobRepo.linkDocument(jobId, resumeDoc.id, userId);
 
     log(ACTION_TYPES.AI_GENERATED, {
       module: 'resume',
@@ -148,13 +149,13 @@ const runJobWorkflow = async ({ jobId, profile, recipientData = {} }) => {
     });
 
     // ── Step 5: AI Cover Letter (draft) ─────────────────────
-    const coverConfig = aiService.resolveFeatureConfig('cover_letter_generation');
+    const coverConfig = await aiService.resolveFeatureConfig('cover_letter_generation');
     const coverLetterContent = await runAiStep(
       'cover_letter_generation',
       () => aiService.generateCoverLetter({ ...job, parsedData }, profile)
     );
 
-    const coverLetterDoc = documentRegistry.createDocument({
+    const coverLetterDoc = await documentRegistry.createDocument({
       jobId,
       type: 'cover-letter',
       content: coverLetterContent,
@@ -162,7 +163,7 @@ const runJobWorkflow = async ({ jobId, profile, recipientData = {} }) => {
       status: 'draft',
     });
 
-    jobRepo.linkDocument(jobId, coverLetterDoc.id);
+    await jobRepo.linkDocument(jobId, coverLetterDoc.id, userId);
 
     log(ACTION_TYPES.AI_GENERATED, {
       module: 'cover-letter',
@@ -180,7 +181,7 @@ const runJobWorkflow = async ({ jobId, profile, recipientData = {} }) => {
     });
 
     // ── Step 6: AI Cold Email (draft) ───────────────────────
-    const emailConfig = aiService.resolveFeatureConfig('email_generation');
+    const emailConfig = await aiService.resolveFeatureConfig('email_generation');
     const emailContent = await runAiStep(
       'email_generation',
       () => aiService.generateEmail({ ...job, parsedData }, profile, recipientData)
@@ -199,7 +200,7 @@ const runJobWorkflow = async ({ jobId, profile, recipientData = {} }) => {
       profile,
     });
 
-    const emailRecord = emailRepo.saveEmail({
+    const emailRecord = await emailRepo.saveEmail({
       jobId,
       to: recipientData.email || '',
       subject: emailSubject,
@@ -207,9 +208,9 @@ const runJobWorkflow = async ({ jobId, profile, recipientData = {} }) => {
       model: emailConfig.model,
       status: 'draft',
       scores: emailScores,
-    });
+    }, userId);
 
-    jobRepo.linkEmail(jobId, emailRecord.id);
+    await jobRepo.linkEmail(jobId, emailRecord.id, userId);
 
     log(ACTION_TYPES.AI_GENERATED, {
       module: 'cold-email',
@@ -253,7 +254,7 @@ const runJobWorkflow = async ({ jobId, profile, recipientData = {} }) => {
     log(ACTION_TYPES.WORKFLOW_FAILED, {
       module: 'workflow',
       jobId,
-      model: aiService.resolveFeatureConfig('email_generation').model,
+      model: (await aiService.resolveFeatureConfig('email_generation')).model,
       details: error.message,
       durationMs,
     });
@@ -278,8 +279,9 @@ const runJobWorkflow = async ({ jobId, profile, recipientData = {} }) => {
  * Regenerate a single document type (resume | cover-letter | email).
  * Creates a new draft — does not overwrite the existing one.
  */
-const regenerateDocument = async ({ jobId, type, profile, recipientData = {} }) => {
-  const job = jobRepo.getJob(jobId);
+const regenerateDocument = async ({ jobId, type, profile, recipientData = {}, userId }) => {
+  if (!userId) throw new Error('userId is required for document regeneration');
+  const job = await jobRepo.getJob(jobId, userId);
   if (!job) throw new Error(`Job ${jobId} not found`);
 
   let content;
@@ -287,22 +289,22 @@ const regenerateDocument = async ({ jobId, type, profile, recipientData = {} }) 
 
   try {
     if (type === 'resume') {
-      const cfg = aiService.resolveFeatureConfig('resume_generation');
+      const cfg = await aiService.resolveFeatureConfig('resume_generation');
       content = await aiService.generateResume(job, profile);
-      doc = documentRegistry.createDocument({ jobId, type: 'resume', content, model: cfg.model, status: 'draft' });
+      doc = await documentRegistry.createDocument({ jobId, type: 'resume', content, model: cfg.model, status: 'draft' });
     } else if (type === 'cover-letter') {
-      const cfg = aiService.resolveFeatureConfig('cover_letter_generation');
+      const cfg = await aiService.resolveFeatureConfig('cover_letter_generation');
       content = await aiService.generateCoverLetter(job, profile);
-      doc = documentRegistry.createDocument({ jobId, type: 'cover-letter', content, model: cfg.model, status: 'draft' });
+      doc = await documentRegistry.createDocument({ jobId, type: 'cover-letter', content, model: cfg.model, status: 'draft' });
     } else if (type === 'email') {
-      const cfg = aiService.resolveFeatureConfig('email_generation');
+      const cfg = await aiService.resolveFeatureConfig('email_generation');
       content = await aiService.generateEmail(job, profile, recipientData);
       const subjectMatch = content.match(/SUBJECT:\s*(.+)/i);
       const bodyMatch = content.match(/BODY:\s*([\s\S]+)/i);
       const emailScores = scoreEmail(bodyMatch?.[1]?.trim() || content, {
         recipientData, jobData: job, profile,
       });
-      doc = emailRepo.saveEmail({
+      doc = await emailRepo.saveEmail({
         jobId,
         to: recipientData.email || '',
         subject: subjectMatch?.[1]?.trim() || '',
@@ -310,7 +312,7 @@ const regenerateDocument = async ({ jobId, type, profile, recipientData = {} }) 
         model: cfg.model,
         status: 'draft',
         scores: emailScores,
-      });
+      }, userId);
     } else {
       throw new Error(`Unknown document type: ${type}`);
     }
@@ -325,7 +327,7 @@ const regenerateDocument = async ({ jobId, type, profile, recipientData = {} }) 
     throw err;
   }
 
-  const model = doc.model || aiService.resolveFeatureConfig('email_generation').model;
+  const model = doc.model || (await aiService.resolveFeatureConfig('email_generation')).model;
   log(ACTION_TYPES.AI_GENERATED, {
     module: type,
     jobId,
@@ -342,9 +344,10 @@ const regenerateDocument = async ({ jobId, type, profile, recipientData = {} }) 
  * Run ATS analysis only — no document generation.
  * Use this to show the user their ATS score before they decide what to generate.
  */
-const runAtsOnly = async ({ jobId, profile }) => {
+const runAtsOnly = async ({ jobId, profile, userId }) => {
+  if (!userId) throw new Error('userId is required for ATS analysis');
   const startTime = Date.now();
-  const job = jobRepo.getJob(jobId);
+  const job = await jobRepo.getJob(jobId, userId);
   if (!job) throw new Error(`Job ${jobId} not found`);
 
   let parsedData = job.parsedData;
@@ -354,7 +357,7 @@ const runAtsOnly = async ({ jobId, profile }) => {
       company: job.company,
       location: job.location,
     });
-    jobRepo.updateJob(jobId, { parsedData });
+    await jobRepo.updateJob(jobId, { parsedData }, userId);
   }
 
   let atsResult;
@@ -373,9 +376,9 @@ const runAtsOnly = async ({ jobId, profile }) => {
     atsResult = scoreATS(parsedData, profile);
   }
 
-  jobRepo.updateJob(jobId, { atsScore: atsResult.score, atsBreakdown: atsResult });
+  await jobRepo.updateJob(jobId, { atsScore: atsResult.score, atsBreakdown: atsResult }, userId);
 
-  log(ACTION_TYPES.WORKFLOW_STARTED, {
+  log(ACTION_TYPES.WORKFLOW_COMPLETED, {
     module: 'workflow',
     jobId,
     details: `ATS-only analysis completed in ${Date.now() - startTime}ms`,
@@ -412,15 +415,17 @@ const generateSelectedDocuments = async ({
   tailoringLevel = 'balanced',
   recipientData = {},
   templateIds = {},
+  userId,
 }) => {
+  if (!userId) throw new Error('userId is required for document generation');
   const startTime = Date.now();
-  const job = jobRepo.getJob(jobId);
+  const job = await jobRepo.getJob(jobId, userId);
   if (!job) throw new Error(`Job ${jobId} not found`);
 
   let parsedData = job.parsedData;
   if (!parsedData || Object.keys(parsedData).length === 0) {
     parsedData = parseJob(job.rawDescription, { title: job.title, company: job.company, location: job.location });
-    jobRepo.updateJob(jobId, { parsedData });
+    await jobRepo.updateJob(jobId, { parsedData }, userId);
   }
 
   const validTypes = Array.isArray(types) && types.length ? types : ['resume'];
@@ -439,14 +444,14 @@ const generateSelectedDocuments = async ({
 
   try {
     if (validTypes.includes('resume')) {
-      const cfg = aiService.resolveFeatureConfig('resume_generation');
+      const cfg = await aiService.resolveFeatureConfig('resume_generation');
       const typeFormat = resolveTypeFormat('resume');
       const resumeTemplateId = resolveTemplateIdForType(templateIds, 'resume');
-      const resumeTemplateFields = buildTemplateFields(resumeTemplateId, 'resume');
+      const resumeTemplateFields = await buildTemplateFields(resumeTemplateId, 'resume');
       const content = await runAiStep('resume_generation', () =>
         aiService.generateResume({ ...job, parsedData }, profile, buildAiOptions(aiOptions, resumeTemplateId, 'resume'))
       );
-      const doc = documentRegistry.createDocument({
+      const doc = await documentRegistry.createDocument({
         jobId,
         generatedFromJobId: jobId,
         type: 'resume',
@@ -465,20 +470,20 @@ const generateSelectedDocuments = async ({
           ...(resumeTemplateFields.metadata || {}),
         },
       });
-      jobRepo.linkDocument(jobId, doc.id);
+      await jobRepo.linkDocument(jobId, doc.id, userId);
       log(ACTION_TYPES.AI_GENERATED, { module: 'resume', jobId, entityId: doc.id, entityType: 'document', model: cfg.model, details: 'Resume draft generated (selective)' });
       results.resume = doc;
     }
 
     if (validTypes.includes('professional-cv')) {
-      const cfg = aiService.resolveFeatureConfig('professional_cv_generation');
+      const cfg = await aiService.resolveFeatureConfig('professional_cv_generation');
       const typeFormat = resolveTypeFormat('professional-cv');
       const cvTemplateId = resolveTemplateIdForType(templateIds, 'professional-cv');
-      const cvTemplateFields = buildTemplateFields(cvTemplateId, 'professional-cv');
+      const cvTemplateFields = await buildTemplateFields(cvTemplateId, 'professional-cv');
       const content = await runAiStep('professional_cv_generation', () =>
         aiService.generateProfessionalCv({ ...job, parsedData }, profile, buildAiOptions(aiOptions, cvTemplateId, 'professional-cv'))
       );
-      const doc = documentRegistry.createDocument({
+      const doc = await documentRegistry.createDocument({
         jobId,
         generatedFromJobId: jobId,
         type: 'professional-cv',
@@ -497,20 +502,20 @@ const generateSelectedDocuments = async ({
           ...(cvTemplateFields.metadata || {}),
         },
       });
-      jobRepo.linkDocument(jobId, doc.id);
+      await jobRepo.linkDocument(jobId, doc.id, userId);
       log(ACTION_TYPES.AI_GENERATED, { module: 'professional-cv', jobId, entityId: doc.id, entityType: 'document', model: cfg.model, details: 'Professional CV generated (selective)' });
       results.professionalCv = doc;
     }
 
     if (validTypes.includes('cover-letter')) {
-      const cfg = aiService.resolveFeatureConfig('cover_letter_generation');
+      const cfg = await aiService.resolveFeatureConfig('cover_letter_generation');
       const typeFormat = resolveTypeFormat('cover-letter');
       const clTemplateId = resolveTemplateIdForType(templateIds, 'cover-letter');
-      const clTemplateFields = buildTemplateFields(clTemplateId, 'cover-letter');
+      const clTemplateFields = await buildTemplateFields(clTemplateId, 'cover-letter');
       const content = await runAiStep('cover_letter_generation', () =>
         aiService.generateCoverLetter({ ...job, parsedData }, profile, buildAiOptions(aiOptions, clTemplateId, 'cover-letter'))
       );
-      const doc = documentRegistry.createDocument({
+      const doc = await documentRegistry.createDocument({
         jobId,
         generatedFromJobId: jobId,
         type: 'cover-letter',
@@ -529,16 +534,16 @@ const generateSelectedDocuments = async ({
           ...(clTemplateFields.metadata || {}),
         },
       });
-      jobRepo.linkDocument(jobId, doc.id);
+      await jobRepo.linkDocument(jobId, doc.id, userId);
       log(ACTION_TYPES.AI_GENERATED, { module: 'cover-letter', jobId, entityId: doc.id, entityType: 'document', model: cfg.model, details: 'Cover letter draft generated (selective)' });
       results.coverLetter = doc;
     }
 
     if (validTypes.includes('email')) {
-      const cfg = aiService.resolveFeatureConfig('email_generation');
+      const cfg = await aiService.resolveFeatureConfig('email_generation');
       const typeFormat = resolveTypeFormat('email');
       const emailTemplateId = resolveTemplateIdForType(templateIds, 'email');
-      const emailTemplateFields = buildTemplateFields(emailTemplateId, 'email');
+      const emailTemplateFields = await buildTemplateFields(emailTemplateId, 'email');
       const emailContent = await runAiStep('email_generation', () =>
         aiService.generateEmail({ ...job, parsedData }, profile, recipientData, buildAiOptions(aiOptions, emailTemplateId, 'email'))
       );
@@ -547,14 +552,14 @@ const generateSelectedDocuments = async ({
       const emailSubject = subjectMatch?.[1]?.trim() || `Application for ${job.title} at ${job.company}`;
       const emailBody = bodyMatch?.[1]?.trim() || emailContent;
       const emailScores = scoreEmail(emailBody, { recipientData, jobData: { ...job, parsedData }, profile });
-      const emailRecord = emailRepo.saveEmail({
+      const emailRecord = await emailRepo.saveEmail({
         jobId, to: recipientData.email || '', subject: emailSubject, body: emailBody,
         model: cfg.model, status: 'draft', scores: emailScores,
-      });
-      jobRepo.linkEmail(jobId, emailRecord.id);
+      }, userId);
+      await jobRepo.linkEmail(jobId, emailRecord.id, userId);
 
       const emailDocContent = `SUBJECT: ${emailSubject}\n\nBODY:\n${emailBody}`;
-      const emailDoc = documentRegistry.createDocument({
+      const emailDoc = await documentRegistry.createDocument({
         jobId,
         generatedFromJobId: jobId,
         type: 'email',
@@ -572,7 +577,7 @@ const generateSelectedDocuments = async ({
         templateName: emailTemplateFields.templateName,
         source: 'workflow',
       });
-      jobRepo.linkDocument(jobId, emailDoc.id);
+      await jobRepo.linkDocument(jobId, emailDoc.id, userId);
 
       log(ACTION_TYPES.AI_GENERATED, { module: 'cold-email', jobId, entityId: emailRecord.id, entityType: 'email', model: cfg.model, details: 'Email draft generated (selective)' });
       results.email = emailRecord;

@@ -1,45 +1,70 @@
-const fileStore = require('../../../utils/fileStore');
+const { v4: uuidv4 } = require('uuid');
+const Supabase = require('../../../services/supabaseService');
 
-const FILE = 'uploads.json';
+const TABLE = 'uploads';
 
-function listUploads(userId) {
-  if (!userId) return [];
-  return fileStore.read(FILE, userId).map((u) => ({ ...u }));
+function fromRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    userId: row.user_id,
+    publicId: row.public_id,
+    url: row.url,
+    format: row.format,
+    resourceType: row.resource_type,
+    bytes: row.bytes,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
 }
 
-function addUpload(meta) {
+function toRow(meta, userId) {
+  const now = new Date().toISOString();
+  return {
+    id: meta.id || uuidv4(),
+    user_id: userId || meta.userId,
+    public_id: meta.publicId || meta.public_id,
+    url: meta.url,
+    format: meta.format || null,
+    resource_type: meta.resourceType || meta.resource_type || 'image',
+    bytes: meta.bytes || null,
+    created_at: meta.createdAt || now,
+    updated_at: now,
+  };
+}
+
+async function listUploads(userId) {
+  if (!userId) return [];
+  const { data, error } = await Supabase.select(TABLE, {}, userId);
+  if (error) throw error;
+  return (data || []).map(fromRow);
+}
+
+async function addUpload(meta) {
   if (!meta?.userId) throw new Error('userId is required');
   const userId = String(meta.userId);
-  const current = fileStore.read(FILE, userId);
-  const next = [...current, meta];
-  fileStore.write(FILE, next, userId);
-  return meta;
+  const row = toRow(meta, userId);
+  const { data, error } = await Supabase.insert(TABLE, row, userId);
+  if (error) throw error;
+  return fromRow(data?.[0] || row);
 }
 
-function deleteUpload(id, userId) {
+async function deleteUpload(id, userId) {
   if (!userId) return false;
-  const current = fileStore.read(FILE, userId);
-  const index = current.findIndex((d) => String(d.id) === String(id));
-  if (index === -1) return false;
-  const [removed] = current.splice(index, 1);
-  fileStore.write(FILE, current, userId);
-  return removed;
+  const { data, error } = await Supabase.delete(TABLE, { id }, userId);
+  if (error) throw error;
+  return (data?.length || 0) > 0;
 }
 
-function getUpload(id, userId) {
+async function getUpload(id, userId) {
   if (userId) {
-    const found = fileStore.read(FILE, userId).find((u) => String(u.id) === String(id));
-    return found ? { ...found } : null;
+    const { data, error } = await Supabase.selectOne(TABLE, { id }, userId);
+    if (error) throw error;
+    return fromRow(data);
   }
-  const { safeRead } = require('../../../db/jsonDb');
-  const raw = safeRead(FILE, { __scoped: true, users: {} });
-  const users = raw.users && typeof raw.users === 'object' ? raw.users : {};
-  for (const uid of Object.keys(users)) {
-    const rows = Array.isArray(users[uid]) ? users[uid] : [];
-    const found = rows.find((u) => String(u.id) === String(id));
-    if (found) return { ...found };
-  }
-  return null;
+  const { data, error } = await Supabase.selectOne(TABLE, { id });
+  if (error) throw error;
+  return fromRow(data);
 }
 
 module.exports = { listUploads, addUpload, deleteUpload, getUpload };

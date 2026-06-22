@@ -3,9 +3,9 @@ const billingService = require('./billingService');
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 let intervalRef = null;
 
-function runCreditExpiryJob() {
+async function runCreditExpiryJob() {
   try {
-    const updated = billingService.expireOldCredits();
+    const updated = await billingService.expireOldCredits();
     if (updated > 0) {
       console.log(`[billing] Expired credits for ${updated} user(s)`);
     }

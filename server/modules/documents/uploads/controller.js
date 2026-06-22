@@ -111,7 +111,7 @@ const deleteUpload = async (req, res) => {
     return res.status(403).json({ message: 'Forbidden' });
   }
   // Block deletion if there are attachments referencing this document
-  if (attachmentsRepo.isDocumentReferenced(id)) {
+  if (await attachmentsRepo.isDocumentReferenced(id)) {
     return res.status(409).json({ message: 'Document is referenced by attachments and cannot be deleted' });
   }
   const filePath = path.join(uploadDir, `${record.id}_${record.title.replace(/[^a-zA-Z0-9._-]/g, '')}`);

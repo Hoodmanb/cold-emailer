@@ -10,6 +10,7 @@ const {
   AppError,
   BillingAccessError,
   InsufficientCreditsError,
+  AIConfigurationError,
 } = require('../shared/errors/customErrors');
 
 function classifyError(err) {
@@ -31,6 +32,26 @@ function classifyError(err) {
       error: err.message || 'Validation failed',
       errorCode: err.errorCode || 'VALIDATION_ERROR',
       errors: err.errors ? Object.values(err.errors) : undefined,
+    };
+  }
+
+  if (
+    err instanceof AIConfigurationError ||
+    err.type === 'ai_configuration_error' ||
+    err.errorCode === 'AI_NOT_CONFIGURED' ||
+    err.errorCode === 'API_KEY_MISSING' ||
+    err.errorCode === 'PROVIDER_NOT_SET' ||
+    err.errorCode === 'MODEL_NOT_SET'
+  ) {
+    return {
+      status: 400,
+      type: 'ai_configuration_error',
+      message: err.message || 'AI is not configured for this feature.',
+      error: err.message || 'AI is not configured for this feature.',
+      errorCode: err.errorCode || 'AI_NOT_CONFIGURED',
+      details: err.details || {
+        userAction: 'Configure API keys and models in Settings → AI Workflows',
+      },
     };
   }
 

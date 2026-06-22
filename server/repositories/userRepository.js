@@ -1,124 +1,145 @@
-const fileStore = require("../utils/fileStore");
-const { ensureArray } = require("../utils/jsonNormalizer");
-const { getProfile } = require("./profileRepository");
-const { getAllProjects } = require("./projectRepository");
-const { getSettings } = require("./settingsRepository");
-const { getAiSettings } = require("./aiRepository");
+const Supabase = require('../services/supabaseService');
+const { getProfile } = require('./profileRepository');
+const { getAllProjects } = require('./projectRepository');
+const { getSettings } = require('./settingsRepository');
+const { getAiSettings } = require('./aiRepository');
 
-const USERS_FILE = "users.json";
+const TABLE = 'users';
 
-/**
- * Global user management (unscoped)
- */
-/**
- * Global user management (unscoped)
- */
-const findUserByEmail = (email) => {
-  const target = String(email || "").trim().toLowerCase();
+function fromRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    role: row.role || 'user',
+    userVersion: row.userVersion || 1,
+    starredTemplates: Array.isArray(row.starredTemplates) ? row.starredTemplates : [],
+    billingType: row.billingType || 'token',
+    gatewayAccess: row.gatewayAccess || {},
+    credits: Number(row.credits) || 0,
+    creditExpiryBuckets: Array.isArray(row.creditExpiryBuckets) ? row.creditExpiryBuckets : [],
+    schemaVersion: row.schemaVersion || 1,
+    metadata: row.metadata || {},
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+function toRow(user) {
+  const now = new Date().toISOString();
+  return {
+    id: user.id,
+    email: String(user.email || '').trim().toLowerCase(),
+    name: user.name || '',
+    role: user.role || 'user',
+    userVersion: user.userVersion || 1,
+    starredTemplates: Array.isArray(user.starredTemplates) ? user.starredTemplates : [],
+    billingType: user.billingType || 'token',
+    gatewayAccess: user.gatewayAccess || {},
+    credits: Number(user.credits) || 0,
+    creditExpiryBuckets: Array.isArray(user.creditExpiryBuckets) ? user.creditExpiryBuckets : [],
+    schemaVersion: user.schemaVersion || 1,
+    metadata: user.metadata || {},
+    createdAt: user.createdAt || now,
+    updatedAt: now,
+  };
+}
+
+const findUserByEmail = async (email) => {
+  const target = String(email || '').trim().toLowerCase();
   if (!target) return null;
-  const users = ensureArray(fileStore.read(USERS_FILE));
-  return users.find((u) => String(u.email || "").toLowerCase() === target) || null;
+  const { data, error } = await Supabase.selectOne(TABLE, { email: target });
+  if (error) throw error;
+  return fromRow(data);
 };
 
-const findUserById = (id) => {
-  const users = ensureArray(fileStore.read(USERS_FILE));
-  return users.find((u) => String(u.id) === String(id)) || null;
+const findUserById = async (id) => {
+  if (!id) return null;
+  const { data, error } = await Supabase.selectOne(TABLE, { id });
+  if (error) throw error;
+  return fromRow(data);
 };
 
-const createUser = (userData) => {
-  const newUser = {
+const createUser = async (userData) => {
+  const row = toRow({
     ...userData,
     starredTemplates: Array.isArray(userData.starredTemplates) ? userData.starredTemplates : [],
     userVersion: 1,
-    updatedAt: new Date().toISOString(),
-  };
-  return fileStore.append(USERS_FILE, newUser);
+  });
+  const { data, error } = await Supabase.insert(TABLE, row);
+  if (error) throw error;
+  return fromRow(data?.[0] || row);
 };
 
-const updateUserRecord = (id, updates) => {
-  return fileStore.update(
-    USERS_FILE,
-    (u) => String(u.id) === String(id),
-    (u) => ({
-      ...u,
-      ...updates,
-    })
-  );
+const updateUserRecord = async (id, updates) => {
+  const current = await findUserById(id);
+  if (!current) return null;
+  const next = toRow({ ...current, ...updates, id });
+  next.updatedAt = new Date().toISOString();
+  if (updates.userVersion === undefined) {
+    next.userVersion = (current.userVersion || 1) + 1;
+  }
+  const { data, error } = await Supabase.update(TABLE, { id }, next);
+  if (error) throw error;
+  return fromRow(data[0] || next);
 };
 
-/**
- * Unified user data view (scoped)
- */
-const getUserFullData = (userId) => ({
-  profile: getProfile(userId),
-  projects: getAllProjects(userId),
-  settings: getSettings(userId),
-  aiSettings: getAiSettings(userId),
+const getUserFullData = async (userId) => ({
+  profile: await getProfile(userId),
+  projects: await getAllProjects(userId),
+  settings: await getSettings(userId),
+  aiSettings: await getAiSettings(userId),
 });
 
-const PURGEABLE_SCOPED_FILES = [
-  "profiles.json",
-  "projects.json",
-  "settings.json",
-  "jobs.json",
-  "emails.json",
-  "templates.json",
-  "recipients.json",
-  "smtp.json",
-  "ai-configs.json",
-  "chats.json",
-  "uploads.json",
-  "artifacts.json",
-  "schedules.json",
-  "categories.json"
-];
-
-const deleteUserAndCleanup = (userId) => {
-  if (!userId) throw new Error("User ID is required for deletion");
-
-  const { safeRead, atomicWrite, withLock } = require("../db/jsonDb");
+const deleteUserAndCleanup = async (userId) => {
+  if (!userId) throw new Error('User ID is required for deletion');
   console.log(`[userRepository] Initializing permanent account deletion for user: ${userId}`);
 
-  // 1. Remove user from users.json
-  withLock(USERS_FILE, () => {
-    const users = safeRead(USERS_FILE, []);
-    const filtered = users.filter((u) => String(u.id) !== String(userId));
-    atomicWrite(USERS_FILE, filtered);
-    console.log(`[userRepository] Removed user ${userId} from ${USERS_FILE}`);
-  });
-
-  // 2. Remove user-created document templates from global catalog
-  try {
-    withLock('documentTemplates.json', () => {
-      const raw = safeRead('documentTemplates.json', []);
-      if (Array.isArray(raw)) {
-        const filtered = raw.filter((t) => String(t.createdBy || '') !== String(userId));
-        if (filtered.length !== raw.length) {
-          atomicWrite('documentTemplates.json', filtered);
-          console.log('[userRepository] Removed user templates from documentTemplates.json');
-        }
-      }
-    });
-  } catch (err) {
-    console.error(`[userRepository] Failed to purge document templates for ${userId}:`, err.message);
+  const { error: userErr } = await Supabase.delete(TABLE, { id: userId });
+  if (userErr) {
+    console.error(`[userRepository] Failed to delete user ${userId}:`, userErr.message);
   }
 
-  // 3. Clear user-scoped records from allowed tables
-  for (const file of PURGEABLE_SCOPED_FILES) {
+  const scopedTables = [
+    'profiles',
+    'projects',
+    'settings',
+    'jobs',
+    'emails',
+    'templates',
+    'document_templates',
+    'documents',
+    'recipients',
+    'smtp_providers',
+    'ai_settings',
+    'chats',
+    'uploads',
+    'artifacts',
+    'schedules',
+    'categories',
+    'attachments',
+    'credits_wallets',
+    'credit_transactions',
+    'billing_settings',
+    'audit_logs',
+  ];
+
+  for (const table of scopedTables) {
     try {
-      withLock(file, () => {
-        const raw = safeRead(file, null);
-        if (raw && typeof raw === "object" && raw.__scoped === true && raw.users) {
-          if (raw.users[userId]) {
-            delete raw.users[userId];
-            atomicWrite(file, raw);
-            console.log(`[userRepository] Successfully purged scoped user data in ${file}`);
-          }
-        }
-      });
+      const { error } = await Supabase.delete(table, { user_id: userId }, userId);
+      if (error) {
+        console.error(`[userRepository] Failed to purge ${table} for ${userId}:`, error.message);
+      }
     } catch (err) {
-      console.error(`[userRepository] Failed to purge user ${userId} from ${file}:`, err.message);
+      console.error(`[userRepository] Exception purging ${table} for ${userId}:`, err.message);
     }
+  }
+
+  try {
+    await Supabase.delete('document_templates', { created_by: userId });
+  } catch (err) {
+    console.error(`[userRepository] Failed to purge document_templates by created_by:`, err.message);
   }
 };
 

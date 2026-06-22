@@ -2,96 +2,89 @@ const { v4: uuidv4 } = require('uuid');
 
 const DEFAULT_DOCUMENT_TEMPLATES = [
   {
-    id: 'tpl-resume-ats-classic',
+    id: 'd9e9c9c3-7e4d-4a11-85b4-2977461a293b', // Fixed UUID for ATS Classic
     name: 'ATS Classic Resume',
-    type: 'resume',
-    structure: ['Header', 'Professional Summary', 'Core Skills', 'Experience', 'Education', 'Certifications'],
-    style: { tone: 'professional', bulletStyle: 'quantified', atsOptimized: true, maxPages: 1 },
-    aiRules: 'Use concise bullet points with quantified achievements. Keep language ATS-friendly with standard section headings. Avoid tables, columns, or graphics.',
-    preview: 'Clean single-page ATS resume with quantified bullets',
-    isPublic: true,
-    createdBy: null,
-  },
-  {
-    id: 'tpl-resume-modern-impact',
-    name: 'Modern Impact Resume',
-    type: 'resume',
-    structure: ['Header', 'Summary', 'Key Achievements', 'Experience', 'Skills', 'Education'],
-    style: { tone: 'confident', bulletStyle: 'impact-first', atsOptimized: true, maxPages: 1 },
-    aiRules: 'Lead each experience entry with measurable impact. Use strong action verbs. Summary should be 3-4 lines highlighting top value proposition.',
-    preview: 'Impact-focused resume emphasizing achievements',
-    isPublic: true,
-    createdBy: null,
-  },
-  {
-    id: 'tpl-cv-executive',
-    name: 'Executive Professional CV',
+    description: 'A clean, single-column ATS optimized resume template.',
     type: 'cv',
-    structure: ['Header', 'Executive Summary', 'Career Highlights', 'Professional Experience', 'Leadership & Projects', 'Education', 'Skills', 'Publications & Awards'],
-    style: { tone: 'executive', bulletStyle: 'detailed', multiPage: true, maxPages: 3 },
-    aiRules: 'Write a detailed multi-page CV with expanded role descriptions. Include context, scope, and outcomes for each position. Use narrative paragraphs where appropriate.',
-    preview: 'Detailed executive-style professional CV',
+    layout: {
+      type: 'single-column',
+      blocks: ['profile', 'experience', 'education', 'skills', 'projects', 'certificates']
+    },
+    blocks: {
+      profile: { type: 'profile', title: 'Profile Summary' },
+      experience: { type: 'experience', title: 'Professional Experience' },
+      education: { type: 'education', title: 'Education' },
+      skills: { type: 'skills', title: 'Key Skills' },
+      projects: { type: 'projects', title: 'Projects' },
+      certificates: { type: 'certificates', title: 'Certifications' }
+    },
+    style: {
+      fontFamily: 'Inter, "Segoe UI", sans-serif',
+      primaryColor: '#111111',
+      fontSize: 12,
+      spacing: 12
+    },
     isPublic: true,
-    createdBy: null,
+    isApproved: true,
+    isAdminTemplate: true,
+    userId: null,
   },
   {
-    id: 'tpl-cv-academic',
-    name: 'Academic Professional CV',
+    id: 'f391b1a7-89df-419b-a01c-7f55f284e311', // Fixed UUID for Modern Two-Column
+    name: 'Modern Two-Column CV',
+    description: 'A stylish, two-column layout highlighting your profile and skills in a sidebar.',
     type: 'cv',
-    structure: ['Header', 'Research Summary', 'Education', 'Research Experience', 'Publications', 'Teaching', 'Skills', 'References'],
-    style: { tone: 'formal', bulletStyle: 'detailed', multiPage: true },
-    aiRules: 'Use formal academic tone. Expand research and teaching sections. Include publication-style formatting where relevant.',
-    preview: 'Academic-oriented professional CV layout',
+    layout: {
+      type: 'two-column',
+      columns: [
+        { width: '30%', blocks: ['profile', 'skills', 'certificates'] },
+        { width: '70%', blocks: ['experience', 'projects', 'education'] }
+      ]
+    },
+    blocks: {
+      profile: { type: 'profile', title: 'About Me' },
+      experience: { type: 'experience', title: 'Work History' },
+      education: { type: 'education', title: 'Education' },
+      skills: { type: 'skills', title: 'Expertise' },
+      projects: { type: 'projects', title: 'Key Projects' },
+      certificates: { type: 'certificates', title: 'Certifications' }
+    },
+    style: {
+      fontFamily: 'Roboto, "Helvetica Neue", sans-serif',
+      primaryColor: '#2563eb',
+      fontSize: 11,
+      spacing: 10
+    },
     isPublic: true,
-    createdBy: null,
-  },
-  {
-    id: 'tpl-cover-standard',
-    name: 'Standard Cover Letter',
-    type: 'cover_letter',
-    structure: ['Header', 'Opening Hook', 'Why This Company', 'Relevant Experience', 'Closing Call to Action'],
-    style: { tone: 'professional', length: 'medium', paragraphs: 4 },
-    aiRules: 'Write 3-4 concise paragraphs. Opening must reference the specific role. Connect candidate strengths to job requirements. End with a confident call to action.',
-    preview: 'Classic 4-paragraph cover letter structure',
-    isPublic: true,
-    createdBy: null,
-  },
-  {
-    id: 'tpl-cover-story',
-    name: 'Story-Driven Cover Letter',
-    type: 'cover_letter',
-    structure: ['Header', 'Personal Hook', 'Problem-Solution Narrative', 'Value Proposition', 'Closing'],
-    style: { tone: 'engaging', length: 'medium', paragraphs: 4 },
-    aiRules: 'Open with a brief compelling story or insight. Show genuine enthusiasm for the company mission. Keep tone warm but professional.',
-    preview: 'Narrative cover letter with personal hook',
-    isPublic: true,
-    createdBy: null,
-  },
-  {
-    id: 'tpl-email-outreach',
-    name: 'Cold Outreach Email',
-    type: 'email',
-    structure: ['Subject Line', 'Greeting', 'Value Hook', 'Credibility Proof', 'Soft CTA', 'Sign-off'],
-    style: { tone: 'concise', maxWords: 150 },
-    aiRules: 'Keep under 150 words. Subject line must be specific and curiosity-driven. One clear soft call to action. No overly salesy language.',
-    preview: 'Short cold outreach email template',
-    isPublic: true,
-    createdBy: null,
-  },
+    isApproved: true,
+    isAdminTemplate: true,
+    userId: null,
+  }
 ];
 
-function seedDefaultTemplates(repo) {
-  const existing = repo.listAll();
-  if (existing.length > 0) return existing;
+async function seedDefaultTemplates(repo) {
+  try {
+    const existing = await repo.listAll();
+    
+    // Seed only if no admin templates exist
+    const hasAdminTemplates = existing.some(t => t.isAdminTemplate);
+    if (hasAdminTemplates) return existing;
 
-  const seeded = DEFAULT_DOCUMENT_TEMPLATES.map((t) => ({
-    ...t,
-    id: t.id || uuidv4(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }));
+    console.log('[defaultTemplates] Seeding default document templates...');
+    
+    const seeded = DEFAULT_DOCUMENT_TEMPLATES.map((t) => ({
+      ...t,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }));
 
-  return repo.upsertMany(seeded);
+    const results = await repo.upsertMany(seeded);
+    console.log(`[defaultTemplates] Seeded ${results.length} default templates`);
+    return results;
+  } catch (err) {
+    console.error('[defaultTemplates] Seeding failed:', err.message);
+    return [];
+  }
 }
 
 module.exports = { DEFAULT_DOCUMENT_TEMPLATES, seedDefaultTemplates };

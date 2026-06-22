@@ -322,7 +322,7 @@ export default function AISettings({
 
   const configuredProviders = useMemo(() => {
     const entries = settings?.apiKeys || [];
-    return new Set(entries.filter((x) => x.isActive).map((x) => x.provider));
+    return new Set(entries.map((x) => x.provider));
   }, [settings]);
 
   const [testingProvider, setTestingProvider] = useState<string | null>(null);
@@ -482,7 +482,7 @@ export default function AISettings({
             <Stack gap={1.5} sx={{ mt: 1 }}>
               {(settings?.apiKeys || []).map((key) => (
                 <Alert
-                  key={key.id}
+                  key={key.provider}
                   severity={key.isActive ? "success" : "info"}
                   sx={{ borderRadius: 2, alignItems: "center" }}
                   action={

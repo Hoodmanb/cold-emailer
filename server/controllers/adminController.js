@@ -491,7 +491,7 @@ const {
   deactivateGatewayAccess,
   setBillingType,
 } = require('../repositories/billingUserRepository');
-const fileStore = require('../utils/fileStore');
+const Supabase = require('../services/supabaseService');
 const { successResponse } = require('../utils/response');
 
 // New repository imports
@@ -503,7 +503,6 @@ const {
 } = require('../repositories/pricingRepository');
 const { listUsageLogs, getPlatformStats } = require('../repositories/usageLogRepository');
 const { getOrCreateWallet, readWalletList, adjustWalletBalance } = require('../repositories/walletRepository');
-const { safeRead } = require('../db/jsonDb');
 const {
   getProviders,
   getAllModelsGrouped,
@@ -540,15 +539,15 @@ const runConsistencyCheck = async (req, res) => {
 
 // ─── Gateway ─────────────────────────────────────────────────────────────────
 
-const getGatewayConfig = (_req, res) => {
-  const settings = getGatewaySettings();
+const getGatewayConfig = async (_req, res) => {
+  const settings = await getGatewaySettings();
   return successResponse(res, { message: 'Gateway settings loaded', data: settings });
 };
 
-const updateGatewayConfig = (req, res) => {
+const updateGatewayConfig = async (req, res) => {
   assertAdmin(req);
   const { price, currency, durationMonths, active } = req.body || {};
-  const data = updateGatewaySettings({
+  const data = await updateGatewaySettings({
     ...(price !== undefined ? { price: Number(price) } : {}),
     ...(currency !== undefined ? { currency: String(currency).toUpperCase() } : {}),
     ...(durationMonths !== undefined ? { durationMonths: Number(durationMonths) } : {}),
@@ -559,30 +558,31 @@ const updateGatewayConfig = (req, res) => {
 
 // ─── Credit Packs ──────────────────────────────────────────────────────────
 
-const getCreditPacksAdmin = (_req, res) =>
-  successResponse(res, { message: 'Credit packs loaded', data: listCreditPacks({ includeInactive: true }) });
+const getCreditPacksAdmin = async (_req, res) =>
+  successResponse(res, { message: 'Credit packs loaded', data: await listCreditPacks({ includeInactive: true }) });
 
-const createCreditPackAdmin = (req, res) => {
+const createCreditPackAdmin = async (req, res) => {
   assertAdmin(req);
-  const pack = createCreditPack(req.body || {});
+  const pack = await createCreditPack(req.body || {});
   return successResponse(res, { status: 201, message: 'Credit pack created', data: pack });
 };
 
-const updateCreditPackAdmin = (req, res) => {
+const updateCreditPackAdmin = async (req, res) => {
   assertAdmin(req);
-  const pack = updateCreditPack(req.params.packId, req.body || {});
+  const pack = await updateCreditPack(req.params.packId, req.body || {});
   return successResponse(res, { message: 'Credit pack updated', data: pack });
 };
 
 // ─── Users ─────────────────────────────────────────────────────────────────
 
-const listUsersAdmin = (_req, res) => {
-  const allUsers = safeRead('users.json', []);
+const listUsersAdmin = async (_req, res) => {
+  const { data: allUsers, error } = await Supabase.selectAll('users');
+  if (error) throw error;
   if (!Array.isArray(allUsers)) {
     return successResponse(res, { message: 'Users loaded', data: [] });
   }
 
-  const wallets = readWalletList();
+  const wallets = await readWalletList();
   const walletMap = {};
   for (const w of wallets) {
     if (w?.user_id) walletMap[w.user_id] = w;
@@ -607,9 +607,9 @@ const listUsersAdmin = (_req, res) => {
   return successResponse(res, { message: 'Users loaded', data: users });
 };
 
-const getUserBillingAdmin = (req, res) => {
+const getUserBillingAdmin = async (req, res) => {
   assertAdmin(req);
-  const summary = billingService.getBillingSummary(req.params.userId);
+  const summary = await billingService.getBillingSummary(req.params.userId);
   if (!summary) {
     res.status(404);
     throw new Error('User not found');
@@ -617,79 +617,79 @@ const getUserBillingAdmin = (req, res) => {
   return successResponse(res, { message: 'User billing loaded', data: summary });
 };
 
-const grantCreditsAdmin = (req, res) => {
+const grantCreditsAdmin = async (req, res) => {
   assertAdmin(req);
   const { amount, description } = req.body || {};
   if (!amount || Number(amount) <= 0) {
     res.status(400);
     throw new Error('amount must be a positive number');
   }
-  adjustWalletBalance(
+  await adjustWalletBalance(
     req.params.userId,
     Number(amount),
     'bonus',
     description || `Admin credit grant of ${amount}`,
     `admin_grant_${Date.now()}`
   );
-  grantCredits(req.params.userId, Number(amount));
+  await grantCredits(req.params.userId, Number(amount));
 
   return successResponse(res, {
     message: 'Credits granted',
-    data: billingService.getBillingSummary(req.params.userId),
+    data: await billingService.getBillingSummary(req.params.userId),
   });
 };
 
-const revokeCreditsAdmin = (req, res) => {
+const revokeCreditsAdmin = async (req, res) => {
   assertAdmin(req);
-  revokeAllCredits(req.params.userId);
+  await revokeAllCredits(req.params.userId);
   return successResponse(res, {
     message: 'Credits revoked',
-    data: billingService.getBillingSummary(req.params.userId),
+    data: await billingService.getBillingSummary(req.params.userId),
   });
 };
 
-const extendGatewayAdmin = (req, res) => {
+const extendGatewayAdmin = async (req, res) => {
   assertAdmin(req);
   const months = Number(req.body?.months) || 12;
-  extendGatewayAccess(req.params.userId, months);
+  await extendGatewayAccess(req.params.userId, months);
   return successResponse(res, {
     message: 'Gateway access extended',
-    data: billingService.getBillingSummary(req.params.userId),
+    data: await billingService.getBillingSummary(req.params.userId),
   });
 };
 
-const revokeGatewayAdmin = (req, res) => {
+const revokeGatewayAdmin = async (req, res) => {
   assertAdmin(req);
-  deactivateGatewayAccess(req.params.userId);
+  await deactivateGatewayAccess(req.params.userId);
   return successResponse(res, {
     message: 'Gateway access revoked',
-    data: billingService.getBillingSummary(req.params.userId),
+    data: await billingService.getBillingSummary(req.params.userId),
   });
 };
 
-const setUserBillingTypeAdmin = (req, res) => {
+const setUserBillingTypeAdmin = async (req, res) => {
   assertAdmin(req);
   const { billingType } = req.body || {};
-  setBillingType(req.params.userId, billingType);
+  await setBillingType(req.params.userId, billingType);
   return successResponse(res, {
     message: 'Billing type updated',
-    data: billingService.getBillingSummary(req.params.userId),
+    data: await billingService.getBillingSummary(req.params.userId),
   });
 };
 
 // ─── Transactions ──────────────────────────────────────────────────────────
 
-const listTransactionsAdmin = (req, res) => {
+const listTransactionsAdmin = async (req, res) => {
   assertAdmin(req);
   const { type, status } = req.query || {};
-  const rows = listTransactions({ type, status });
+  const rows = (await listTransactions({ type, status })) || [];
   return successResponse(res, { message: 'Transactions loaded', data: rows });
 };
 
 // ─── Billing Settings ──────────────────────────────────────────────────────
 
-const getBillingSettingsAdmin = (_req, res) => {
-  const settings = getBillingSettings();
+const getBillingSettingsAdmin = async (_req, res) => {
+  const settings = await getBillingSettings();
   return successResponse(res, { message: 'Billing settings loaded', data: settings });
 };
 
@@ -729,7 +729,7 @@ const updateBillingSettingsAdmin = async (req, res) => {
     for (const [provider, models] of Object.entries(updates.providerModelMarkup)) {
       if (!models || typeof models !== 'object') continue;
       for (const model of Object.keys(models)) {
-        if (!isValidModelForProvider(provider, model)) {
+        if (!await isValidModelForProvider(provider, model)) {
           const err = new Error(`Unknown provider/model pair: ${provider}/${model}`);
           err.statusCode = 400;
           throw err;
@@ -738,56 +738,59 @@ const updateBillingSettingsAdmin = async (req, res) => {
     }
   }
 
-  const next = updateBillingSettings(updates);
+  const next = await updateBillingSettings(updates);
   return successResponse(res, { message: 'Billing settings updated', data: next });
 };
 
 // ─── Model Pricing ─────────────────────────────────────────────────────────
 
-const listModelPricingAdmin = (_req, res) => {
-  return successResponse(res, { message: 'Model pricing loaded', data: listModelPricing() });
+const listModelPricingAdmin = async (_req, res) => {
+  return successResponse(res, { message: 'Model pricing loaded', data: await listModelPricing() });
 };
 
-const createModelPricingAdmin = (req, res) => {
+const createModelPricingAdmin = async (req, res) => {
   assertAdmin(req);
-  const record = createModelPricing(req.body || {});
+  const record = await createModelPricing(req.body || {});
   return successResponse(res, { status: 201, message: 'Model pricing created', data: record });
 };
 
-const updateModelPricingAdmin = (req, res) => {
+const updateModelPricingAdmin = async (req, res) => {
   assertAdmin(req);
-  const record = updateModelPricing(req.params.pricingId, req.body || {});
+  const record = await updateModelPricing(req.params.pricingId, req.body || {});
   return successResponse(res, { message: 'Model pricing updated', data: record });
 };
 
 // ─── Usage Logs & Analytics ────────────────────────────────────────────────
 
-const getUsageLogsAdmin = (req, res) => {
+const getUsageLogsAdmin = async (req, res) => {
   assertAdmin(req);
   const { userId, limit } = req.query || {};
-  let logs = listUsageLogs();
-  if (userId) logs = logs.filter((l) => l.user_id === userId);
-  logs = logs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  let logs = await listUsageLogs();
+  const logsArr = Array.isArray(logs) ? logs : [];
+  if (userId) logs = logsArr.filter((l) => l.user_id === userId);
+  else logs = logsArr;
+  logs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   if (limit) logs = logs.slice(0, Number(limit) || 50);
   return successResponse(res, { message: 'Usage logs loaded', data: logs });
 };
 
-const getBillingAnalyticsAdmin = (_req, res) => {
-  const stats = getPlatformStats();
-  const allLogs = listUsageLogs();
+const getBillingAnalyticsAdmin = async (_req, res) => {
+  const stats = (await getPlatformStats()) || { totalProviderCost: 0, totalCreditsConsumed: 0, revenueGenerated: 0, estimatedProfit: 0 };
+  const allLogs = (await listUsageLogs()) || [];
+  const logsArr = Array.isArray(allLogs) ? allLogs : [];
 
   const today = new Date().toISOString().slice(0, 10);
-  const todayLogs = allLogs.filter((l) => l.created_at && l.created_at.slice(0, 10) === today);
+  const todayLogs = logsArr.filter((l) => l.created_at && l.created_at.slice(0, 10) === today);
   const todayProviderCost = todayLogs.reduce((s, l) => s + (Number(l.actual_provider_cost) || 0), 0);
   const todayCredits = todayLogs.reduce((s, l) => s + (Number(l.charged_credits) || 0), 0);
 
   const thisMonth = new Date().toISOString().slice(0, 7);
-  const monthLogs = allLogs.filter((l) => l.created_at && l.created_at.slice(0, 7) === thisMonth);
+  const monthLogs = logsArr.filter((l) => l.created_at && l.created_at.slice(0, 7) === thisMonth);
   const monthProviderCost = monthLogs.reduce((s, l) => s + (Number(l.actual_provider_cost) || 0), 0);
   const monthCredits = monthLogs.reduce((s, l) => s + (Number(l.charged_credits) || 0), 0);
 
   const modelCounts = {};
-  for (const l of allLogs) {
+  for (const l of logsArr) {
     const key = `${l.provider}/${l.model}`;
     modelCounts[key] = (modelCounts[key] || 0) + 1;
   }
@@ -796,8 +799,8 @@ const getBillingAnalyticsAdmin = (_req, res) => {
     .slice(0, 5)
     .map(([model, count]) => ({ model, count }));
 
-  const avgCostPerRequest = allLogs.length
-    ? stats.totalProviderCost / allLogs.length
+  const avgCostPerRequest = logsArr.length
+    ? (stats?.totalProviderCost || 0) / logsArr.length
     : 0;
 
   return successResponse(res, {
@@ -807,7 +810,7 @@ const getBillingAnalyticsAdmin = (_req, res) => {
       today: { providerCost: todayProviderCost, creditsConsumed: todayCredits },
       thisMonth: { providerCost: monthProviderCost, creditsConsumed: monthCredits },
       mostUsedModels,
-      totalRequests: allLogs.length,
+      totalRequests: logsArr.length,
       avgCostPerRequest,
     },
   });
@@ -815,12 +818,12 @@ const getBillingAnalyticsAdmin = (_req, res) => {
 
 // ─── Model Catalog ─────────────────────────────────────────────────────────
 
-const getBillingModelCatalogAdmin = (_req, res) => {
+const getBillingModelCatalogAdmin = async (_req, res) => {
   return successResponse(res, {
     message: 'Model catalog loaded',
     data: {
       providers: getProviders(),
-      groups: getAllModelsGrouped(),
+      groups: (await getAllModelsGrouped()) || [],
     },
   });
 };
@@ -864,7 +867,7 @@ const addModelCatalogAdmin = async (req, res) => {
     });
   }
 
-  if (isValidModelForProvider(provider, model)) {
+  if (await isValidModelForProvider(provider, model)) {
     return res.status(409).json({
       success: false,
       message: `Model "${model}" is already in the catalog`,
@@ -880,7 +883,7 @@ const addModelCatalogAdmin = async (req, res) => {
     });
   }
 
-  const entry = addCustomModel(provider, {
+  const entry = await addCustomModel(provider, {
     id: model,
     name: name || verification.upstreamName || model,
   });
@@ -892,13 +895,13 @@ const addModelCatalogAdmin = async (req, res) => {
       entry,
       catalog: {
         providers: getProviders(),
-        groups: getAllModelsGrouped(),
+        groups: (await getAllModelsGrouped()) || [],
       },
     },
   });
 };
 
-const removeModelCatalogAdmin = (req, res) => {
+const removeModelCatalogAdmin = async (req, res) => {
   assertAdmin(req);
   const provider = String(req.query?.provider || req.body?.provider || '').trim().toLowerCase();
   const model = String(req.query?.model || req.body?.model || '').trim();
@@ -910,7 +913,7 @@ const removeModelCatalogAdmin = (req, res) => {
     });
   }
 
-  removeCustomModel(provider, model);
+  await removeCustomModel(provider, model);
   return successResponse(res, {
     message: 'Model removed from catalog',
     data: {
@@ -918,7 +921,7 @@ const removeModelCatalogAdmin = (req, res) => {
       model,
       catalog: {
         providers: getProviders(),
-        groups: getAllModelsGrouped(),
+        groups: (await getAllModelsGrouped()) || [],
       },
     },
   });
@@ -926,7 +929,7 @@ const removeModelCatalogAdmin = (req, res) => {
 
 // ─── Wallet Adjustment ─────────────────────────────────────────────────────
 
-const adjustWalletAdmin = (req, res) => {
+const adjustWalletAdmin = async (req, res) => {
   assertAdmin(req);
   const { amount, description, type } = req.body || {};
   const numAmount = Number(amount);
@@ -935,7 +938,7 @@ const adjustWalletAdmin = (req, res) => {
     throw new Error('amount must be a valid number (positive to add, negative to deduct)');
   }
   const txType = type || 'admin_adjustment';
-  const result = adjustWalletBalance(
+  const result = await adjustWalletBalance(
     req.params.userId,
     numAmount,
     txType,
@@ -947,18 +950,38 @@ const adjustWalletAdmin = (req, res) => {
     data: {
       wallet: result.wallet,
       transaction: result.transaction,
-      billing: billingService.getBillingSummary(req.params.userId),
+      billing: await billingService.getBillingSummary(req.params.userId),
     },
   });
 };
 
-// ─── Module Exports ────────────────────────────────────────────────────────
+const previewDataRepo = require('../repositories/previewDataRepository');
+
+const getPreviewDataAdmin = async (req, res) => {
+  assertAdmin(req);
+  const data = await previewDataRepo.getPreviewData();
+  return successResponse(res, { message: 'Default preview data loaded', data });
+};
+
+const updatePreviewDataAdmin = async (req, res) => {
+  assertAdmin(req);
+  const nextData = req.body;
+  if (!nextData || typeof nextData !== 'object') {
+    res.status(400);
+    throw new Error('Preview data must be a valid JSON object');
+  }
+  const data = await previewDataRepo.savePreviewData(nextData);
+  return successResponse(res, { message: 'Default preview data updated', data });
+};
 
 module.exports = {
   // Consistency
   runConsistencyCheck,
   // Gateway
   getGatewayConfig,
+  // Preview Data
+  getPreviewDataAdmin,
+  updatePreviewDataAdmin,
   updateGatewayConfig,
   // Credit packs
   getCreditPacksAdmin,

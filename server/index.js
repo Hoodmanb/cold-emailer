@@ -1,3 +1,16 @@
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("=== UNHANDLED REJECTION ===");
+  console.error(reason);
+  console.dir(reason, { depth: null });
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("=== UNCAUGHT EXCEPTION ===");
+  console.error(err);
+  console.dir(err, { depth: null });
+});
+
+
 const path = require('path');
 require('dotenv').config();
 
@@ -10,9 +23,9 @@ const { errorResponse } = require('./utils/response');
 const { errorHandler } = require('./middleware/errorHandler');
 const { runWithRequestContext } = require('./middleware/requestContext');
 const { requireAuth } = require('./middleware/requireAuth');
-const { runOwnershipMigration } = require('./db/migrateOwnership');
-const { normalizeStorage } = require('./db/normalizeStorage');
-const { runJsonStoreMigration } = require('./db/migrateJsonStores');
+// LEGACY SYSTEM - DISABLED. Supabase is now source of truth.
+// const { normalizeStorage } = require('./db/normalizeStorage');
+// const { runJsonStoreMigration } = require('./db/migrateJsonStores');
 const { bootstrapBilling } = require('./db/billingBootstrap');
 const { startCreditExpiryScheduler } = require('./services/billing/creditExpiryJob');
 const templateService = require('./services/templates/templateService');
@@ -20,11 +33,11 @@ const templateService = require('./services/templates/templateService');
 const app = express();
 const PORT = port;
 app.use(runWithRequestContext);
-normalizeStorage();
-runJsonStoreMigration();
-// runOwnershipMigration();
-bootstrapBilling();
-templateService.ensureSeeded();
+// LEGACY JSON startup disabled — all runtime data lives in Supabase.
+// bootstrapBilling().catch(err => { logger.error('Billing bootstrap failed', { error: err }); });
+// templateService.ensureSeeded().catch((err) => {
+//   logger.error('Template seeding failed', { error: err });
+// });
 
 // ─── Global Request Interceptor (Must be FIRST) ──────────────────────────────
 app.use((req, res, next) => {
@@ -170,11 +183,13 @@ app.listen(PORT, () => {
   seedModelCatalog();
   const { audit } = require('./services/dataConsistencyService');
   // Run data consistency audit on startup (non‑blocking)
-  void audit().then((result) => {
-    logger.info('Data consistency check completed', { result });
-  }).catch((err) => {
-    logger.error('Data consistency audit failed', { err });
-  });
+  audit()
+    .then((result) => {
+      logger.info('Data consistency check completed', { result });
+    })
+    .catch((err) => {
+      logger.error('Data consistency audit failed', { err });
+    });
 });
 
 module.exports = app;

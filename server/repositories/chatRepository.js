@@ -1,53 +1,58 @@
-const { v4: uuidv4 } = require('uuid');
-const fileStore = require('../utils/fileStore');
+const Supabase = require('../services/supabaseService');
 
-const FILE = 'chats.json';
+const TABLE_NAME = 'chats';
 
-function readChatStore(userId) {
-  const raw = fileStore.read(FILE, userId);
-  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-    const sessions = Array.isArray(raw.sessions) ? raw.sessions : [];
-    return { sessions: sessions.filter((s) => s && typeof s === 'object') };
-  }
-  return { sessions: [] };
+// Helper to fetch the chat store for a user (object with sessions array)
+async function readChatStore(userId) {
+  const { data, error } = await Supabase.select(TABLE_NAME, { user_id: userId });
+  if (error) throw error;
+  // Expect a single row per user containing a JSON column `sessions`
+  const raw = data && data.length ? data[0] : {};
+  const sessions = Array.isArray(raw.sessions) ? raw.sessions : [];
+  return { sessions: sessions.filter((s) => s && typeof s === 'object') };
 }
 
-function writeChatStore(data, userId) {
-  return fileStore.write(FILE, data, userId);
+// Persist the updated chat store for a user
+async function writeChatStore(store, userId) {
+  // Upsert: if a row exists, update its `sessions`; otherwise insert a new row
+  const { data: existing, error: selErr } = await Supabase.select(TABLE_NAME, { user_id: userId });
+  if (selErr) throw selErr;
+  if (existing && existing.length) {
+    await Supabase.update(TABLE_NAME, { user_id: userId }, { sessions: store.sessions });
+  } else {
+    await Supabase.insert(TABLE_NAME, { user_id: userId, sessions: store.sessions });
+  }
 }
 
 function getOrCreateSession(sessionId, userId) {
   const now = new Date().toISOString();
-  const id = String(sessionId || '').trim() || uuidv4();
-  const store = readChatStore(userId);
-  const existing = store.sessions.find((s) => s.id === id);
-  if (existing) return existing;
-  const ownerId = String(userId || '');
-  const next = {
-    id,
-    userId: ownerId,
-    createdBy: ownerId,
-    createdAt: now,
-    updatedAt: now,
-    messages: [],
-  };
-  store.sessions.push(next);
-  writeChatStore(store, userId);
-  return next;
+  const id = String(sessionId || '').trim() || require('uuid').v4();
+  return readChatStore(userId).then((store) => {
+    const existing = store.sessions.find((s) => s.id === id);
+    if (existing) return existing;
+    const ownerId = String(userId || '');
+    const next = {
+      id,
+      userId: ownerId,
+      createdBy: ownerId,
+      createdAt: now,
+      updatedAt: now,
+      messages: [],
+    };
+    store.sessions.push(next);
+    return writeChatStore(store, userId).then(() => next);
+  });
 }
 
-function getLatestSession(userId) {
-  const store = readChatStore(userId);
+async function getLatestSession(userId) {
+  const store = await readChatStore(userId);
   if (!store.sessions.length) return null;
-  return (
-    [...store.sessions].sort((a, b) =>
-      String(b.updatedAt).localeCompare(String(a.updatedAt)),
-    )[0] || null
-  );
+  const sorted = [...store.sessions].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+  return sorted[0] || null;
 }
 
-function listSessionMessages(sessionId, userId) {
-  const store = readChatStore(userId);
+async function listSessionMessages(sessionId, userId) {
+  const store = await readChatStore(userId);
   const session = store.sessions.find((s) => s.id === sessionId);
   if (!session) return [];
   return Array.isArray(session.messages)
@@ -60,21 +65,20 @@ function listSessionMessages(sessionId, userId) {
     : [];
 }
 
-function appendMessages(sessionId, messages, userId) {
+async function appendMessages(sessionId, messages, userId) {
   if (!Array.isArray(messages) || !messages.length) return [];
-  const store = readChatStore(userId);
+  const store = await readChatStore(userId);
   const session = store.sessions.find((s) => s.id === sessionId);
   if (!session) return [];
   if (!Array.isArray(session.messages)) session.messages = [];
   const inserted = [];
   const now = new Date().toISOString();
   const ownerId = String(userId || '');
-
   for (const row of messages) {
     const content = String(row?.content || '').trim();
     if (!content) continue;
     const next = {
-      id: String(row?.id || '').trim() || uuidv4(),
+      id: String(row?.id || '').trim() || require('uuid').v4(),
       userId: ownerId,
       createdBy: ownerId,
       role: row?.role === 'assistant' ? 'assistant' : 'user',
@@ -85,7 +89,7 @@ function appendMessages(sessionId, messages, userId) {
     inserted.push(next);
   }
   session.updatedAt = now;
-  writeChatStore(store, userId);
+  await writeChatStore(store, userId);
   return inserted;
 }
 

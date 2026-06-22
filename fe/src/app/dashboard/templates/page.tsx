@@ -3,17 +3,21 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Box, Typography, Stack, Paper } from "@mui/material";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mail, Sparkles, Globe } from "lucide-react";
+import { Mail, Sparkles, Globe, Folder } from "lucide-react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import EmailTemplatesSection from "@/components/template/EmailTemplatesSection";
 import AITemplatesSection from "@/components/template/AITemplatesSection";
 import CommunityTemplatesSection from "@/components/template/CommunityTemplatesSection";
+import MyTemplatesSection from "@/components/template/MyTemplatesSection";
 
 const TABS = [
+  { id: "my", label: "My Templates", icon: Folder },
   { id: "email", label: "Email Templates", icon: Mail },
   { id: "ai", label: "AI Templates", icon: Sparkles },
   { id: "community", label: "Community Templates", icon: Globe },
 ] as const;
+
+// Removed duplicate TABS definition; using the extended TABS with My Templates.
 
 type TabId = (typeof TABS)[number]["id"];
 
@@ -48,7 +52,7 @@ export default function TemplatesPage() {
   const searchParams = useSearchParams();
   const paramTab = searchParams.get("tab");
   const resolveTab = (tab: string | null): TabId => {
-    if (tab === "ai" || tab === "community" || tab === "smart") return tab === "smart" ? "ai" : tab;
+    if (tab === "my" || tab === "email" || tab === "ai" || tab === "community" || tab === "smart") return tab === "smart" ? "ai" : tab;
     return "email";
   };
   const [activeTab, setActiveTab] = useState<TabId>(resolveTab(paramTab));
@@ -65,6 +69,7 @@ export default function TemplatesPage() {
   }, [paramTab]);
 
   const content = useMemo(() => {
+    if (activeTab === "my") return <MyTemplatesSection />;
     if (activeTab === "email") return <EmailTemplatesSection />;
     if (activeTab === "ai") return <AITemplatesSection />;
     return <CommunityTemplatesSection />;

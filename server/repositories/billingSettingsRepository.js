@@ -1,6 +1,4 @@
-const { safeRead, atomicWrite, withLock } = require('../db/jsonDb');
-
-const FILE_NAME = 'billing_settings.json';
+const Supabase = require('../services/supabaseService');
 
 const DEFAULT_SETTINGS = {
   id: 'billing-config',
@@ -16,33 +14,51 @@ const DEFAULT_SETTINGS = {
   updated_at: new Date().toISOString(),
 };
 
-function getBillingSettings() {
-  const settings = safeRead(FILE_NAME, DEFAULT_SETTINGS);
-  return { ...DEFAULT_SETTINGS, ...(settings || {}) };
+async function getGlobalRow() {
+  const { data, error } = await Supabase.selectAll('billing_settings');
+  if (error) throw error;
+  const rows = data || [];
+  return rows.find((row) => !row.user_id) || rows[0] || null;
 }
 
-function updateBillingSettings(updates = {}) {
-  return withLock(FILE_NAME, () => {
-    const current = getBillingSettings();
-    const next = {
-      ...current,
-      ...updates,
-      id: 'billing-config',
-      versionId: `v-${Date.now()}`,
+async function getBillingSettings() {
+  const row = await getGlobalRow();
+  const config = row?.config && typeof row.config === 'object' ? row.config : {};
+  return { ...DEFAULT_SETTINGS, ...config };
+}
+
+async function updateBillingSettings(updates = {}) {
+  const current = await getBillingSettings();
+  const next = {
+    ...current,
+    ...updates,
+    id: 'billing-config',
+    versionId: `v-${Date.now()}`,
+    updated_at: new Date().toISOString(),
+  };
+  const row = await getGlobalRow();
+  const payload = {
+    config: next,
+    updated_at: new Date().toISOString(),
+    user_id: null,
+  };
+  if (row?.id) {
+    await Supabase.update('billing_settings', { id: row.id }, payload);
+  } else {
+    await Supabase.insert('billing_settings', payload);
+  }
+  return next;
+}
+
+async function seedBillingSettings() {
+  const row = await getGlobalRow();
+  if (!row) {
+    await Supabase.insert('billing_settings', {
+      user_id: null,
+      config: DEFAULT_SETTINGS,
       updated_at: new Date().toISOString(),
-    };
-    atomicWrite(FILE_NAME, next);
-    return next;
-  });
-}
-
-function seedBillingSettings() {
-  withLock(FILE_NAME, () => {
-    const current = safeRead(FILE_NAME, null);
-    if (!current || typeof current !== 'object' || !current.id) {
-      atomicWrite(FILE_NAME, DEFAULT_SETTINGS);
-    }
-  });
+    });
+  }
 }
 
 module.exports = {

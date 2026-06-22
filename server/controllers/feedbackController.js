@@ -20,7 +20,7 @@ const submitFeedback = async (req, res, next) => {
       });
     }
 
-    const newFeedback = feedbackRepo.createFeedback({
+    const newFeedback = await feedbackRepo.createFeedback({
       userId: req.user.id,
       userEmail: req.user.email,
       userName: req.user.name || '',
@@ -32,7 +32,6 @@ const submitFeedback = async (req, res, next) => {
       status: 'New'
     });
 
-    // Send email asynchronously
     sendFeedbackEmail(newFeedback).catch((err) => {
       console.error('Async feedback email notification failed:', err);
     });
@@ -47,41 +46,36 @@ const submitFeedback = async (req, res, next) => {
   }
 };
 
-const listFeedbackAdmin = (req, res, next) => {
+const listFeedbackAdmin = async (req, res, next) => {
   try {
     const { category, status, user, dateFrom, dateTo, search } = req.query;
-    let list = feedbackRepo.getAllFeedback();
+    let list = await feedbackRepo.getAllFeedback();
 
-    // Search filter
     if (search) {
       const q = String(search).toLowerCase();
-      list = list.filter((f) => 
+      list = list.filter((f) =>
         String(f.subject || '').toLowerCase().includes(q) ||
         String(f.message || '').toLowerCase().includes(q)
       );
     }
 
-    // Category filter
     if (category) {
       list = list.filter((f) => String(f.category).toLowerCase() === String(category).toLowerCase());
     }
 
-    // Status filter
     if (status) {
       list = list.filter((f) => String(f.status).toLowerCase() === String(status).toLowerCase());
     }
 
-    // User filter (checks id or email or name)
     if (user) {
       const u = String(user).toLowerCase();
-      list = list.filter((f) => 
+      list = list.filter((f) =>
         String(f.userId || '').toLowerCase().includes(u) ||
         String(f.userEmail || '').toLowerCase().includes(u) ||
         String(f.userName || '').toLowerCase().includes(u)
       );
     }
 
-    // Date filters (parsing timestamps)
     if (dateFrom) {
       const from = new Date(dateFrom).getTime();
       list = list.filter((f) => new Date(f.timestamp).getTime() >= from);
@@ -91,7 +85,6 @@ const listFeedbackAdmin = (req, res, next) => {
       list = list.filter((f) => new Date(f.timestamp).getTime() <= to);
     }
 
-    // Sort by timestamp descending by default
     list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     return res.status(200).json({
@@ -104,7 +97,7 @@ const listFeedbackAdmin = (req, res, next) => {
   }
 };
 
-const updateFeedbackStatusAdmin = (req, res, next) => {
+const updateFeedbackStatusAdmin = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -117,12 +110,12 @@ const updateFeedbackStatusAdmin = (req, res, next) => {
       });
     }
 
-    const existing = feedbackRepo.getFeedbackById(id);
+    const existing = await feedbackRepo.getFeedbackById(id);
     if (!existing) {
       return res.status(404).json({ success: false, message: 'Feedback not found' });
     }
 
-    const updated = feedbackRepo.updateFeedbackStatus(id, status);
+    const updated = await feedbackRepo.updateFeedbackStatus(id, status);
     return res.status(200).json({
       success: true,
       message: 'Status updated successfully',

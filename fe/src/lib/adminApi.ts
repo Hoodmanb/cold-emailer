@@ -98,6 +98,12 @@ export type UsageLog = {
   actual_provider_cost: number;
   charged_credits: number;
   created_at: string;
+  metadata?: {
+    feature_id?: string;
+    feature_cost?: number;
+    token_cost?: number;
+    total_cost?: number;
+  };
 };
 
 export type AdminUser = {
@@ -188,11 +194,23 @@ export function configToProviderRows(config: BillingConfig): ProviderModelEntry[
 }
 
 export function configToFeatureRows(config: BillingConfig): FeatureEntry[] {
-  return Object.entries(config.featureCosts || {}).map(([name, cost]) => ({
+  // Ensure all core features appear with cost (default 0) and marked as non-custom
+  const coreRows: FeatureEntry[] = CORE_FEATURES.map((name) => ({
     name,
-    cost,
-    custom: !CORE_FEATURES.includes(name),
+    cost: config.featureCosts?.[name] ?? 0,
+    custom: false,
   }));
+
+  // Add any custom feature costs that are not core features
+  const customRows: FeatureEntry[] = Object.entries(config.featureCosts || {})
+    .filter(([name]) => !CORE_FEATURES.includes(name))
+    .map(([name, cost]) => ({
+      name,
+      cost: Number(cost),
+      custom: true,
+    }));
+
+  return [...coreRows, ...customRows];
 }
 
 export function rowsToConfig(

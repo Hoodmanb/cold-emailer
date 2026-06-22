@@ -1,24 +1,15 @@
-const jwt = require("jsonwebtoken");
-
-const JWT_SECRET = process.env.JWT_SECRET || "local-dev-jwt-secret-change-me";
-
 /**
- * Signs a JWT token for a user.
- * @param {object} user - The user object (must contain id and email).
- * @returns {string} - The signed JWT token.
+ * DEPRECATED — token signing is now handled entirely by Supabase Auth.
+ * This file is kept only to avoid breaking any legacy imports.
+ * Do not use signToken() — it will throw at runtime.
  */
-function signToken(user) {
-  return jwt.sign(
-    {
-      sub: user.id,
-      email: user.email,
-    },
-    JWT_SECRET,
-    { expiresIn: "7d" }
+
+function signToken(_user) {
+  throw new Error(
+    '[token.js] signToken() is deprecated. Authentication is now handled by Supabase Auth.'
   );
 }
 
-module.exports = {
-  signToken,
-  JWT_SECRET,
-};
+const JWT_SECRET = null;
+
+module.exports = { signToken, JWT_SECRET };

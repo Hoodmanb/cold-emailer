@@ -2,10 +2,12 @@ const {
   getAiSettings: getAISettings,
   upsertApiKey: upsertProviderApiKey,
   deleteApiKey: deleteProviderApiKey,
-  updateFeatureMap: saveAIFeatureMap,
-  updateFeatureConfig,
+  updateFeatureMap: saveAIFeatureMap, // Placeholder, needs implementation in aiRepository
+  updateFeatureConfig, // Placeholder, needs implementation in aiRepository
 } = require('../repositories/aiRepository');
 const { AI_FEATURES } = require('../services/ai/featureConfigs');
+const { getCurrentUserId } = require('../middleware/requestContext');
+
 const {
   getOrCreateSession,
   getLatestSession,
@@ -16,18 +18,31 @@ const { getProviders, getModelsByProvider, getAllModelsGrouped } = require('../s
 const { safeGenerateForFeature, chatForFeature } = require('../services/aiService');
 const { validateProviderKey, validateFeatureConfig } = require('../services/ai/providerValidation');
 const { resolveProvider } = require('../domains/ai/core/providerRouter');
+const { getUserBilling } = require('../repositories/billingUserRepository');
+const { assertSystemProviderReady, getSystemFeatureConfig } = require('../services/billing/systemProviderKeys');
 
 const reqLog = (req) => console.log('➡️', req.method, req.originalUrl || req.url, req.body);
 
-const getAISettingsHandler = (req, res, next) => {
+/** Retrieve user ID from context or request object fallback */
+const getUid = (req) => {
+  const uid = getCurrentUserId(req) || req.user?.id || req.user?.sub;
+  // Strict check to prevent passing "null" or invalid values to Supabase
+  if (!uid || uid === 'null' || uid === 'undefined') {
+    return null;
+  }
+  return uid;
+};
+
+const getAISettingsHandler = async (req, res, next) => {
   try {
     reqLog(req);
-    const settings = getAISettings();
-    
+    const userId = getUid(req);
+    const settings = (await getAISettings(userId)) || { apiKeys: [], featureMap: {} };
+
     // Enrich feature map with metadata for the UI
     const enrichedFeatureMap = {};
     AI_FEATURES.forEach(f => {
-      const config = settings.featureMap[f.id] || {};
+      const config = settings?.featureMap?.[f.id] || {};
       enrichedFeatureMap[f.id] = {
         ...f,
         ...config,
@@ -36,7 +51,7 @@ const getAISettingsHandler = (req, res, next) => {
 
     const masked = {
       ...settings,
-      apiKeys: settings.apiKeys.map(({ encryptedApiKey, iv, ...safe }) => safe),
+      apiKeys: (settings.apiKeys || []).map(({ apiKey, encryptedApiKey, iv, ...safe }) => safe),
       providers: getProviders(),
       featureMap: enrichedFeatureMap,
     };
@@ -46,7 +61,7 @@ const getAISettingsHandler = (req, res, next) => {
   }
 };
 
-const updateFeatureConfigHandler = (req, res, next) => {
+const updateFeatureConfigHandler = async (req, res, next) => {
   try {
     reqLog(req);
     const { featureId } = req.params;
@@ -58,7 +73,8 @@ const updateFeatureConfigHandler = (req, res, next) => {
         errors: ["Missing route parameter: featureId"],
       });
     }
-    const data = updateFeatureConfig(featureId, updates);
+    const userId = getUid(req);
+    const data = await updateFeatureConfig(userId, featureId, updates);
     return res.status(200).json({ success: true, message: 'Feature configuration updated', data });
   } catch (err) {
     return res.status(400).json({
@@ -69,26 +85,28 @@ const updateFeatureConfigHandler = (req, res, next) => {
   }
 };
 
-const upsertAIKeyHandler = (req, res, next) => {
+const upsertAIKeyHandler = async (req, res, next) => {
   try {
     reqLog(req);
-    const data = upsertProviderApiKey(req.body || {});
+    const userId = getUid(req);
+    const data = await upsertProviderApiKey(userId, req.body || {});
     return res.status(200).json({ success: true, message: 'API key saved', data });
   } catch (err) {
     next(err);
   }
 };
 
-const deleteAIKeyHandler = (req, res, next) => {
+const deleteAIKeyHandler = async (req, res, next) => {
   try {
     reqLog(req);
-    const settings = deleteProviderApiKey(req.params.provider);
+    const userId = getUid(req);
+    const updatedSettings = await deleteProviderApiKey(userId, req.params.provider);
     return res.status(200).json({
       success: true,
       message: 'API key deleted',
       data: {
-        ...settings,
-        apiKeys: settings.apiKeys.map(({ encryptedApiKey, iv, ...safe }) => safe),
+        ...updatedSettings,
+        apiKeys: (updatedSettings?.apiKeys || []).map(({ apiKey, encryptedApiKey, iv, ...safe }) => safe),
       },
     });
   } catch (err) {
@@ -96,20 +114,21 @@ const deleteAIKeyHandler = (req, res, next) => {
   }
 };
 
-const updateFeatureMapHandler = (req, res, next) => {
+const updateFeatureMapHandler = async (req, res, next) => {
   try {
     reqLog(req);
-    const map = saveAIFeatureMap(req.body?.featureMap || req.body || {});
+    const userId = getUid(req);
+    const map = await saveAIFeatureMap(userId, req.body?.featureMap || req.body || {});
     return res.status(200).json({ success: true, message: 'AI feature map updated', data: map });
   } catch (err) {
     next(err);
   }
 };
 
-const getModelsHandler = (req, res, next) => {
+const getModelsHandler = async (req, res, next) => {
   try {
     const provider = String(req.query.provider || '').trim().toLowerCase();
-    const data = provider ? getModelsByProvider(provider) : getAllModelsGrouped();
+    const data = provider ? (await getModelsByProvider(provider) || []) : (await getAllModelsGrouped() || []);
     return res.status(200).json({ success: true, message: 'retrieved successfully', data });
   } catch (err) {
     next(err);
@@ -147,8 +166,8 @@ const chatHandler = async (req, res, next) => {
   try {
     reqLog(req);
     const { sessionId, messages, options } = req.body || {};
-    const session = getOrCreateSession(sessionId);
-    const existingMessages = listSessionMessages(session.id);
+    const session = await getOrCreateSession(sessionId);
+    const existingMessages = await listSessionMessages(session.id);
     const incoming = Array.isArray(messages) ? messages : [];
     const deltaStart = Math.max(existingMessages.length, 0);
     const newIncoming = incoming.slice(deltaStart).map((m) => ({
@@ -159,10 +178,10 @@ const chatHandler = async (req, res, next) => {
     }));
 
     if (newIncoming.length) {
-      appendMessages(session.id, newIncoming);
+      await appendMessages(session.id, newIncoming);
     }
 
-    const finalHistory = listSessionMessages(session.id);
+    const finalHistory = await listSessionMessages(session.id);
     const result = await chatForFeature({ featureId: 'chatbot_assistant', messages: finalHistory, options });
     if (!result?.success) {
       return res.status(400).json({
@@ -173,7 +192,7 @@ const chatHandler = async (req, res, next) => {
     }
 
     const assistantContent = String(result?.data || '').trim();
-    const inserted = appendMessages(session.id, [
+    const inserted = await appendMessages(session.id, [
       { role: 'assistant', content: assistantContent, createdAt: new Date().toISOString() },
     ]);
     const assistantMessage = inserted[0] || null;
@@ -195,10 +214,10 @@ const chatHandler = async (req, res, next) => {
   }
 };
 
-const getChatSessionHandler = (req, res, next) => {
+const getChatSessionHandler = async (req, res, next) => {
   try {
-    const session = getOrCreateSession(req.params.sessionId);
-    const messages = listSessionMessages(session.id);
+    const session = await getOrCreateSession(req.params.sessionId);
+    const messages = await listSessionMessages(session.id);
     return res.status(200).json({
       success: true,
       message: 'Chat session retrieved successfully',
@@ -212,11 +231,11 @@ const getChatSessionHandler = (req, res, next) => {
   }
 };
 
-const getLatestChatSessionHandler = (req, res, next) => {
+const getLatestChatSessionHandler = async (req, res, next) => {
   try {
-    const latest = getLatestSession();
+    const latest = await getLatestSession();
     if (!latest) {
-      const session = getOrCreateSession();
+      const session = await getOrCreateSession();
       return res.status(200).json({
         success: true,
         message: 'Chat session retrieved successfully',
@@ -226,7 +245,7 @@ const getLatestChatSessionHandler = (req, res, next) => {
         },
       });
     }
-    const messages = listSessionMessages(latest.id);
+    const messages = await listSessionMessages(latest.id);
     return res.status(200).json({
       success: true,
       message: 'Chat session retrieved successfully',
@@ -243,18 +262,24 @@ const getLatestChatSessionHandler = (req, res, next) => {
 const testConnectionHandler = async (req, res, next) => {
   try {
     const { provider } = req.body || {};
-    const keyCheck = validateProviderKey(provider);
-    if (!keyCheck.valid) {
+    const userId = getUid(req);
+    const settings = await getAISettings(userId);
+    const normalizedProvider = String(provider || '').trim().toLowerCase();
+    const keyData = (settings?.apiKeys || []).find((k) => (
+      String(k.provider || '').trim().toLowerCase() === normalizedProvider &&
+      k.isActive !== false
+    ));
+
+    if (!keyData || !keyData.apiKey) {
       return res.status(400).json({
         success: false,
-        message: keyCheck.message,
-        code: keyCheck.code,
+        message: `No active API key found for ${normalizedProvider || 'this provider'}. Please save or activate a key first.`,
       });
     }
 
-    const exec = resolveProvider(keyCheck.provider);
+    const exec = resolveProvider(normalizedProvider);
     await exec({
-      model: keyCheck.provider === 'openrouter' ? 'openai/gpt-4o-mini' : 'gpt-4o-mini',
+      model: normalizedProvider === 'openrouter' ? 'openai/gpt-4o-mini' : 'gpt-4o-mini',
       messages: [{ role: 'user', content: 'Reply with exactly: OK' }],
       max_tokens: 10,
       temperature: 0,
@@ -262,7 +287,7 @@ const testConnectionHandler = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      message: `Connection to ${keyCheck.provider} verified successfully`,
+      message: `Connection to ${normalizedProvider} verified successfully`,
     });
   } catch (err) {
     return res.status(502).json({
@@ -273,13 +298,41 @@ const testConnectionHandler = async (req, res, next) => {
   }
 };
 
-const validateFeatureHandler = (req, res) => {
-  const { featureId } = req.params;
-  const result = validateFeatureConfig(featureId);
-  if (!result.valid) {
-    return res.status(400).json({ success: false, ...result });
+const validateFeatureHandler = async (req, res, next) => {
+  try {
+    const { featureId } = req.params;
+    const userId = getUid(req);
+    const billing = userId ? await getUserBilling(userId) : null;
+    if (billing?.billingType === 'token') {
+      const system = assertSystemProviderReady();
+      const config = getSystemFeatureConfig(featureId);
+      return res.status(200).json({
+        success: true,
+        valid: true,
+        featureId,
+        featureName: AI_FEATURES.find((f) => f.id === featureId)?.name || featureId,
+        provider: system.provider,
+        model: config.model,
+        config,
+      });
+    }
+
+    const result = await validateFeatureConfig(featureId);
+    if (!result.valid) {
+      return res.status(400).json({
+        success: false,
+        valid: false,
+        ...result,
+        errorCode: result.code || 'AI_NOT_CONFIGURED',
+        details: {
+          userAction: 'Configure API keys and models in Settings → AI Workflows',
+        },
+      });
+    }
+    return res.status(200).json({ success: true, valid: true, ...result });
+  } catch (err) {
+    next(err);
   }
-  return res.status(200).json({ success: true, ...result });
 };
 
 module.exports = {

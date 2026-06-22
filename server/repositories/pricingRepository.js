@@ -1,5 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
-const { safeRead, atomicWrite, withLock } = require('../db/jsonDb');
+const Supabase = require('../services/supabaseService');
 
 const FILE_NAME = 'ai_model_pricing.json';
 
@@ -87,20 +87,21 @@ const BASELINE_PRICING = [
   },
 ];
 
-function listModelPricing() {
-  const pricings = safeRead(FILE_NAME, []);
-  return Array.isArray(pricings) ? pricings : [];
+async function listModelPricing() {
+  const { data, error } = await Supabase.select('model_pricing');
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
 }
 
-function getModelPricing(provider, model) {
-  const list = listModelPricing();
+async function getModelPricing(provider, model) {
+  const list = await listModelPricing();
   const prov = String(provider || '').trim().toLowerCase();
   const mdl = String(model || '').trim().toLowerCase();
 
-  // 1. Try exact match
+  // 1. Try exact match in DB list
   let matched = list.find((p) => p.active && p.provider.toLowerCase() === prov && p.model.toLowerCase() === mdl);
 
-  // 2. Try wildcard model for this provider
+  // 2. Try wildcard model for this provider in DB list
   if (!matched) {
     matched = list.find((p) => p.active && p.provider.toLowerCase() === prov && p.model === '*');
   }
@@ -130,7 +131,7 @@ function getModelPricing(provider, model) {
   return matched;
 }
 
-function createModelPricing(data) {
+async function createModelPricing(data) {
   const record = {
     id: uuidv4(),
     provider: String(data.provider || 'unknown').trim().toLowerCase(),
@@ -143,44 +144,31 @@ function createModelPricing(data) {
     updated_at: new Date().toISOString(),
   };
 
-  return withLock(FILE_NAME, () => {
-    const list = listModelPricing();
-    list.push(record);
-    atomicWrite(FILE_NAME, list);
-    return record;
-  });
+  const { data: inserted, error } = await Supabase.insert('model_pricing', record);
+  if (error) throw error;
+  return inserted ? inserted[0] : null;
 }
 
-function updateModelPricing(id, updates = {}) {
-  return withLock(FILE_NAME, () => {
-    const list = listModelPricing();
-    const idx = list.findIndex((p) => String(p.id) === String(id));
-    if (idx < 0) throw new Error('Model pricing not found');
+async function updateModelPricing(id, updates = {}) {
+  const { data, error } = await Supabase.update('model_pricing', { id }, updates);
+  if (error) throw error;
+  // Supabase returns updated rows; return first if exists
+  return data && data.length ? data[0] : null;
+}
 
-    list[idx] = {
-      ...list[idx],
-      ...updates,
-      id: list[idx].id, // keep original ID
+async function seedModelPricing() {
+  const { data, error } = await Supabase.select('model_pricing');
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    const seeded = BASELINE_PRICING.map((p) => ({
+      id: uuidv4(),
+      ...p,
+      created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    };
-    atomicWrite(FILE_NAME, list);
-    return list[idx];
-  });
-}
-
-function seedModelPricing() {
-  withLock(FILE_NAME, () => {
-    const list = safeRead(FILE_NAME, []);
-    if (!list.length) {
-      const seeded = BASELINE_PRICING.map((p) => ({
-        id: uuidv4(),
-        ...p,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }));
-      atomicWrite(FILE_NAME, seeded);
-    }
-  });
+    }));
+    const { error: insErr } = await Supabase.insert('model_pricing', seeded);
+    if (insErr) throw insErr;
+  }
 }
 
 module.exports = {

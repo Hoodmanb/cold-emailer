@@ -7,10 +7,10 @@ const listAttachments = async (req, res) => {
   const userId = req.user?.id;
   const { parentId, parentType } = req.query;
   if (!parentId || !parentType) {
-    const attachments = attachmentsRepo.listAllForUser(userId);
+    const attachments = await attachmentsRepo.listAllForUser(userId);
     return res.status(200).json({ message: 'retrieved successfully', data: attachments });
   }
-  const attachments = attachmentsRepo.listAttachments(parentId, parentType, userId);
+  const attachments = await attachmentsRepo.listAttachments(parentId, parentType, userId);
   return res.status(200).json({ message: 'retrieved successfully', data: attachments });
 };
 
@@ -27,7 +27,7 @@ const createAttachment = async (req, res) => {
 
   let meta = { title, type, format, fileUrl, source };
   if (sourceDocumentId) {
-    const docMeta = documentRepo.getDocument(sourceDocumentId);
+    const docMeta = await documentRepo.getDocument(sourceDocumentId, userId);
     if (docMeta) {
       meta = {
         title: customName || docMeta.title || docMeta.type,
@@ -51,7 +51,7 @@ const createAttachment = async (req, res) => {
     }
   }
 
-  const attachment = attachmentsRepo.addAttachment({
+  const attachment = await attachmentsRepo.addAttachment({
     userId,
     sourceDocumentId,
     parentId,
@@ -63,9 +63,9 @@ const createAttachment = async (req, res) => {
   return res.status(201).json({ message: 'attachment created successfully', data: attachment });
 };
 
-const deleteAttachment = (req, res) => {
+const deleteAttachment = async (req, res) => {
   const userId = req.user?.id;
-  const removed = attachmentsRepo.deleteAttachment(req.params.id, userId);
+  const removed = await attachmentsRepo.deleteAttachment(req.params.id, userId);
   if (!removed) return res.status(404).json({ message: 'Attachment not found' });
   return res.status(200).json({ message: 'deleted successfully' });
 };
@@ -82,7 +82,7 @@ const listDocumentLibrary = async (req, res) => {
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ message: 'Unauthenticated' });
 
-  const aiDocs = documentRepo.listDocuments().map((doc) => ({
+  const aiDocs = (await documentRepo.listDocuments(undefined, userId)).map((doc) => ({
     id: doc.id,
     title: doc.title || doc.type || 'Untitled',
     type: doc.type || 'document',

@@ -89,6 +89,17 @@ class InsufficientCreditsError extends AppError {
   }
 }
 
+class AIConfigurationError extends AppError {
+  constructor(message, details = {}) {
+    super(message, 400, details.code || 'AI_NOT_CONFIGURED');
+    this.type = 'ai_configuration_error';
+    this.details = {
+      userAction: 'Configure API keys and models in Settings → AI Workflows',
+      ...details,
+    };
+  }
+}
+
 module.exports = {
   AppError,
   AuthError,
@@ -100,4 +111,5 @@ module.exports = {
   WorkflowError,
   BillingAccessError,
   InsufficientCreditsError,
+  AIConfigurationError,
 };

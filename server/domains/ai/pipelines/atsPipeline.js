@@ -8,7 +8,7 @@ const promptRegistry = require('../core/promptRegistry');
 const aiStandards = require('../../../services/ai/aiGenerationStandards');
 
 const executeAtsPipeline = async (job, profile, config) => {
-  const promptTemplate = promptRegistry.resolvePrompt('ats_analysis');
+  const promptTemplate = await promptRegistry.resolvePrompt('ats_analysis');
   const jobBlob = job.rawDescription || JSON.stringify(job.parsedData || {});
   const profileBlob = JSON.stringify(profile, null, 2);
 

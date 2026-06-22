@@ -7,7 +7,6 @@ const documentExporter = require('../utils/documentExporter');
 const documentEngine = require('../services/document/documentEngine');
 const { castToModel } = require('../services/document/models');
 const { validate } = require('../services/document/validator');
-const { listResumeTemplates } = require('../services/document/resumeTemplateRegistry');
 const templateService = require('../services/templates/templateService');
 const { resolvePipelineTemplate } = require('../domains/ai/core/templateContext');
 const {
@@ -17,40 +16,40 @@ const {
 } = require('../services/document/documentPersistenceService');
 const { requireUserId } = require('../utils/requireUserId');
 
-const listDocuments = (req, res) => {
+const listDocuments = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
   const { jobId } = req.query;
-  const docs = documentRepo.listDocuments(jobId, userId);
+  const docs = await documentRepo.listDocuments(jobId, userId);
   return res.status(200).json({ message: 'retrieved successfully', data: docs });
 };
 
-const getDocument = (req, res) => {
+const getDocument = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
-  const doc = documentRepo.getDocument(req.params.id, userId);
+  const doc = await documentRepo.getDocument(req.params.id, userId);
   if (!doc) return res.status(404).json({ message: 'Document not found' });
   return res.status(200).json({ message: 'retrieved successfully', data: doc });
 };
 
-const saveDocument = (req, res) => {
-  const doc = documentRegistry.createDocument({ ...req.body, source: 'manual' });
+const saveDocument = async (req, res) => {
+  const doc = await documentRegistry.createDocument({ ...req.body, source: 'manual' });
   return res.status(201).json({ message: 'created successfully', data: doc });
 };
 
-const updateDocument = (req, res) => {
+const updateDocument = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
   const { id } = req.params;
-  const existing = documentRepo.getDocument(id, userId);
+  const existing = await documentRepo.getDocument(id, userId);
   if (!existing) return res.status(404).json({ message: 'Document not found' });
 
   const prevContent = getEditableContent(existing);
-  const updated = documentRepo.updateDocument(id, req.body, userId);
+  const updated = await documentRepo.updateDocument(id, req.body, userId);
   const nextContent = getEditableContent(updated);
 
   if (nextContent !== prevContent) {
-    log(ACTION_TYPES.DRAFT_EDITED, {
+    await log(ACTION_TYPES.DRAFT_EDITED, {
       module: existing.type,
       entityId: id,
       entityType: 'document',
@@ -61,7 +60,7 @@ const updateDocument = (req, res) => {
   return res.status(200).json({ message: 'updated successfully', data: updated });
 };
 
-const renameDocument = (req, res) => {
+const renameDocument = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
   const { id } = req.params;
@@ -69,18 +68,18 @@ const renameDocument = (req, res) => {
   if (!title || !String(title).trim()) {
     return res.status(400).json({ success: false, message: 'title is required' });
   }
-  const existing = documentRepo.getDocument(id, userId);
+  const existing = await documentRepo.getDocument(id, userId);
   if (!existing) return res.status(404).json({ message: 'Document not found' });
-  const updated = documentRepo.updateDocument(id, { title: String(title).trim() }, userId);
+  const updated = await documentRepo.updateDocument(id, { title: String(title).trim() }, userId);
   return res.status(200).json({ message: 'renamed successfully', data: updated });
 };
 
-const duplicateDocumentHandler = (req, res) => {
+const duplicateDocumentHandler = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
-  const copy = documentRepo.duplicateDocument(req.params.id, userId);
+  const copy = await documentRepo.duplicateDocument(req.params.id, userId);
   if (!copy) return res.status(404).json({ message: 'Document not found' });
-  log(ACTION_TYPES.DOCUMENT_GENERATED, {
+  await log(ACTION_TYPES.DOCUMENT_GENERATED, {
     module: 'documents',
     entityId: copy.id,
     entityType: 'document',
@@ -89,16 +88,16 @@ const duplicateDocumentHandler = (req, res) => {
   return res.status(201).json({ message: 'duplicated successfully', data: copy });
 };
 
-const approveDocument = (req, res) => {
+const approveDocument = async (req, res) => {
   const userId = requireUserId(req, res);
   if (!userId) return;
   const { id } = req.params;
-  const doc = documentRepo.getDocument(id, userId);
+  const doc = await documentRepo.getDocument(id, userId);
   if (!doc) return res.status(404).json({ message: 'Document not found' });
 
-  const approved = documentRepo.approveDocument(id, userId);
+  const approved = await documentRepo.approveDocument(id, userId);
 
-  log(ACTION_TYPES.DRAFT_APPROVED, {
+  await log(ACTION_TYPES.DRAFT_APPROVED, {
     module: doc.type,
     entityId: id,
     entityType: 'document',
@@ -108,9 +107,11 @@ const approveDocument = (req, res) => {
   return res.status(200).json({ message: 'Document approved', data: approved });
 };
 
-const listResumeTemplatesHandler = (req, res) => {
+const listResumeTemplatesHandler = async (req, res) => {
   try {
-    return res.status(200).json({ success: true, data: listResumeTemplates() });
+    const { listResumeTemplatesAsync } = require('../services/document/resumeTemplateRegistry');
+    const data = await listResumeTemplatesAsync();
+    return res.status(200).json({ success: true, data });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }
@@ -152,11 +153,13 @@ const renderResume = async (req, res, next) => {
   }
 };
 
-const deleteDocument = (req, res) => {
-  const count = documentRepo.deleteDocument(req.params.id);
+const deleteDocument = async (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  const count = await documentRepo.deleteDocument(req.params.id, userId);
   if (count === 0) return res.status(404).json({ message: 'Document not found' });
 
-  log(ACTION_TYPES.DOCUMENT_DELETED, { entityId: req.params.id, entityType: 'document' });
+  await log(ACTION_TYPES.DOCUMENT_DELETED, { entityId: req.params.id, entityType: 'document' });
   return res.status(200).json({ message: 'deleted successfully' });
 };
 
@@ -192,19 +195,20 @@ const generateAdvanced = async (req, res, next) => {
 
     const featureId = resolveFeatureIdForDocType(docType);
     const documentType = resolveDocumentType(docType);
+
     const safeFormat = normalizeFormat(format, 'pdf');
     let content = '';
     const template = templateId
-      ? templateService.resolveTemplateForGeneration(templateId, documentType)
+      ? await templateService.resolveTemplateForGeneration(templateId, documentType)
       : null;
     const aiOptions = { tailoringLevel, templateId: template?.id || templateId || undefined };
 
     if (featureId === 'professional_cv_generation') {
       content = await aiService.generateProfessionalCv(userData || {}, aiOptions);
     } else if (featureId === 'resume_generation') {
-      const { promptSuffix: templateSuffix, postProcess } = resolvePipelineTemplate(aiOptions, 'resume');
+      const { promptSuffix: templateSuffix, postProcess } = await resolvePipelineTemplate(aiOptions, 'resume');
       const promptRegistry = require('../domains/ai/core/promptRegistry');
-      const promptTemplate = promptRegistry.resolvePrompt('resume_generation');
+      const promptTemplate = await promptRegistry.resolvePrompt('resume_generation');
       const rendered = promptRegistry.render(promptTemplate, {
         job_description: additionalInstructions || 'General resume generation from profile.',
         candidate_profile: JSON.stringify(userData || {}, null, 2),
@@ -217,7 +221,7 @@ const generateAdvanced = async (req, res, next) => {
       const raw = typeof result?.data === 'string' ? result.data : String(result?.data || '');
       content = postProcess(raw);
     } else if (featureId === 'cover_letter_generation') {
-      const { promptSuffix: templateSuffix, postProcess } = resolvePipelineTemplate(aiOptions, 'cover-letter');
+      const { promptSuffix: templateSuffix, postProcess } = await resolvePipelineTemplate(aiOptions, 'cover-letter');
       const prompt = [
         `Generate a cover letter document.`,
         targetAudience ? `Target audience: ${targetAudience}` : '',
@@ -251,8 +255,8 @@ const generateAdvanced = async (req, res, next) => {
       content = typeof result?.data === 'string' ? result.data : String(result?.data || '');
     }
 
-    const cfg = aiService.resolveFeatureConfig(featureId);
-    const doc = documentRegistry.createDocument({
+    const cfg = await aiService.resolveFeatureConfig(featureId);
+    const doc = await documentRegistry.createDocument({
       jobId: jobId || null,
       generatedFromJobId: jobId || null,
       type: documentType,
@@ -271,7 +275,7 @@ const generateAdvanced = async (req, res, next) => {
       metadata: { featureId, targetAudience, templateStyle, templateId: template?.id, templateName: template?.name },
     });
 
-    log(ACTION_TYPES.DOCUMENT_GENERATED, {
+    await log(ACTION_TYPES.DOCUMENT_GENERATED, {
       module: 'documents',
       entityId: doc.id,
       entityType: 'document',
@@ -298,15 +302,15 @@ const generateProfessionalCv = async (req, res, next) => {
 
     const safeFormat = normalizeFormat(format, 'pdf');
     const template = templateId
-      ? templateService.resolveTemplateForGeneration(templateId, 'professional-cv')
+      ? await templateService.resolveTemplateForGeneration(templateId, 'professional-cv')
       : null;
     const aiOptions = { tailoringLevel, templateId: template?.id || templateId || undefined };
     const content = jobContext
       ? await aiService.generateProfessionalCv(jobContext, profile || {}, aiOptions)
       : await aiService.generateProfessionalCv(profile || {}, aiOptions);
 
-    const cfg = aiService.resolveFeatureConfig('professional_cv_generation');
-    const doc = documentRegistry.createDocument({
+    const cfg = await aiService.resolveFeatureConfig('professional_cv_generation');
+    const doc = await documentRegistry.createDocument({
       jobId: jobId || null,
       generatedFromJobId: jobId || null,
       type: 'professional-cv',
@@ -325,7 +329,7 @@ const generateProfessionalCv = async (req, res, next) => {
       metadata: { featureId: 'professional_cv_generation', templateId: template?.id, templateName: template?.name },
     });
 
-    log(ACTION_TYPES.DOCUMENT_GENERATED, {
+    await log(ACTION_TYPES.DOCUMENT_GENERATED, {
       module: 'documents',
       entityId: doc.id,
       entityType: 'document',
@@ -374,15 +378,17 @@ async function sendExportedDocument(res, doc, format, { inline = false } = {}) {
 
 const downloadDocument = async (req, res, next) => {
   try {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
     const { id } = req.params;
-    const doc = documentRepo.getDocument(id);
+    const doc = await documentRepo.getDocument(id, userId);
     if (!doc) return res.status(404).json({ message: 'Document not found' });
 
     const format = String(req.query.format || doc.exportFormat || doc.format || 'pdf').toLowerCase();
     const inline = req.query.inline === 'true';
 
     const history = recordExport(doc, format);
-    documentRepo.updateDocument(id, { exportHistory: history });
+    await documentRepo.updateDocument(id, { exportHistory: history }, userId);
 
     return sendExportedDocument(res, doc, format, { inline });
   } catch (err) {
@@ -392,14 +398,16 @@ const downloadDocument = async (req, res, next) => {
 
 const exportDocument = async (req, res, next) => {
   try {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
     const { id } = req.params;
     const { format } = req.body || {};
-    const doc = documentRepo.getDocument(id);
+    const doc = await documentRepo.getDocument(id, userId);
     if (!doc) return res.status(404).json({ message: 'Document not found' });
 
     const safeFormat = normalizeFormat(format, doc.exportFormat || doc.format || 'pdf');
     const history = recordExport(doc, safeFormat);
-    documentRepo.updateDocument(id, { exportHistory: history, exportFormat: safeFormat, format: safeFormat });
+    await documentRepo.updateDocument(id, { exportHistory: history, exportFormat: safeFormat, format: safeFormat }, userId);
 
     return sendExportedDocument(res, doc, safeFormat, { inline: false });
   } catch (err) {
@@ -409,9 +417,11 @@ const exportDocument = async (req, res, next) => {
 
 const previewDocument = async (req, res, next) => {
   try {
+    const userId = requireUserId(req, res);
+    if (!userId) return;
     const { id } = req.params;
     const { format } = req.query;
-    const doc = documentRepo.getDocument(id);
+    const doc = await documentRepo.getDocument(id, userId);
     if (!doc) return res.status(404).json({ message: 'Document not found' });
 
     const previewFormat = String(format || doc.exportFormat || doc.format || 'pdf').toLowerCase();
