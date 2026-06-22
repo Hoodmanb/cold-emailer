@@ -63,7 +63,11 @@ export async function validateAiFeaturesForTypes(types: DocumentType[]): Promise
         headers: { "X-Bypass-Global-Toast": "true" },
       });
     } catch (err: any) {
-      return parseApiError(err);
+      if (isAiConfigurationError(err)) {
+        return parseApiError(err);
+      }
+      // Do not block generation for validation endpoint/network failures.
+      return null;
     }
   }
   return null;

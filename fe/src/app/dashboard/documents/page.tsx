@@ -164,11 +164,13 @@ const DocumentsPage = () => {
   const normalizedUploads = useMemo(() => {
     return uploads.map((u: any) => ({
       id: u.id,
-      title: u.title,
+      title: u.title || u.filename || u.publicId || "Uploaded document",
       type: u.type || 'resume',
       format: u.format || (u.fileType?.split('/')?.[1] ?? 'txt'),
-      source: u.source ?? 'user_upload',
-      fileUrl: u.fileUrl,
+      source: 'user_upload',
+      metadata: { source: 'user_upload' },
+      fileUrl: u.fileUrl || `/api/documents/uploads/${u.id}/download`,
+      previewUrl: u.previewUrl || `/api/documents/uploads/${u.id}/preview`,
     }));
   }, [uploads]);
 
@@ -208,19 +210,20 @@ const DocumentsPage = () => {
   }, [uploadMutation.isPending, resetUploadState]);
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      try {
-        await axiosInstance.delete(`/api/documents/uploads/${id}`);
-      } catch (e) {
-        await axiosInstance.delete(`/api/documents/${id}`);
+    mutationFn: async (doc: any) => {
+      const isUpload = doc?.source === 'user_upload' || doc?.metadata?.source === 'user_upload' || Boolean(doc?.fileUrl);
+      if (isUpload) {
+        await axiosInstance.delete(`/api/documents/uploads/${doc.id}`);
+        return;
       }
+      await axiosInstance.delete(`/api/documents/${doc.id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       queryClient.invalidateQueries({ queryKey: ["uploads"] });
       showSnackbar("Document deleted", "success");
     },
-    onError: () => showSnackbar("Failed to delete document", "error"),
+    onError: (err: any) => showSnackbar(err?.response?.data?.message || err?.message || "Failed to delete document", "error"),
   });
 
   const updateMutation = useMutation({
@@ -1001,7 +1004,7 @@ const DocumentsPage = () => {
         <MenuItem onClick={() => handleExportAs(menuAnchor!.doc, "pdf")}><FileOutput size={14} style={{ marginRight: 8 }} /> Export as PDF</MenuItem>
         <MenuItem onClick={() => handleExportAs(menuAnchor!.doc, "docx")}><FileOutput size={14} style={{ marginRight: 8 }} /> Export as DOCX</MenuItem>
         <MenuItem onClick={() => handleExportAs(menuAnchor!.doc, "txt")}><FileOutput size={14} style={{ marginRight: 8 }} /> Export as TXT</MenuItem>
-        <MenuItem onClick={() => { if (window.confirm("Delete this document?")) deleteMutation.mutate(menuAnchor!.doc.id); setMenuAnchor(null); }} sx={{ color: "error.main" }}>
+        <MenuItem onClick={() => { if (window.confirm("Delete this document?")) deleteMutation.mutate(menuAnchor!.doc); setMenuAnchor(null); }} sx={{ color: "error.main" }}>
           <Trash2 size={14} style={{ marginRight: 8 }} /> Delete
         </MenuItem>
       </Menu>

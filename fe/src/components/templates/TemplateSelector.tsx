@@ -150,6 +150,7 @@ function TemplateCard({
   onSelect: () => void;
   onToggleStar: (e: React.MouseEvent) => void;
 }) {
+  const structure = template.structure ?? [];
   return (
     <Card
       variant="outlined"
@@ -189,13 +190,13 @@ function TemplateCard({
           <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
             {template.preview || template.aiRules?.slice(0, 80) || "Structured document template"}
           </Typography>
-          {template.structure?.length > 0 && (
+          {structure.length > 0 && (
             <Stack direction="row" gap={0.5} flexWrap="wrap">
-              {template.structure.slice(0, 3).map((section) => (
+              {structure.slice(0, 3).map((section) => (
                 <Chip key={section} label={section} size="small" sx={{ fontSize: "0.6rem", height: 18 }} />
               ))}
-              {template.structure.length > 3 && (
-                <Chip label={`+${template.structure.length - 3}`} size="small" sx={{ fontSize: "0.6rem", height: 18 }} />
+              {structure.length > 3 && (
+                <Chip label={`+${structure.length - 3}`} size="small" sx={{ fontSize: "0.6rem", height: 18 }} />
               )}
             </Stack>
           )}

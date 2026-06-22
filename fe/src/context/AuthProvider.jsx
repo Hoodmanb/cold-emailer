@@ -376,6 +376,14 @@ const PUBLIC_PATHS = ["/login", "/signup", "/pricing", "/", "/reset-password"];
 const AUTH_ENTRY_PATHS = ["/login", "/signup"];
 const ME_TIMEOUT_MS = 15000;
 
+function withTimeout(promise, ms, label = "Operation") {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`${label} timed out`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
+}
+
 function isPublicPath(pathname) {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
@@ -455,12 +463,15 @@ export default function AuthProvider({ children }) {
           }
 
           try {
-            const res = await supabase
-              .from("profiles")
-              .select("*")
-              .eq("id", session.user.id)
-              .single()
-              .timeout(ME_TIMEOUT_MS);
+            const res = await withTimeout(
+              supabase
+                .from("profiles")
+                .select("*")
+                .eq("id", session.user.id)
+                .single(),
+              ME_TIMEOUT_MS,
+              "Profile fetch"
+            );
 
             if (!cancelled && res.data) {
               console.log("[Auth] Profile loaded in background", { version: res.data?.userVersion });
@@ -571,12 +582,15 @@ export default function AuthProvider({ children }) {
 
           if (event === "TOKEN_REFRESHED" || event === "SIGNED_IN") {
             try {
-              const { data: profileData } = await supabase
-                .from("profiles")
-                .select("*")
-                .eq("id", session.user.id)
-                .single()
-                .timeout(ME_TIMEOUT_MS);
+              const { data: profileData } = await withTimeout(
+                supabase
+                  .from("profiles")
+                  .select("*")
+                  .eq("id", session.user.id)
+                  .single(),
+                ME_TIMEOUT_MS,
+                "Profile refresh"
+              );
 
               if (profileData) {
                 setAuth({ ...userFromSession, ...profileData }, session.access_token);

@@ -156,6 +156,14 @@ function resolveFeatureIdForDocType(docType: string): string {
   return "advanced_doc_generation";
 }
 
+const FEATURE_LABELS: Record<string, string> = {
+  resume_generation: "Resume Writing",
+  professional_cv_generation: "Professional CV",
+  cover_letter_generation: "Cover Letter Writing",
+  email_generation: "Cold Outreach Email",
+  advanced_doc_generation: "Advanced Document Generation",
+};
+
 async function validateAiFeatureReady(featureId: string): Promise<string | null> {
   try {
     await axiosInstance.get(`/api/settings/ai/validate-feature/${encodeURIComponent(featureId)}`, {
@@ -164,11 +172,12 @@ async function validateAiFeatureReady(featureId: string): Promise<string | null>
     });
     return null;
   } catch (err: any) {
-    return (
-      err.response?.data?.message ||
-      err.response?.data?.error ||
-      "AI is not configured for this document type. Set up your provider and model in Settings → AI Workflows."
-    );
+    if (!isAiConfigurationError(err)) {
+      // Validation endpoint/network failures should not block generation.
+      return null;
+    }
+    const featureName = err.response?.data?.featureName || err.response?.data?.details?.featureName || FEATURE_LABELS[featureId] || featureId;
+    return parseApiError(err) || `${featureName} needs to be configured in Settings → AI Workflows.`;
   }
 }
 
