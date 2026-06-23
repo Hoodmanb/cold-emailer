@@ -180,7 +180,13 @@ app.use((req, res) => {
 // ─── Start ────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   const { seedModelCatalog } = require('./repositories/modelCatalogRepository');
-  seedModelCatalog();
+  seedModelCatalog()
+    .then(() => {
+      logger.info('Model catalog seeded successfully');
+    })
+    .catch((err) => {
+      logger.error('Model catalog seeding failed', { error: err });
+    });
   const { audit } = require('./services/dataConsistencyService');
   // Run data consistency audit on startup (non‑blocking)
   audit()

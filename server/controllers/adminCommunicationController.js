@@ -9,10 +9,10 @@ const sanitizeSmtp = (smtp) => {
   return safe;
 };
 
-const getCommunicationSettings = (req, res, next) => {
+const getCommunicationSettings = async (req, res, next) => {
   try {
-    const settings = commSettingsRepo.getSettings();
-    const smtps = adminSmtpRepo.getAllAdminSmtps();
+    const settings = await commSettingsRepo.getSettings();
+    const smtps = await adminSmtpRepo.getAllAdminSmtps();
     return res.status(200).json({
       success: true,
       message: 'retrieved successfully',
@@ -26,7 +26,7 @@ const getCommunicationSettings = (req, res, next) => {
   }
 };
 
-const updateCommunicationSettings = (req, res, next) => {
+const updateCommunicationSettings = async (req, res, next) => {
   try {
     const { whatsapp, instagram, twitter, supportEmail } = req.body;
     const updates = {};
@@ -36,7 +36,7 @@ const updateCommunicationSettings = (req, res, next) => {
     if (twitter) updates.twitter = twitter;
     if (supportEmail) updates.supportEmail = supportEmail;
 
-    const nextSettings = commSettingsRepo.updateSettings(updates);
+    const nextSettings = await commSettingsRepo.updateSettings(updates);
     return res.status(200).json({
       success: true,
       message: 'settings updated successfully',
@@ -47,7 +47,7 @@ const updateCommunicationSettings = (req, res, next) => {
   }
 };
 
-const createSmtpProfile = (req, res, next) => {
+const createSmtpProfile = async (req, res, next) => {
   try {
     const { name, host, port, username, password, secure, isActive } = req.body;
 
@@ -58,7 +58,7 @@ const createSmtpProfile = (req, res, next) => {
       });
     }
 
-    const created = adminSmtpRepo.createAdminSmtp({
+    const created = await adminSmtpRepo.createAdminSmtp({
       name,
       host,
       port: Number(port),
@@ -78,12 +78,12 @@ const createSmtpProfile = (req, res, next) => {
   }
 };
 
-const updateSmtpProfile = (req, res, next) => {
+const updateSmtpProfile = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { name, host, port, username, password, secure, isActive } = req.body;
 
-    const existing = adminSmtpRepo.getAdminSmtpById(id);
+    const existing = await adminSmtpRepo.getAdminSmtpById(id);
     if (!existing) {
       return res.status(404).json({ success: false, message: 'SMTP profile not found' });
     }
@@ -102,7 +102,7 @@ const updateSmtpProfile = (req, res, next) => {
       updates.iv = null; // Re-encrypt on repository layer
     }
 
-    const updated = adminSmtpRepo.updateAdminSmtp(id, updates);
+    const updated = await adminSmtpRepo.updateAdminSmtp(id, updates);
     return res.status(200).json({
       success: true,
       message: 'SMTP profile updated successfully',
@@ -113,15 +113,15 @@ const updateSmtpProfile = (req, res, next) => {
   }
 };
 
-const deleteSmtpProfile = (req, res, next) => {
+const deleteSmtpProfile = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const existing = adminSmtpRepo.getAdminSmtpById(id);
+    const existing = await adminSmtpRepo.getAdminSmtpById(id);
     if (!existing) {
       return res.status(404).json({ success: false, message: 'SMTP profile not found' });
     }
 
-    adminSmtpRepo.deleteAdminSmtp(id);
+    await adminSmtpRepo.deleteAdminSmtp(id);
     return res.status(200).json({ success: true, message: 'SMTP profile deleted successfully' });
   } catch (err) {
     next(err);
@@ -131,7 +131,7 @@ const deleteSmtpProfile = (req, res, next) => {
 const testSmtpConnection = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const smtp = adminSmtpRepo.getAdminSmtpById(id);
+    const smtp = await adminSmtpRepo.getAdminSmtpById(id);
     if (!smtp) {
       return res.status(404).json({ success: false, message: 'SMTP profile not found' });
     }
@@ -144,11 +144,14 @@ const testSmtpConnection = async (req, res, next) => {
     const transporter = nodemailer.createTransport({
       host: smtp.host,
       port: smtp.port,
-      secure: smtp.secure,
+      secure: smtp.port === 465 ? true : (smtp.port === 587 || smtp.port === 25 ? false : smtp.secure),
       auth: {
         user: smtp.username,
         pass: decryptedPassword,
       },
+      connectionTimeout: 5000, // 5 seconds timeout
+      greetingTimeout: 5000,
+      socketTimeout: 5000,
     });
 
     try {
@@ -169,15 +172,15 @@ const testSmtpConnection = async (req, res, next) => {
   }
 };
 
-const setActiveSmtpProfile = (req, res, next) => {
+const setActiveSmtpProfile = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const smtp = adminSmtpRepo.getAdminSmtpById(id);
+    const smtp = await adminSmtpRepo.getAdminSmtpById(id);
     if (!smtp) {
       return res.status(404).json({ success: false, message: 'SMTP profile not found' });
     }
 
-    adminSmtpRepo.setActiveAdminSmtp(id);
+    await adminSmtpRepo.setActiveAdminSmtp(id);
     return res.status(200).json({
       success: true,
       message: 'SMTP profile set as active'

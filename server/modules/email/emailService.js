@@ -15,7 +15,8 @@ const { fillPlaceholders } = require('../../utils/placeholderParser');
 const sendEmail = async (payload) => {
   const { to, subject, body, templateId, userId } = payload;
   try {
-    const config = smtpRepo.getActiveSmtp();
+    const currentUserId = userId || getCurrentUserId();
+    const config = await smtpRepo.getActiveSmtp(currentUserId);
 
     if (!config) {
       throw new Error('No active SMTP configuration found. Please set a default SMTP in Settings.');
@@ -33,20 +34,22 @@ const sendEmail = async (payload) => {
     const transporter = nodemailer.createTransport({
       host: config.host,
       port: config.port,
-      secure: config.secure,
+      secure: config.port === 465 ? true : (config.port === 587 || config.port === 25 ? false : config.secure),
       auth: {
         user: config.email,
         pass: decryptedPassword,
       },
+      connectionTimeout: 10000, // 10 seconds timeout
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
     });
 
     const mailAttachments = [
-      ...buildMailAttachments(payload),
+      ...(await buildMailAttachments(payload)),
       ...(await buildDocumentAttachments(payload)),
     ];
 
     // Safe variable interpolation for email body and subject without Handlebars
-    const currentUserId = userId || getCurrentUserId();
     let finalSubject = subject;
     let finalBody = body;
 
@@ -80,7 +83,7 @@ const sendEmail = async (payload) => {
 
     const info = await transporter.sendMail(mailOptions);
     logger.info(`✅ Email sent to ${to}: ${info.messageId}`);
-    recordSendContext({
+    await recordSendContext({
       to,
       templateId: templateId && String(templateId).trim() ? String(templateId).trim() : undefined,
       smtpId: config.id,

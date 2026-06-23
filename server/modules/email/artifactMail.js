@@ -14,20 +14,20 @@ function assertArtifactOwnership(artifact, userId) {
  * Supports: artifactId, artifactIds, attachment { artifactId }, attachments: [{ artifactId }].
  * Legacy raw attachment passthrough is rejected for security.
  */
-function buildMailAttachments(payload) {
+async function buildMailAttachments(payload) {
   const list = [];
   const userId = getCurrentUserId();
   const { attachment, attachments, artifactId, artifactIds } = payload;
 
   if (artifactId) {
-    const art = artifactRepo.getArtifact(artifactId);
+    const art = await artifactRepo.getArtifact(artifactId);
     assertArtifactOwnership(art, userId);
     list.push(toNodemailerAttachment(art));
   }
 
   if (artifactIds && Array.isArray(artifactIds)) {
     for (const id of artifactIds) {
-      const art = artifactRepo.getArtifact(id);
+      const art = await artifactRepo.getArtifact(id);
       assertArtifactOwnership(art, userId);
       list.push(toNodemailerAttachment(art));
     }
@@ -35,7 +35,7 @@ function buildMailAttachments(payload) {
 
   if (attachment) {
     if (attachment.artifactId) {
-      const art = artifactRepo.getArtifact(attachment.artifactId);
+      const art = await artifactRepo.getArtifact(attachment.artifactId);
       assertArtifactOwnership(art, userId);
       list.push(toNodemailerAttachment(art));
     } else {
@@ -47,7 +47,7 @@ function buildMailAttachments(payload) {
     for (const a of attachments) {
       if (!a) continue;
       if (a.artifactId) {
-        const art = artifactRepo.getArtifact(a.artifactId);
+        const art = await artifactRepo.getArtifact(a.artifactId);
         assertArtifactOwnership(art, userId);
         list.push(toNodemailerAttachment(art));
       } else if (typeof a === 'string') {

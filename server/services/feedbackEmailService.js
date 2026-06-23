@@ -5,8 +5,8 @@ const logger = require('../utils/logger');
 
 const sendFeedbackEmail = async (feedbackData) => {
   try {
-    const activeSmtp = adminSmtpRepo.getActiveAdminSmtp();
-    const settings = commSettingsRepo.getSettings();
+    const activeSmtp = await adminSmtpRepo.getActiveAdminSmtp();
+    const settings = await commSettingsRepo.getSettings();
 
     // Recipient email is the configured support email
     let recipientEmail = settings.supportEmail?.email;
@@ -29,11 +29,14 @@ const sendFeedbackEmail = async (feedbackData) => {
     const transporter = nodemailer.createTransport({
       host: activeSmtp.host,
       port: activeSmtp.port,
-      secure: activeSmtp.secure,
+      secure: activeSmtp.port === 465 ? true : (activeSmtp.port === 587 || activeSmtp.port === 25 ? false : activeSmtp.secure),
       auth: {
         user: activeSmtp.username,
         pass: decryptedPassword,
       },
+      connectionTimeout: 10000, // 10 seconds timeout
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
     });
 
     const timestampFormatted = new Date(feedbackData.timestamp || new Date()).toLocaleString();

@@ -26,7 +26,7 @@ const runScheduler = async () => {
 
   logger.info(`🕒 Scheduler triggered at ${now.toISOString()} (UTC Hour: ${hour})`);
 
-  const schedules = listSchedules().filter((s) => !s.disabled);
+  const schedules = (await listSchedules()).filter((s) => !s.disabled);
 
   const dueSchedules = schedules.filter(
     (s) =>
@@ -75,14 +75,14 @@ const runScheduler = async () => {
             body: template.body,
             attachment: template.attachment || null,
           },
-          () => {
+          async () => {
             recipient.statuses[key] = 'sent';
-            saveSchedule(schedule);
+            await saveSchedule(schedule);
             logger.info(`✅ Sent ${key} to ${recipient.email}`);
           },
-          (err) => {
+          async (err) => {
             recipient.statuses[key] = 'failed';
-            saveSchedule(schedule);
+            await saveSchedule(schedule);
             logger.error(`❌ Failed ${key} to ${recipient.email}: ${err.message}`);
           }
         );
@@ -96,7 +96,7 @@ const runScheduler = async () => {
       if (allSent) recipient.disabled = true;
     }
 
-    saveSchedule(schedule);
+    await saveSchedule(schedule);
   }
 
   logger.info(`✅ Scheduler complete. Queued ${totalQueued} emails.`);

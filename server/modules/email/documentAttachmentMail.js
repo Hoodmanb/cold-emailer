@@ -9,7 +9,7 @@ const { getCurrentUserId } = require('../../middleware/requestContext');
 const UPLOAD_DIR = path.join(__dirname, '../../storage/uploads');
 
 async function resolveDocumentToAttachment(documentId, userId, customName) {
-  const doc = documentRepo.getDocument(documentId);
+  const doc = await documentRepo.getDocument(documentId);
   if (doc) {
     const format = String(doc.exportFormat || doc.format || 'pdf').toLowerCase();
     const filename = `${customName || doc.title || doc.type || 'document'}.${format}`;

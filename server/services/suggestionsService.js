@@ -23,8 +23,8 @@ function parseLimit(query, fallback = 8, max = 20) {
   return fallback;
 }
 
-function getRecipientSuggestions(limit) {
-  const all = recipientRepo.listRecipients();
+async function getRecipientSuggestions(limit) {
+  const all = await recipientRepo.listRecipients();
   return sortSuggestionRows(all).slice(0, limit).map((r) => ({
     id: r.id,
     email: r.email,
@@ -36,8 +36,8 @@ function getRecipientSuggestions(limit) {
   }));
 }
 
-function getTemplateSuggestions(limit) {
-  const all = templateRepo.listTemplates();
+async function getTemplateSuggestions(limit) {
+  const all = await templateRepo.listTemplates();
   const sorted = sortSuggestionRows(all);
   return sorted.slice(0, limit).map((t) => {
     const body = t.body || '';
@@ -53,9 +53,9 @@ function getTemplateSuggestions(limit) {
   });
 }
 
-function getSmtpSuggestions(limit) {
-  const all = smtpRepo
-    .getAllSmtps()
+async function getSmtpSuggestions(limit) {
+  const rawAll = await smtpRepo.getAllSmtps();
+  const all = rawAll
     .filter((s) => s.status === 'verified')
     .map(sanitizeSmtp);
 

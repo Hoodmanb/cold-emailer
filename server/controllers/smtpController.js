@@ -133,11 +133,14 @@ const verifySmtp = async (req, res, next) => {
     const transporter = nodemailer.createTransport({
       host: smtp.host,
       port: smtp.port,
-      secure: smtp.secure,
+      secure: smtp.port === 465 ? true : (smtp.port === 587 || smtp.port === 25 ? false : smtp.secure),
       auth: {
         user: smtp.email,
         pass: decryptedPassword,
       },
+      connectionTimeout: 5000, // 5 seconds timeout
+      greetingTimeout: 5000,
+      socketTimeout: 5000,
     });
 
     const now = new Date().toISOString();
