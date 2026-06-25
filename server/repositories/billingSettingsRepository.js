@@ -11,6 +11,7 @@ const DEFAULT_SETTINGS = {
   minimum_ai_charge_credits: 1,
   minimum_feature_charge_credits: 0,
   percentage_bonus_on_purchase: 0,
+  gateway_monthly_credit_allowance: 100,
   updated_at: new Date().toISOString(),
 };
 

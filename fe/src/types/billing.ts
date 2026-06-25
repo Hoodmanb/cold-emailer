@@ -6,6 +6,8 @@ export interface GatewayAccess {
   expiresAt: string | null;
   paid: boolean;
   daysRemaining?: number | null;
+  monthlyCredits?: number;
+  lastCreditCycle?: string | null;
 }
 
 export interface CreditExpiryBucket {
@@ -21,6 +23,9 @@ export interface BillingSummary {
   billingType: BillingType;
   gatewayAccess: GatewayAccess;
   credits: number;
+  walletCredits?: number;
+  monthlyCreditAllowance?: number;
+  nextMonthlyCreditReset?: string | null;
   creditExpiryBuckets: CreditExpiryBucket[];
   hasAccess: boolean;
 }

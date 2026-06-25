@@ -124,6 +124,9 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
   const fmt = document.exportFormat || document.format || "txt";
   const title = document.title || `${(document.type || "document").toUpperCase().replace("-", " ")} Preview`;
   const sourceContent = document.editableContent || document.content || "";
+  const previewUrl =
+    document.previewUrl ||
+    (document.fileUrl ? document.fileUrl.replace("/download", "/preview") : `/api/documents/${document.id}/preview`);
 
   return (
     <Dialog
@@ -173,7 +176,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
       <DialogContent sx={{ p: 0 }}>
         <Box sx={{ overflowY: "auto", maxHeight: "78vh" }}>
           {fmt === "pdf" ? (
-            <PdfPreview previewUrl={document.fileUrl.replace('/download','/preview')} />
+            <PdfPreview previewUrl={previewUrl} />
           ) : sourceContent ? (
             <MarkdownPreview content={sourceContent} />
           ) : (

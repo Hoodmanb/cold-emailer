@@ -225,10 +225,58 @@ async function adjustWalletBalance(userId, amount, type, description, reference)
   }
 }
 
+async function setWalletBalance(userId, balance, type = 'sync', description = 'Wallet balance synchronized', reference) {
+  const wallet = await getOrCreateWallet(userId);
+  if (!wallet) throw new Error('Wallet not found or could not be created');
+
+  const balanceBefore = Number(wallet.balance) || 0;
+  const balanceAfter = Number(balance) || 0;
+  const delta = balanceAfter - balanceBefore;
+
+  const updatePayload = {
+    balance: balanceAfter,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (type !== 'credit_sync' && delta > 0) {
+    updatePayload.total_purchased = (Number(wallet.total_purchased) || 0) + delta;
+  } else if (type !== 'credit_sync' && delta < 0) {
+    updatePayload.total_consumed = (Number(wallet.total_consumed) || 0) + Math.abs(delta);
+  }
+
+  const { error: updErr } = await Supabase.update(
+    'credits_wallets',
+    { id: wallet.id },
+    updatePayload,
+    userId,
+  );
+  if (updErr) throw updErr;
+
+  if (delta !== 0) {
+    const txId = uuidv4();
+    const txRecord = {
+      id: txId,
+      user_id: userId,
+      type,
+      amount: delta,
+      balance_before: balanceBefore,
+      balance_after: balanceAfter,
+      reference: reference || `sync_${txId.slice(0, 8)}_${Date.now()}`,
+      description,
+      created_at: new Date().toISOString(),
+    };
+    const { error: txErr } = await Supabase.insert('credit_transactions', txRecord, userId);
+    if (txErr) throw txErr;
+  }
+
+  return { ...wallet, ...updatePayload };
+}
+
 module.exports = {
   readWalletList,
   readTransactionList,
   getWalletByUserId,
   getOrCreateWallet,
-  adjustWalletBalance
+  adjustWalletBalance,
+  setWalletBalance,
 };

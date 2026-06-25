@@ -1,6 +1,9 @@
-const { getOrCreateWallet } = require('../repositories/walletRepository');
+const {
+  estimateFeatureCost,
+  estimateExecutableCost,
+  getCreditBalance,
+} = require('../services/billing/billingService');
 const { getUserBilling } = require('../repositories/billingUserRepository');
-const { estimateFeatureCost } = require('../services/billing/billingService');
 
 const AI_TYPE_TO_FEATURE = {
   resume: 'resume_generation',
@@ -76,6 +79,9 @@ function mapUrlToFeatureId(req) {
   if (url.includes('/workflow/regenerate') && req.body?.type) {
     return WORKFLOW_TYPE_TO_FEATURE[req.body.type] || null;
   }
+  if (url.includes('/api/scheduler') && req.method === 'POST') {
+    return 'schedule_creation';
+  }
   return null;
 }
 
@@ -85,40 +91,41 @@ async function checkCredits(req, res, next) {
   }
 
   try {
+    const role = String(req.user.role || '').toLowerCase();
+    if (role === 'admin') return next();
     const billing = await getUserBilling(req.user.id);
-    if (billing && billing.billingType === 'gateway') {
-      const access = billing.gatewayAccess || {};
-      if (access.isActive && access.expiresAt && new Date(access.expiresAt).getTime() > Date.now()) {
-        return next();
-      }
-    }
-
-    const wallet = await getOrCreateWallet(req.user.id);
-    if (wallet.balance <= 0) {
-      return res.status(402).json({
-        success: false,
-        code: 'INSUFFICIENT_CREDITS',
-        message: 'Please purchase more credits.',
-      });
-    }
+    if (String(billing?.role || '').toLowerCase() === 'admin') return next();
 
     const featureId = mapUrlToFeatureId(req);
+    if (!featureId) return next();
+
     let minRequired = 0;
     if (featureId === '__full_workflow__') {
-      minRequired = await estimateFullWorkflowCost();
+      for (const id of FULL_WORKFLOW_FEATURES) {
+        minRequired += await estimateExecutableCost(req.user.id, id, req.body || {});
+      }
     } else if (featureId === '__selected_workflow__') {
-      minRequired = await estimateWorkflowCost(req.body?.types);
+      const featureIds = (Array.isArray(req.body?.types) && req.body.types.length ? req.body.types : ['resume'])
+        .map((type) => WORKFLOW_TYPE_TO_FEATURE[type])
+        .filter(Boolean);
+      for (const id of [...new Set(featureIds)]) {
+        minRequired += await estimateExecutableCost(req.user.id, id, req.body || {});
+      }
     } else if (featureId) {
-      minRequired = await estimateFeatureCost(featureId, req.body || {});
+      minRequired = await estimateExecutableCost(req.user.id, featureId, req.body || {});
     }
 
-    if (minRequired > 0 && wallet.balance < minRequired) {
+    if (minRequired <= 0) return next();
+
+    const balance = await getCreditBalance(req.user.id);
+
+    if (minRequired > 0 && balance < minRequired) {
       return res.status(402).json({
         success: false,
         code: 'INSUFFICIENT_CREDITS',
-        message: `Your balance of ${wallet.balance} credits is below the required ${minRequired} credits for this action. Please purchase more credits.`,
+        message: `Your balance of ${balance} credits is below the required ${minRequired} credits for this action. Please purchase more credits.`,
         required: minRequired,
-        balance: wallet.balance,
+        balance,
       });
     }
 

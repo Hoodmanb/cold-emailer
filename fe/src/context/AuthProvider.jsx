@@ -384,6 +384,24 @@ function withTimeout(promise, ms, label = "Operation") {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
 }
 
+async function fetchBackendUser(accessToken, label = "User fetch") {
+  const response = await withTimeout(
+    fetch("/api/auth/me", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "X-Bypass-Global-Toast": "true",
+      },
+    }),
+    ME_TIMEOUT_MS,
+    label
+  );
+  if (!response.ok) {
+    throw new Error(`${label} failed with status ${response.status}`);
+  }
+  const payload = await response.json();
+  return payload?.data?.user || payload?.data || null;
+}
+
 function isPublicPath(pathname) {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
@@ -463,22 +481,14 @@ export default function AuthProvider({ children }) {
           }
 
           try {
-            const res = await withTimeout(
-              supabase
-                .from("profiles")
-                .select("*")
-                .eq("id", session.user.id)
-                .single(),
-              ME_TIMEOUT_MS,
-              "Profile fetch"
-            );
+            const backendUser = await fetchBackendUser(session.access_token, "User fetch");
 
-            if (!cancelled && res.data) {
-              console.log("[Auth] Profile loaded in background", { version: res.data?.userVersion });
-              setAuth({ ...userFromSession, ...res.data }, session.access_token);
+            if (!cancelled && backendUser) {
+              console.log("[Auth] User loaded in background", { version: backendUser?.userVersion });
+              setAuth({ ...userFromSession, ...backendUser }, session.access_token);
             }
           } catch (err) {
-            console.error("[Auth] Profile fetch error — keeping session", err?.message);
+            console.error("[Auth] User fetch error — keeping session", err?.message);
           }
           return;
         }
@@ -493,7 +503,12 @@ export default function AuthProvider({ children }) {
             if (!cancelled && supabaseUser) {
               const refreshedUser = extractUserFromSession({ user: supabaseUser });
               if (refreshedUser) {
-                setAuth(refreshedUser, storedToken);
+                try {
+                  const backendUser = await fetchBackendUser(storedToken, "Stored user fetch");
+                  setAuth({ ...refreshedUser, ...(backendUser || {}) }, storedToken);
+                } catch {
+                  setAuth(refreshedUser, storedToken);
+                }
               }
             } else if (!cancelled) {
               console.log("[Auth] Stored token invalid — clearing auth");
@@ -540,7 +555,12 @@ export default function AuthProvider({ children }) {
                 logAuthEvent("SIGNED_OUT_RECOVERED", verifyData.session, "session_recovery");
                 const recoveredUser = extractUserFromSession(verifyData.session);
                 if (recoveredUser) {
-                  setAuth(recoveredUser, verifyData.session.access_token);
+                  try {
+                    const backendUser = await fetchBackendUser(verifyData.session.access_token, "Recovered user fetch");
+                    setAuth({ ...recoveredUser, ...(backendUser || {}) }, verifyData.session.access_token);
+                  } catch {
+                    setAuth(recoveredUser, verifyData.session.access_token);
+                  }
                 }
                 syncAuthCookie(verifyData.session.access_token);
                 return;
@@ -557,7 +577,12 @@ export default function AuthProvider({ children }) {
                   console.log("[Auth] Session refreshed after SIGNED_OUT");
                   const refreshedUser = extractUserFromSession(refreshData.session);
                   if (refreshedUser) {
-                    setAuth(refreshedUser, refreshData.session.access_token);
+                    try {
+                      const backendUser = await fetchBackendUser(refreshData.session.access_token, "Refreshed user fetch");
+                      setAuth({ ...refreshedUser, ...(backendUser || {}) }, refreshData.session.access_token);
+                    } catch {
+                      setAuth(refreshedUser, refreshData.session.access_token);
+                    }
                   }
                   syncAuthCookie(refreshData.session.access_token);
                   return;
@@ -582,21 +607,13 @@ export default function AuthProvider({ children }) {
 
           if (event === "TOKEN_REFRESHED" || event === "SIGNED_IN") {
             try {
-              const { data: profileData } = await withTimeout(
-                supabase
-                  .from("profiles")
-                  .select("*")
-                  .eq("id", session.user.id)
-                  .single(),
-                ME_TIMEOUT_MS,
-                "Profile refresh"
-              );
+              const backendUser = await fetchBackendUser(session.access_token, "User refresh");
 
-              if (profileData) {
-                setAuth({ ...userFromSession, ...profileData }, session.access_token);
+              if (backendUser) {
+                setAuth({ ...userFromSession, ...backendUser }, session.access_token);
               }
             } catch (err) {
-              console.warn("[Auth] Profile refresh failed — keeping session", err?.message);
+              console.warn("[Auth] User refresh failed — keeping session", err?.message);
             }
           }
         }

@@ -1,4 +1,3 @@
-const fs = require('fs');
 const documentRepo = require('../repositories/documentRepository');
 const documentRegistry = require('../services/document/documentRegistry');
 const { log, ACTION_TYPES } = require('../logs/auditLogger');
@@ -132,22 +131,17 @@ const renderResume = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Resume model validation failed', errors: v.errors });
     }
     const normalized = castToModel('resume_generation', model);
-    const artifact = await documentEngine.generateDocument({
+    const generated = await documentEngine.generateDocument({
       featureId: 'resume_generation',
       model: normalized,
       format: fmt,
       userId: req.user?.id,
       themeId: resumeTemplateId,
     });
-    const absPath = documentEngine.resolveArtifactPath(artifact.filePath);
-    const stream = fs.createReadStream(absPath);
-    stream.on('error', (err) => {
-      if (!res.headersSent) next(err);
-    });
-    res.setHeader('Content-Type', artifact.mime);
-    res.setHeader('Content-Disposition', `attachment; filename="${artifact.fileName}"`);
-    res.setHeader('X-Resume-Template-File', artifact.templateName || '');
-    return stream.pipe(res);
+    res.setHeader('Content-Type', generated.mime);
+    res.setHeader('Content-Disposition', `attachment; filename="${generated.fileName}"`);
+    res.setHeader('X-Resume-Template-File', generated.templateName || '');
+    return res.send(generated.buffer);
   } catch (err) {
     next(err);
   }

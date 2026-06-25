@@ -10,6 +10,7 @@ const BASE_FEATURE_COSTS = {
   project_summary_generation: 3,
   advanced_doc_generation: 6,
   job_extraction_image: 5,
+  schedule_creation: 1,
 };
 
 const TAILORING_MULTIPLIERS = {

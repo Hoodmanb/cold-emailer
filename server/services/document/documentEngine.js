@@ -4,22 +4,15 @@
  * Pipeline:
  *   (normalized model) → render HTML via JSON template engine
  *                      → convert to PDF (puppeteer) or DOCX (docx)
- *                      → persist to disk
- *                      → return { artifactId, downloadUrl, previewUrl, fileName, mime, sizeBytes }
+ *                      → return { buffer, fileName, mime, sizeBytes }
  */
 
-const fs = require('fs');
-const path = require('path');
-const { v4: uuidv4 } = require('uuid');
 const documentTemplateRepo = require('../../repositories/documentTemplateRepository');
 const { renderTemplate } = require('../../utils/renderJsonTemplate');
 
 const { Document, Packer, Paragraph, TextRun } = require('docx');
 let puppeteer;
 try { puppeteer = require('puppeteer'); } catch { puppeteer = null; }
-
-const SERVER_ROOT = path.resolve(__dirname, '..', '..');
-const ARTIFACTS_DIR = path.join(SERVER_ROOT, 'storage', 'artifacts');
 
 const MIME = {
   html: 'text/html',
@@ -48,10 +41,6 @@ const fallbackTemplate = {
     spacing: 12
   }
 };
-
-function ensureDir(dir) {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-}
 
 // ── Template Resolution ───────────────────────────────────────────────────────
 async function getTemplateMeta(themeId) {
@@ -174,34 +163,8 @@ async function htmlToDocx(html) {
   return Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
 }
 
-// ── Artifact persistence ──────────────────────────────────────────────────────
-function persistArtifact({ buffer, featureId, format, userId, templateName }) {
-  const artifactsDir = path.join(ARTIFACTS_DIR, String(userId || 'anon'));
-  ensureDir(artifactsDir);
-
-  const id = uuidv4();
-  const ext = format === 'pdf' ? '.pdf' : format === 'docx' ? '.docx' : '.html';
-  const fileName = `${featureId}_${Date.now()}${ext}`;
-  const filePath = path.join(artifactsDir, fileName);
-
-  fs.writeFileSync(filePath, buffer);
-
-  const relativePath = path.relative(SERVER_ROOT, filePath).replace(/\\/g, '/');
-
-  return {
-    id, featureId, templateName, format, fileName,
-    filePath: relativePath,
-    mime: MIME[format] || 'application/octet-stream',
-    sizeBytes: buffer.length,
-    userId: String(userId || ''),
-    createdAt: new Date().toISOString(),
-    downloadUrl: `/api/documents/artifacts/${id}/download`,
-    previewUrl:  `/api/documents/artifacts/${id}/preview`,
-  };
-}
-
 // ── Main API ──────────────────────────────────────────────────────────────────
-async function generateDocument({ featureId, model, format = 'pdf', userId, themeId }) {
+async function generateDocument({ featureId, model, format = 'pdf', themeId }) {
   const template = await getTemplateMeta(themeId);
   const html = await renderHtml(model, { themeId });
 
@@ -216,18 +179,23 @@ async function generateDocument({ featureId, model, format = 'pdf', userId, them
     throw new Error(`Unknown format: ${format}`);
   }
 
-  return persistArtifact({
-    buffer, featureId, format, userId,
+  const ext = format === 'pdf' ? '.pdf' : format === 'docx' ? '.docx' : '.html';
+  const fileName = `${featureId}_${Date.now()}${ext}`;
+
+  return {
+    buffer,
+    featureId,
+    format,
+    fileName,
+    mime: MIME[format] || 'application/octet-stream',
+    sizeBytes: buffer.length,
     templateName: template.name || template.id || 'JSONTemplate',
-  });
+    createdAt: new Date().toISOString(),
+  };
 }
 
 async function renderPreviewHtml(featureId, model, themeId) {
   return renderHtml(model, { themeId });
-}
-
-function resolveArtifactPath(relativePath) {
-  return path.join(SERVER_ROOT, relativePath);
 }
 
 // Minimal placeholder registry methods for system compatibility
@@ -242,7 +210,6 @@ function initializeEngine() {
 module.exports = {
   generateDocument,
   renderPreviewHtml,
-  resolveArtifactPath,
   MIME,
   getRegistry,
   initializeEngine

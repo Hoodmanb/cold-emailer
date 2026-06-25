@@ -6,7 +6,11 @@ const TABLE = 'uploads';
 function fromRow(row) {
   if (!row) return null;
   const publicId = row.public_id || '';
-  const inferredTitle = publicId.replace(/^[0-9a-f-]{36}_/i, '') || publicId || 'Uploaded document';
+  const publicName = publicId.split('/').pop() || publicId;
+  const inferredBase = publicName.replace(/^[0-9a-f-]{36}_/i, '') || publicName || 'Uploaded document';
+  const inferredTitle = row.format && !inferredBase.toLowerCase().endsWith(`.${row.format}`)
+    ? `${inferredBase}.${row.format}`
+    : inferredBase;
   const fileTypeByFormat = {
     pdf: 'application/pdf',
     docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -23,7 +27,7 @@ function fromRow(row) {
     fileUrl: `/api/documents/uploads/${row.id}/download`,
     previewUrl: `/api/documents/uploads/${row.id}/preview`,
     source: 'user_upload',
-    resourceType: row.resource_type,
+    resourceType: row.resource_type || 'raw',
     bytes: row.bytes,
     size: row.bytes,
     createdAt: row.created_at,

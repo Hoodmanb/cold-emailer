@@ -4,6 +4,8 @@ const {
   deductCreditsFromBuckets,
   addCreditBucket,
   activateGatewayAccess,
+  ensureMonthlyGatewayCredits,
+  getGatewayCreditCycleInfo,
 } = require('../../repositories/billingUserRepository');
 const { findCreditPackById } = require('../../repositories/billingRepository');
 const { calculateFeatureCost, listFeatureCosts } = require('./featureCosts');
@@ -16,12 +18,34 @@ const {
   clearUsageEntries,
 } = require('../../middleware/requestContext');
 const { InsufficientCreditsError, BillingAccessError } = require('../../shared/errors/customErrors');
-const { getOrCreateWallet, adjustWalletBalance } = require('../../repositories/walletRepository');
+const { getOrCreateWallet, adjustWalletBalance, setWalletBalance } = require('../../repositories/walletRepository');
 const { getBillingSettings } = require('../../repositories/billingSettingsRepository');
 const { getModelPricing } = require('../../repositories/pricingRepository');
 const { createUsageLog } = require('../../repositories/usageLogRepository');
 const { calculateActualCost, calculateCreditCharge } = require('./aiBillingEngine');
 const Supabase = require('../../services/supabaseService');
+const { resolveFeatureConfig, getDecryptedKey } = require('../../repositories/aiRepository');
+
+const AI_FEATURE_IDS = new Set([
+  'resume_generation',
+  'professional_cv_generation',
+  'cover_letter_generation',
+  'email_generation',
+  'ats_analysis',
+  'chatbot_assistant',
+  'project_summary_generation',
+  'advanced_doc_generation',
+  'job_extraction_image',
+]);
+
+async function refreshUserCredits(userId, settings) {
+  const billingSettings = settings || await getBillingSettings();
+  await expireOldCreditBuckets(userId);
+  const user = await ensureMonthlyGatewayCredits(userId, billingSettings);
+  const balance = Number(user?.credits) || 0;
+  await setWalletBalance(userId, balance, 'credit_sync', 'Credit balance synchronized from credit buckets');
+  return { user, balance };
+}
 
 async function isGatewayActive(userId) {
   const user = await getUserBilling(userId);
@@ -33,9 +57,8 @@ async function isGatewayActive(userId) {
 }
 
 async function getCreditBalance(userId) {
-  await expireOldCreditBuckets(userId);
-  const wallet = await getOrCreateWallet(userId);
-  return Number(wallet?.balance) || 0;
+  const { balance } = await refreshUserCredits(userId);
+  return balance;
 }
 
 async function hasAccess(userId) {
@@ -51,14 +74,21 @@ async function hasAccess(userId) {
 }
 
 async function getBillingSummary(userId) {
-  const user = await expireOldCreditBuckets(userId);
+  const settings = await getBillingSettings();
+  const { user, balance } = await refreshUserCredits(userId, settings);
   const wallet = await getOrCreateWallet(userId);
 
-  const credits = Number(wallet?.balance) || 0;
+  const credits = Number(balance) || 0;
   const gatewayAccess = user.gatewayAccess || {};
   const isGateway = await isGatewayActive(userId);
   const hasCredits = credits > 0;
   const access = isGateway || hasCredits;
+  const activeGatewayBucket = (user.creditExpiryBuckets || []).find(
+    (bucket) => bucket.status === 'active' && bucket.source === 'gateway_monthly' && bucket.cycle === gatewayAccess.lastCreditCycle,
+  );
+  const nextMonthlyCreditReset = isGateway
+    ? activeGatewayBucket?.expiresAt || getGatewayCreditCycleInfo(gatewayAccess).nextCycleStart.toISOString()
+    : null;
 
   return {
     billingType: access ? user.billingType : null,
@@ -67,6 +97,9 @@ async function getBillingSummary(userId) {
       isActive: isGateway,
     },
     credits,
+    walletCredits: Number(wallet?.balance) || 0,
+    monthlyCreditAllowance: Number(gatewayAccess.monthlyCredits ?? settings.gateway_monthly_credit_allowance ?? 0) || 0,
+    nextMonthlyCreditReset,
     creditExpiryBuckets: (user.creditExpiryBuckets || []).filter((b) => b.status === 'active'),
     hasAccess: access,
     status: access ? 'active' : 'unpaid',
@@ -78,6 +111,21 @@ async function estimateFeatureCost(featureId, options = {}) {
   return calculateFeatureCost(featureId, settings, options);
 }
 
+async function canUseGatewayOwnOpenRouterKey(userId, featureId, options = {}) {
+  if (options.useAppKey === true || !AI_FEATURE_IDS.has(featureId)) return false;
+  const user = await getUserBilling(userId);
+  if (!user || user.billingType !== 'gateway' || !(await isGatewayActive(userId))) return false;
+  const config = await resolveFeatureConfig(featureId, userId);
+  return String(config.provider || '').toLowerCase() === 'openrouter'
+    && Boolean(await getDecryptedKey('openrouter', userId));
+}
+
+async function estimateExecutableCost(userId, featureId, options = {}) {
+  if (!featureId) return 0;
+  if (await canUseGatewayOwnOpenRouterKey(userId, featureId, options)) return 0;
+  return estimateFeatureCost(featureId, options);
+}
+
 async function assertCanExecuteAI(userId, featureId, options = {}) {
   const user = await getUserBilling(userId);
   if (!(await hasAccess(userId))) {
@@ -86,23 +134,32 @@ async function assertCanExecuteAI(userId, featureId, options = {}) {
 
   const settings = await getBillingSettings();
   const cost = calculateFeatureCost(featureId, settings, options);
-
-  if (user.billingType === 'gateway') {
-    if (!(await isGatewayActive(userId))) {
-      throw new BillingAccessError(
-        'Gateway access expired. Renew your plan to continue using AI features.',
-        'GATEWAY_EXPIRED',
-      );
-    }
-    await assertFeatureReady(featureId);
-    clearBillingExecutionMode();
-    return { billingType: 'gateway', cost: 0, charged: false };
-  }
+  const isGateway = user.billingType === 'gateway' && await isGatewayActive(userId);
 
   // Admin users bypass credit checks
   if (user.role && user.role.toLowerCase() === 'admin') {
     clearBillingExecutionMode();
     return { billingType: 'admin', cost: 0, charged: false };
+  }
+
+  if (user.billingType === 'gateway' && !isGateway) {
+    throw new BillingAccessError(
+      'Gateway access expired. Renew your plan or use credits to continue.',
+      'GATEWAY_EXPIRED',
+    );
+  }
+
+  if (isGateway) {
+    if (await canUseGatewayOwnOpenRouterKey(userId, featureId, options)) {
+      await assertFeatureReady(featureId);
+      clearBillingExecutionMode();
+      return {
+        billingType: 'gateway',
+        aiBillingMode: 'gateway_own_key',
+        cost: 0,
+        charged: false,
+      };
+    }
   }
 
   const balance = await getCreditBalance(userId);
@@ -118,18 +175,44 @@ async function assertCanExecuteAI(userId, featureId, options = {}) {
   setBillingExecutionMode('token');
   clearUsageEntries();
 
-  return { billingType: 'token', cost, charged: true };
+  return {
+    billingType: isGateway ? 'gateway' : 'token',
+    aiBillingMode: isGateway ? 'gateway_app_key' : 'credit_app_key',
+    cost,
+    charged: true,
+  };
+}
+
+async function consumeCredits(userId, amount, type, description, reference) {
+  const cost = Number(amount) || 0;
+  if (cost <= 0) return refreshUserCredits(userId);
+  const { balance: balanceBefore } = await refreshUserCredits(userId);
+  if (balanceBefore < cost) {
+    throw new InsufficientCreditsError('Insufficient credits', {
+      required: cost,
+      balance: balanceBefore,
+    });
+  }
+  const updatedUser = await deductCreditsFromBuckets(userId, cost);
+  const balanceAfter = Number(updatedUser?.credits) || 0;
+  await setWalletBalance(
+    userId,
+    balanceAfter,
+    type || 'feature_usage',
+    description || `Credit deduction: ${cost}`,
+    reference,
+  );
+  return { user: updatedUser, balance: balanceAfter };
 }
 
 async function completeAIExecution(userId, featureId, options = {}, prepResult = {}) {
   try {
-    if (prepResult.charged && prepResult.billingType === 'token') {
+    if (prepResult.charged) {
       const usageEntries = getUsageEntries();
       const settings = await getBillingSettings();
       const featureCost = calculateFeatureCost(featureId, settings, options);
 
       if (usageEntries && usageEntries.length > 0) {
-        const wallet = await getOrCreateWallet(userId);
         let totalCreditsToDeduct = 0;
         const usageLogsToInsert = [];
         const creditValue = Number(settings.credit_value_usd) || 0.01;
@@ -166,16 +249,17 @@ async function completeAIExecution(userId, featureId, options = {}, prepResult =
 
         totalCreditsToDeduct = featureCost + tokenCostAccumulator;
 
-        if ((wallet?.balance || 0) < totalCreditsToDeduct) {
+        const balance = await getCreditBalance(userId);
+        if (balance < totalCreditsToDeduct) {
           const err = new Error('Insufficient credits for AI usage');
           err.errorCode = 'INSUFFICIENT_CREDITS';
           err.statusCode = 402;
           throw err;
         }
 
-        await adjustWalletBalance(
+        await consumeCredits(
           userId,
-          -totalCreditsToDeduct,
+          totalCreditsToDeduct,
           'ai_usage',
           `AI usage charge for ${featureId}: Fixed Cost (${featureCost}) + Token Cost (${tokenCostAccumulator})`,
         );
@@ -197,24 +281,23 @@ async function completeAIExecution(userId, featureId, options = {}, prepResult =
           await createUsageLog(log);
         }
       } else {
-        const wallet = await getOrCreateWallet(userId);
         const totalCreditsToDeduct = featureCost;
 
-        if ((wallet?.balance || 0) < totalCreditsToDeduct) {
+        const balance = await getCreditBalance(userId);
+        if (balance < totalCreditsToDeduct) {
           const err = new Error('Insufficient credits');
           err.errorCode = 'INSUFFICIENT_CREDITS';
           err.statusCode = 402;
           throw err;
         }
 
-        await adjustWalletBalance(
+        await consumeCredits(
           userId,
-          -totalCreditsToDeduct,
+          totalCreditsToDeduct,
           'ai_usage',
           `AI usage charge for ${featureId}: Fixed Cost (${featureCost})`,
         );
 
-        const { resolveFeatureConfig } = require('../../repositories/aiRepository');
         const config = (await resolveFeatureConfig(featureId, userId)) || {};
 
         await createUsageLog({
@@ -248,7 +331,7 @@ async function completeAIExecution(userId, featureId, options = {}, prepResult =
 }
 
 async function deductCredits(userId, amount, featureId) {
-  return adjustWalletBalance(userId, -Number(amount), 'ai_usage', `Deduction for ${featureId}`);
+  return consumeCredits(userId, Number(amount), 'feature_usage', `Deduction for ${featureId}`);
 }
 
 async function addCredits(userId, packId) {
@@ -270,12 +353,15 @@ async function addCredits(userId, packId) {
     packName: pack.name,
     source: 'purchase',
   });
+  await refreshUserCredits(userId);
 
   return result;
 }
 
 async function activateGatewayFromPayment(userId, durationMonths) {
-  return activateGatewayAccess(userId, { paid: true, durationMonths });
+  const user = await activateGatewayAccess(userId, { paid: true, durationMonths });
+  await refreshUserCredits(userId);
+  return user;
 }
 
 async function expireOldCredits() {
@@ -297,8 +383,11 @@ module.exports = {
   getCreditBalance,
   getBillingSummary,
   estimateFeatureCost,
+  estimateExecutableCost,
+  canUseGatewayOwnOpenRouterKey,
   assertCanExecuteAI,
   completeAIExecution,
+  consumeCredits,
   deductCredits,
   addCredits,
   activateGatewayFromPayment,

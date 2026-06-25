@@ -89,6 +89,14 @@ const upsertAIKeyHandler = async (req, res, next) => {
   try {
     reqLog(req);
     const userId = getUid(req);
+    const billing = userId ? await getUserBilling(userId) : null;
+    if (billing?.billingType === 'token') {
+      return res.status(403).json({
+        success: false,
+        message: 'Credit users use the app AI key and cannot add personal API keys.',
+        errorCode: 'PERSONAL_AI_KEYS_NOT_ALLOWED',
+      });
+    }
     const data = await upsertProviderApiKey(userId, req.body || {});
     return res.status(200).json({ success: true, message: 'API key saved', data });
   } catch (err) {
@@ -318,6 +326,25 @@ const validateFeatureHandler = async (req, res, next) => {
     }
 
     const result = await validateFeatureConfig(featureId);
+    if (!result.valid && billing?.billingType === 'gateway') {
+      const access = billing.gatewayAccess || {};
+      const gatewayActive = access.isActive && access.expiresAt && new Date(access.expiresAt).getTime() > Date.now();
+      if (gatewayActive) {
+        const system = assertSystemProviderReady();
+        const config = getSystemFeatureConfig(featureId);
+        return res.status(200).json({
+          success: true,
+          valid: true,
+          featureId,
+          featureName: AI_FEATURES.find((f) => f.id === featureId)?.name || featureId,
+          provider: system.provider,
+          model: config.model,
+          config,
+          billingMode: 'gateway_app_key',
+          message: 'Gateway AI will use app credits for this feature because no personal OpenRouter key is configured.',
+        });
+      }
+    }
     if (!result.valid) {
       return res.status(400).json({
         success: false,

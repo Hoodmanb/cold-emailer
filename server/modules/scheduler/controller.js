@@ -4,6 +4,7 @@ const executionRepo = require('./executionRepo');
 const { scheduleSchema } = require('./validators');
 const { successResponse, errorResponse } = require('../../utils/response');
 const env = require('../../config/env');
+const billingService = require('../../services/billing/billingService');
 
 const listSchedules = async (req, res, next) => {
   try {
@@ -56,6 +57,8 @@ const createSchedule = async (req, res, next) => {
     }
 
     const schedule = await service.createSchedule(parsed.data);
+    const cost = await billingService.estimateFeatureCost('schedule_creation', parsed.data);
+    await billingService.deductCredits(req.user.id, cost, 'schedule_creation');
     return successResponse(res, {
       status: 201,
       message: 'Schedule created successfully',

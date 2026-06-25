@@ -4,6 +4,7 @@ const ctrl = require('./controller');
 const service = require('./service');
 const { successResponse, errorResponse } = require('../../utils/response');
 const execCtrl = require('../../controllers/scheduleExecutionController');
+const { checkCredits } = require('../../middleware/checkCredits');
 
 /**
  * Public QStash Webhook callback handler.
@@ -40,7 +41,7 @@ async function handleWebhook(req, res, next) {
 // REST CRUD endpoints
 router.get('/health', ctrl.getHealth);
 router.get('/', ctrl.listSchedules);
-router.post('/', ctrl.createSchedule);
+router.post('/', checkCredits, ctrl.createSchedule);
 router.get('/:id', ctrl.getSchedule);
 router.put('/:id', ctrl.updateSchedule);
 router.delete('/:id', ctrl.deleteSchedule);

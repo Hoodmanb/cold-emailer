@@ -13,7 +13,7 @@ import {
   Grid,
 } from "@mui/material";
 import NextLink from "next/link";
-import { User2, Save, GraduationCap, Briefcase, FolderKanban, Award, ShieldCheck, Github, Linkedin, MessageSquare, ExternalLink } from "lucide-react";
+import { User2, Save, GraduationCap, Briefcase, FolderKanban, Award, ShieldCheck, Github, Linkedin, MessageSquare, ExternalLink, Clipboard, Download } from "lucide-react";
 import { useGetProfile, useProjects } from "@/hooks/queryHooks";
 import axiosInstance from "@/hooks/axios";
 import { useSnackbar } from "@/context/SnackbarContext";
@@ -132,6 +132,61 @@ export default function ProfilePage() {
     setCertificates(newCertificates);
     await saveProfilePartial({ certificates: newCertificates });
   };
+
+  const sanitizeProfile = (obj: any): any => {
+    if (Array.isArray(obj)) {
+      // Sanitize each element and filter out empty values
+      const sanitizedArray = obj.map(sanitizeProfile).filter((v) => {
+        if (Array.isArray(v) && v.length === 0) return false;
+        if (typeof v === 'object' && v !== null && Object.keys(v).length === 0) return false;
+        if (typeof v === 'string' && v === '') return false;
+        return true;
+      });
+      return sanitizedArray;
+    } else if (obj && typeof obj === 'object') {
+      const result: any = {};
+      for (const [key, value] of Object.entries(obj)) {
+        const sanitizedValue = sanitizeProfile(value);
+        // Always keep these identifier fields even if empty
+        if (['id', 'keys', 'createdAt', 'updatedAt', 'userId', 'removed'].includes(key)) {
+          result[key] = sanitizedValue;
+          continue;
+        }
+        // Skip empty values
+        if (Array.isArray(sanitizedValue) && sanitizedValue.length === 0) continue;
+        if (typeof sanitizedValue === 'object' && sanitizedValue !== null && Object.keys(sanitizedValue).length === 0) continue;
+        if (typeof sanitizedValue === 'string' && sanitizedValue === '') continue;
+        result[key] = sanitizedValue;
+      }
+      return result;
+    }
+    return obj;
+  };
+
+  const handleCopyProfileJson = async () => {
+    if (!profile) return;
+    try {
+      const sanitized = sanitizeProfile(profile);
+      await navigator.clipboard.writeText(JSON.stringify(sanitized, null, 2));
+      showSnackbar('Profile JSON copied to clipboard', 'success');
+    } catch (e) {
+      console.error(e);
+      showSnackbar('Failed to copy profile JSON', 'error');
+    }
+  };
+
+  const handleDownloadProfileJson = () => {
+    if (!profile) return;
+    const sanitized = sanitizeProfile(profile);
+    const jsonStr = JSON.stringify(sanitized, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'profile.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
@@ -195,6 +250,26 @@ export default function ProfilePage() {
                 sx={{ borderRadius: 2, textTransform: "none", fontWeight: 700 }}
               >
                 {savingProfile ? "Saving..." : "Save Changes"}
+              </Button>
+
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<Clipboard size={16} />}
+                onClick={handleCopyProfileJson}
+                sx={{ ml: 1, borderRadius: 2, textTransform: "none", fontWeight: 600 }}
+              >
+                Copy JSON
+              </Button>
+
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<Download size={16} />}
+                onClick={handleDownloadProfileJson}
+                sx={{ ml: 1, borderRadius: 2, textTransform: "none", fontWeight: 600 }}
+              >
+                Download JSON
               </Button>
             </Stack>
 

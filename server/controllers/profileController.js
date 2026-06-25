@@ -30,6 +30,17 @@ const getProfileHandler = async (req, res) => {
     data: await getProfile(userId),
   });
 };
+const getProfileJsonHandler = async (req, res) => {
+  const userId = requireUserId(req, res);
+  if (!userId) return;
+  const profile = await getProfile(userId);
+  const jsonString = JSON.stringify(profile, null, 2);
+  return successResponse(res, {
+    status: 200,
+    message: "Profile JSON retrieved successfully",
+    data: jsonString,
+  });
+};
 
 const updateProfileHandler = async (req, res) => {
   const userId = requireUserId(req, res);
@@ -418,7 +429,9 @@ const deleteAccountHandler = async (req, res) => {
 
 module.exports = {
   screenshotUpload,
+  getProfileJsonHandler,
   getProfileHandler,
+
   updateProfile: updateProfileHandler,
   getProjectsHandler,
   createProjectHandler,

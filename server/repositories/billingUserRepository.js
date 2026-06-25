@@ -3,6 +3,38 @@ const { findUserById, updateUserRecord } = require('./userRepository');
 const Supabase = require('../services/supabaseService');
 
 const CREDIT_BUCKET_MONTHS = 6;
+const DEFAULT_GATEWAY_MONTHLY_CREDITS = 100;
+
+function daysInUtcMonth(year, monthIndex) {
+  return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+}
+
+function getAnchoredCycleDate(anchorDay, year, monthIndex) {
+  const day = Math.min(anchorDay, daysInUtcMonth(year, monthIndex));
+  return new Date(Date.UTC(year, monthIndex, day));
+}
+
+function getGatewayCreditCycleInfo(access = {}, date = new Date()) {
+  const anchor = access.activatedAt ? new Date(access.activatedAt) : date;
+  const anchorDay = Number.isFinite(anchor.getTime()) ? anchor.getUTCDate() : date.getUTCDate();
+  let cycleStart = getAnchoredCycleDate(anchorDay, date.getUTCFullYear(), date.getUTCMonth());
+
+  if (date.getTime() < cycleStart.getTime()) {
+    cycleStart = getAnchoredCycleDate(anchorDay, date.getUTCFullYear(), date.getUTCMonth() - 1);
+  }
+
+  const nextCycleStart = getAnchoredCycleDate(
+    anchorDay,
+    cycleStart.getUTCFullYear(),
+    cycleStart.getUTCMonth() + 1,
+  );
+
+  return {
+    cycle: cycleStart.toISOString().slice(0, 10),
+    cycleStart,
+    nextCycleStart,
+  };
+}
 
 function defaultGatewayAccess(grandfathered = false) {
   const now = new Date();
@@ -13,6 +45,8 @@ function defaultGatewayAccess(grandfathered = false) {
     activatedAt: grandfathered ? now.toISOString() : null,
     expiresAt: grandfathered ? expiresAt.toISOString() : null,
     paid: grandfathered,
+    monthlyCredits: DEFAULT_GATEWAY_MONTHLY_CREDITS,
+    lastCreditCycle: null,
   };
 }
 
@@ -81,13 +115,16 @@ async function activateGatewayAccess(userId, { paid = true, durationMonths = 12 
   const now = new Date();
   const expiresAt = new Date(now);
   expiresAt.setMonth(expiresAt.getMonth() + Number(durationMonths) || 12);
+  const user = await getUserBilling(userId);
   return updateUserRecord(userId, {
     billingType: 'gateway',
     gatewayAccess: {
+      ...(user?.gatewayAccess || {}),
       isActive: true,
       activatedAt: now.toISOString(),
       expiresAt: expiresAt.toISOString(),
       paid: paid === true,
+      monthlyCredits: Number(user?.gatewayAccess?.monthlyCredits) || DEFAULT_GATEWAY_MONTHLY_CREDITS,
     },
   });
 }
@@ -125,6 +162,12 @@ function recalculateCreditBalance(buckets) {
     .reduce((sum, b) => sum + Number(b.remaining), 0);
 }
 
+function getBucketPriority(bucket) {
+  if (bucket.source === 'gateway_monthly') return 0;
+  if (bucket.source === 'admin_grant') return 1;
+  return 2;
+}
+
 async function addCreditBucket(userId, amount, meta = {}) {
   const user = await getUserBilling(userId);
   const purchasedAt = new Date();
@@ -144,6 +187,63 @@ async function addCreditBucket(userId, amount, meta = {}) {
   const buckets = [...(user.creditExpiryBuckets || []), bucket];
   const credits = recalculateCreditBalance(buckets);
   return updateUserRecord(userId, { creditExpiryBuckets: buckets, credits });
+}
+
+async function ensureMonthlyGatewayCredits(userId, settings = {}) {
+  const user = await getUserBilling(userId);
+  if (!user || user.billingType !== 'gateway') return user;
+
+  const access = user.gatewayAccess || {};
+  const isActive = access.isActive && access.expiresAt && new Date(access.expiresAt).getTime() > Date.now();
+  if (!isActive) return user;
+
+  const monthlyCredits = Number(
+    access.monthlyCredits ??
+    settings.gateway_monthly_credit_allowance ??
+    settings.gatewayMonthlyCreditAllowance ??
+    DEFAULT_GATEWAY_MONTHLY_CREDITS,
+  );
+  if (!monthlyCredits || monthlyCredits <= 0) return user;
+
+  const now = new Date();
+  const { cycle, nextCycleStart } = getGatewayCreditCycleInfo(access, now);
+  const existing = (user.creditExpiryBuckets || []).find(
+    (bucket) => bucket.source === 'gateway_monthly' && bucket.cycle === cycle,
+  );
+
+  if (existing) {
+    if (access.lastCreditCycle === cycle && Number(access.monthlyCredits) === monthlyCredits) return user;
+    return updateUserRecord(userId, {
+      gatewayAccess: {
+        ...access,
+        lastCreditCycle: cycle,
+        monthlyCredits,
+      },
+    });
+  }
+
+  const bucket = {
+    id: uuidv4(),
+    amount: monthlyCredits,
+    remaining: monthlyCredits,
+    purchasedAt: now.toISOString(),
+    expiresAt: nextCycleStart.toISOString(),
+    status: 'active',
+    source: 'gateway_monthly',
+    cycle,
+  };
+
+  const buckets = [...(user.creditExpiryBuckets || []), bucket];
+  const credits = recalculateCreditBalance(buckets);
+  return updateUserRecord(userId, {
+    creditExpiryBuckets: buckets,
+    credits,
+    gatewayAccess: {
+      ...access,
+      lastCreditCycle: cycle,
+      monthlyCredits,
+    },
+  });
 }
 
 async function expireOldCreditBuckets(userId) {
@@ -168,7 +268,11 @@ async function deductCreditsFromBuckets(userId, amount) {
   let remainingToDeduct = Number(amount);
   const buckets = [...(user.creditExpiryBuckets || [])]
     .filter((b) => b.status === 'active' && Number(b.remaining) > 0)
-    .sort((a, b) => new Date(a.purchasedAt) - new Date(b.purchasedAt));
+    .sort((a, b) => {
+      const priorityDelta = getBucketPriority(a) - getBucketPriority(b);
+      if (priorityDelta !== 0) return priorityDelta;
+      return new Date(a.expiresAt || a.purchasedAt) - new Date(b.expiresAt || b.purchasedAt);
+    });
 
   const updatedBuckets = [...(user.creditExpiryBuckets || [])];
   for (const bucket of buckets) {
@@ -224,7 +328,9 @@ module.exports = {
   deactivateGatewayAccess,
   extendGatewayAccess,
   recalculateCreditBalance,
+  getGatewayCreditCycleInfo,
   addCreditBucket,
+  ensureMonthlyGatewayCredits,
   expireOldCreditBuckets,
   deductCreditsFromBuckets,
   grantCredits,

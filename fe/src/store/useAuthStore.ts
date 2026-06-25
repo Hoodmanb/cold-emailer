@@ -166,8 +166,12 @@ interface User {
     isActive: boolean;
     expiresAt: string | null;
     daysRemaining?: number | null;
+    monthlyCredits?: number;
+    lastCreditCycle?: string | null;
   };
   hasAccess?: boolean;
+  monthlyCreditAllowance?: number;
+  nextMonthlyCreditReset?: string | null;
 }
 
 interface AppState {

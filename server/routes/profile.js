@@ -21,6 +21,7 @@ router.put('/certificates/:certId', asyncHandler(ctrl.updateCertificateHandler))
 router.delete('/certificates/:certId', asyncHandler(ctrl.deleteCertificateHandler));
 
 router.get('/', asyncHandler(ctrl.getProfileHandler));
+router.get('/json', asyncHandler(ctrl.getProfileJsonHandler));
 router.put('/', asyncHandler(ctrl.updateProfile));
 router.delete('/', asyncHandler(ctrl.deleteAccountHandler));
 router.get('/email-config', asyncHandler(ctrl.getEmailConfigHandler));
