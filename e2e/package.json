@@ -1,0 +1,39 @@
+{
+  "name": "careerbot-e2e",
+  "version": "1.0.0",
+  "description": "Playwright E2E test suite for CareerBot — organized by module",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui",
+
+    "test:auth":      "playwright test tests/auth/ --project=auth-chromium",
+    "test:dashboard": "playwright test tests/dashboard/",
+    "test:jobs":      "playwright test tests/jobs/",
+    "test:documents": "playwright test tests/documents/",
+    "test:profile":   "playwright test tests/profile/",
+    "test:billing":   "playwright test tests/billing/",
+    "test:ai":        "playwright test tests/ai/",
+    "test:admin":     "playwright test tests/admin/ --project=admin-chromium",
+    "test:email":     "playwright test tests/email/",
+    "test:templates": "playwright test tests/templates/",
+    "test:landing":   "playwright test tests/landing/",
+    "test:audit":     "playwright test tests/audit/",
+    "test:api":       "playwright test tests/api/",
+
+    "test:smoke":     "playwright test tests/api/ tests/landing/ --project=chromium && playwright test tests/auth/ --project=auth-chromium",
+    "test:ci":        "playwright test --reporter=github",
+    "test:firefox":   "playwright test --project=firefox",
+    "test:mobile":    "playwright test --project=mobile-chrome",
+
+    "report": "playwright show-report test-results/html-report",
+    "install": "playwright install --with-deps chromium firefox",
+    "install:all": "playwright install --with-deps"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "dotenv": "^16.0.0"
+  }
+}
