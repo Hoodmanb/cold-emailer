@@ -25,6 +25,10 @@ import { useBillingStatus } from "@/hooks/queryHooks/billing";
 import useAuthStore from "@/store/useAuthStore";
 import { useRouter } from "next/navigation";
 import { isAiConfigurationError } from "@/utils/parseApiError";
+import { motion, AnimatePresence } from "framer-motion";
+import { SPRINGS } from "@/motion/motionTokens";
+import { slideUpVariants } from "@/motion/variants";
+
 
 interface GeneratePanelProps {
   jobId: string;
@@ -379,14 +383,53 @@ export default function GeneratePanel({ jobId, onComplete }: GeneratePanelProps)
           )}
 
           {step === "generating" && (
-            <Stack gap={2} alignItems="center" py={1}>
-              <CircularProgress size={28} />
-              <Typography variant="body2" fontWeight={600}>
-                Generating {selectedTypes.join(", ")}...
-              </Typography>
-              <LinearProgress sx={{ width: "100%", borderRadius: 4 }} />
-              <Typography variant="caption" color="text.secondary">Editor will open automatically when ready.</Typography>
-            </Stack>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={SPRINGS.soft}
+              style={{ width: "100%" }}
+            >
+              <Box
+                sx={{
+                  position: "relative",
+                  overflow: "hidden",
+                  borderRadius: 3,
+                  border: "1px solid",
+                  borderColor: "primary.main",
+                  p: 3,
+                  background: "linear-gradient(225deg, rgba(99, 102, 241, 0.03) 0%, rgba(168, 85, 247, 0.03) 100%)",
+                  boxShadow: "0 4px 30px rgba(99, 102, 241, 0.05)",
+                  "&::before": {
+                    content: '""',
+                    position: "absolute",
+                    top: 0,
+                    left: "-150%",
+                    width: "150%",
+                    height: "100%",
+                    background: "linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1), transparent)",
+                    animation: "shimmer 2.2s infinite linear",
+                  },
+                  "@keyframes shimmer": {
+                    "0%": { left: "-150%" },
+                    "100%": { left: "150%" },
+                  }
+                }}
+              >
+                <Stack gap={2.5} alignItems="center" py={1}>
+                  <Box sx={{ color: "primary.main", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Sparkles size={32} style={{ filter: "drop-shadow(0 0 8px rgba(99, 102, 241, 0.5))" }} />
+                  </Box>
+                  <Typography variant="body2" fontWeight={700} sx={{ letterSpacing: 0.5 }}>
+                    AI Tailoring System Active...
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" textAlign="center">
+                    Generating optimized {selectedTypes.join(", ")} drafts using configured LLM models.
+                  </Typography>
+                  <LinearProgress sx={{ width: "100%", borderRadius: 4, height: 6, bgcolor: "action.hover", "& .MuiLinearProgress-bar": { bgcolor: "primary.main" } }} />
+                  <Typography variant="caption" color="text.secondary">Editor will open automatically when ready.</Typography>
+                </Stack>
+              </Box>
+            </motion.div>
           )}
 
           {step === "error" && (

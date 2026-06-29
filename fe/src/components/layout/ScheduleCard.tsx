@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 import {
     Card,
@@ -20,6 +22,8 @@ import {
     Users,
     Mail,
 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { cardVariants, cardHoverVariants } from '@/motion/variants';
 
 interface ScheduleCardProps {
     schedule: {
@@ -64,99 +68,108 @@ const ScheduleCard: React.FC<ScheduleCardProps> = ({
     };
 
     return (
-        <Card sx={{ '&:hover': { boxShadow: 4 }, transition: 'box-shadow 0.3s' }} >
-            <CardHeader
-                title={
-                    <Stack direction="row" alignItems="center" spacing={1}>
-                        <Box
-                            sx={{
-                                width: 10,
-                                height: 10,
-                                borderRadius: '50%',
-                                backgroundColor: getStatusColor(schedule.status),
-                            }}
-                        />
-                        <Typography variant="h6" fontSize={"0.6em"}>{schedule.name}</Typography>
-                        <Chip label={schedule.frequency} size="small" variant="outlined" sx={{ textTransform: 'capitalize' }} />
-                    </Stack>
-                }
-                action={
-                    <Stack direction="row" spacing={1}>
-                        {onToggleStatus && (
-                            <Button
-                                size="small"
-                                variant="outlined"
-                                sx={{ borderColor: "#ccc", textTransform: "none", display: "flex", justifyContent: "space-between", alignItems: "center" }}
-                                onClick={() => onToggleStatus(schedule.id)}
-                                startIcon={schedule.status === 'active' ? <Pause size={16} /> : <Play size={16} />}
-                            >
-                                {schedule.status === 'active' ? 'pause' : 'resume'}
-                            </Button>
-                        )}
-                        {onEdit && (
-                            <IconButton onClick={() => onEdit(schedule.id)}>
-                                <Edit size={15} />
-                            </IconButton>
-                        )}
-                        {onDelete && (
-                            <IconButton onClick={() => onDelete(schedule.id)}>
-                                <Trash2 size={15} />
-                            </IconButton>
-                        )}
-                    </Stack>
-                }
-            />
-            <CardContent>
-                <Stack direction={{ xs: 'row', md: 'row' }} justifyContent={"space-between"}>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                        <Mail size={18} />
-                        <Box>
-                            <Typography variant="caption" color="text.secondary">Template (4)</Typography>
-                        </Box>
-                    </Stack>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                        <Users size={18} />
-                        <Box>
-                            <Typography variant="caption" color="text.secondary">Recipients({schedule.recipients})</Typography>
-                        </Box>
-                    </Stack>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                        <Calendar size={18} />
-                        <Box>
-                            <Typography variant="caption" color="text.secondary">
-                                {schedule.nextRun ? 'Next Run:' : 'Last Run:'}
-                            </Typography>
-                            <Typography variant="caption" fontSize={"0.6em"}>
-                                {formatDate(schedule.nextRun || schedule.lastRun || '')}
-                            </Typography>
-                        </Box>
-                    </Stack>
-                </Stack>
-
-                {(schedule.sent !== undefined && schedule.failed !== undefined) && (
-                    <>
-                        <Divider sx={{ my: 2 }} />
-                        <Stack direction="row" justifyContent="space-between" alignItems="center">
-                            <Stack direction="row" spacing={3}>
-                                <Typography variant="body2" color="green">
-                                    Sent: <strong>{schedule.sent}</strong>
-                                </Typography>
-                                <Typography variant="body2" color="error">
-                                    Failed: <strong>{schedule.failed}</strong>
-                                </Typography>
+        <motion.div
+            variants={cardVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            whileHover="hover"
+            style={{ borderRadius: 12 }}
+        >
+            <motion.div variants={cardHoverVariants} initial="rest" whileHover="hover" whileTap="tap">
+                <Card sx={{ borderRadius: '12px' }}>
+                    <CardHeader
+                        title={
+                            <Stack direction="row" alignItems="center" spacing={1}>
+                                <Box
+                                    sx={{
+                                        width: 10,
+                                        height: 10,
+                                        borderRadius: '50%',
+                                        backgroundColor: getStatusColor(schedule.status),
+                                    }}
+                                />
+                                <Typography variant="h6" fontSize={"0.6em"}>{schedule.name}</Typography>
+                                <Chip label={schedule.frequency} size="small" variant="outlined" sx={{ textTransform: 'capitalize' }} />
                             </Stack>
-                            <Chip
-                                label={schedule.status}
-                                color={
-                                    schedule.status === 'completed' ? 'default' : 'secondary'
-                                }
-                                size="small"
-                            />
+                        }
+                        action={
+                            <Stack direction="row" spacing={1}>
+                                {onToggleStatus && (
+                                    <Button
+                                        size="small"
+                                        variant="outlined"
+                                        sx={{ borderColor: "#ccc", textTransform: "none", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                                        onClick={() => onToggleStatus(schedule.id)}
+                                        startIcon={schedule.status === 'active' ? <Pause size={16} /> : <Play size={16} />}
+                                    >
+                                        {schedule.status === 'active' ? 'pause' : 'resume'}
+                                    </Button>
+                                )}
+                                {onEdit && (
+                                    <IconButton onClick={() => onEdit(schedule.id)}>
+                                        <Edit size={15} />
+                                    </IconButton>
+                                )}
+                                {onDelete && (
+                                    <IconButton onClick={() => onDelete(schedule.id)}>
+                                        <Trash2 size={15} />
+                                    </IconButton>
+                                )}
+                            </Stack>
+                        }
+                    />
+                    <CardContent>
+                        <Stack direction={{ xs: 'row', md: 'row' }} justifyContent={"space-between"}>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                                <Mail size={18} />
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary">Template (4)</Typography>
+                                </Box>
+                            </Stack>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                                <Users size={18} />
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary">Recipients({schedule.recipients})</Typography>
+                                </Box>
+                            </Stack>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                                <Calendar size={18} />
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary">
+                                        {schedule.nextRun ? 'Next Run:' : 'Last Run:'}
+                                    </Typography>
+                                    <Typography variant="caption" fontSize={"0.6em"}>
+                                        {formatDate(schedule.nextRun || schedule.lastRun || '')}
+                                    </Typography>
+                                </Box>
+                            </Stack>
                         </Stack>
-                    </>
-                )}
-            </CardContent>
-        </Card>
+
+                        {(schedule.sent !== undefined && schedule.failed !== undefined) && (
+                            <>
+                                <Divider sx={{ my: 2 }} />
+                                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                    <Stack direction="row" spacing={3}>
+                                        <Typography variant="body2" color="green">
+                                            Sent: <strong>{schedule.sent}</strong>
+                                        </Typography>
+                                        <Typography variant="body2" color="error">
+                                            Failed: <strong>{schedule.failed}</strong>
+                                        </Typography>
+                                    </Stack>
+                                    <Chip
+                                        label={schedule.status}
+                                        color={schedule.status === 'completed' ? 'default' : 'secondary'}
+                                        size="small"
+                                    />
+                                </Stack>
+                            </>
+                        )}
+                    </CardContent>
+                </Card>
+            </motion.div>
+        </motion.div>
     );
 };
 

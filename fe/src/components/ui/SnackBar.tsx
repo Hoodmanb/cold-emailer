@@ -1,7 +1,9 @@
+"use client";
+
 import * as React from "react";
-import Snackbar from "@mui/material/Snackbar";
+import { AnimatePresence, motion } from "framer-motion";
 import Alert from "@mui/material/Alert";
-import { SnackbarCloseReason } from "@mui/material/Snackbar";
+import { snackbarVariants } from "@/motion/variants";
 
 interface SnackParams {
   open: boolean;
@@ -16,29 +18,46 @@ export default function CustomizedSnackbars({
   state,
   onClose,
 }: SnackParams) {
-  const handleClose = (
-    event?: React.SyntheticEvent | Event,
-    reason?: SnackbarCloseReason
-  ) => {
-    if (reason === "clickaway") return;
-    onClose?.();
-  };
+  // Auto-close after 3 seconds
+  React.useEffect(() => {
+    if (!open) return;
+    const timer = setTimeout(() => onClose?.(), 3000);
+    return () => clearTimeout(timer);
+  }, [open, onClose]);
 
   return (
-    <Snackbar
-      open={open}
-      autoHideDuration={3000}
-      anchorOrigin={{ vertical: "top", horizontal: "right" }}
-      onClose={handleClose}
-    >
-      <Alert
-        onClose={handleClose}
-        severity={state}
-        variant="filled"
-        sx={{ width: "auto" }}
-      >
-        {text}
-      </Alert>
-    </Snackbar>
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          key="snackbar"
+          variants={snackbarVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+          style={{
+            position: "fixed",
+            top: 16,
+            right: 16,
+            zIndex: 9999,
+            minWidth: 280,
+            maxWidth: 420,
+          }}
+        >
+          <Alert
+            onClose={onClose}
+            severity={state}
+            variant="filled"
+            sx={{
+              width: "auto",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
+              borderRadius: "10px",
+              fontSize: "0.875rem",
+            }}
+          >
+            {text}
+          </Alert>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

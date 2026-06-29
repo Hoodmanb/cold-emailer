@@ -18,6 +18,10 @@ import axiosInstance from "@/hooks/axios";
 import { useSnackbar } from "@/context/SnackbarContext";
 import type { AIProviderModel, AISettingsData } from "@/types";
 import FeatureHelpPopover from "@/components/settings/FeatureHelpPopover";
+import {
+  getRequiredPlaceholders,
+  validateCustomPromptConfig,
+} from "@/lib/aiPromptPlaceholders";
 import { AlertCircle } from "lucide-react";
 
 type FeatureDraftRow = {
@@ -170,6 +174,14 @@ function FeatureConfigCard({
             }}
             onChange={(e) => onUpdateDraft({ customPrompt: e.target.value })}
           />
+
+          {row.useCustomPrompt && getRequiredPlaceholders(feature.id).length > 0 && (
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1.5, lineHeight: 1.5 }}>
+              Required placeholders:{" "}
+              {getRequiredPlaceholders(feature.id).map((p) => `{{${p}}}`).join(", ")}
+              {" "}— the AI will not receive your data unless these appear in your prompt.
+            </Typography>
+          )}
 
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 2 }}>
             <Typography variant="caption" color={isDirty ? "warning.main" : "text.secondary"} fontWeight={700}>
@@ -380,9 +392,24 @@ export default function AISettings({
       return;
     }
 
+    const featureName =
+      settings?.featureMap?.[featureId]?.name ||
+      Object.values(settings?.featureMap || {}).find((f: any) => f.id === featureId)?.name ||
+      featureId;
+    const promptCheck = validateCustomPromptConfig(featureId, featureName, payload);
+    if (!promptCheck.valid) {
+      setFeatureState(featureId, { saving: false, error: promptCheck.message, message: undefined });
+      showSnackbar(promptCheck.message, "error");
+      return;
+    }
+
     setFeatureState(featureId, { saving: true, error: undefined, message: undefined });
     try {
-      const res = await axiosInstance.patch(`/api/settings/ai/feature-config/${encodeURIComponent(featureId)}`, payload);
+      const res = await axiosInstance.patch(
+        `/api/settings/ai/feature-config/${encodeURIComponent(featureId)}`,
+        payload,
+        { headers: { "X-Bypass-Global-Toast": "true" } }
+      );
       if (res.data?.success) {
         setFeatureState(featureId, { saving: false, message: "Saved", error: undefined });
         showSnackbar("Feature configuration saved", "success");
@@ -393,7 +420,10 @@ export default function AISettings({
         showSnackbar(msg, "error");
       }
     } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || "Failed to update feature";
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to update feature";
       setFeatureState(featureId, { saving: false, error: msg, message: undefined });
       showSnackbar(msg, "error");
     }

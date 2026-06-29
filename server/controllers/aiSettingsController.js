@@ -77,9 +77,11 @@ const updateFeatureConfigHandler = async (req, res, next) => {
     const data = await updateFeatureConfig(userId, featureId, updates);
     return res.status(200).json({ success: true, message: 'Feature configuration updated', data });
   } catch (err) {
-    return res.status(400).json({
+    return res.status(err.statusCode || 400).json({
       success: false,
       message: err.message || "Failed to update feature",
+      errorCode: err.errorCode || undefined,
+      details: err.details || undefined,
       errors: [err.message || "Invalid feature configuration update"],
     });
   }

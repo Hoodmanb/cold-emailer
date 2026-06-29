@@ -1,11 +1,21 @@
 "use client";
 
 import React from "react";
-import AIAssistantModal from "./AIAssistantModal";
-import SendMailModal from "./SendMailModal";
-import DocumentGeneratorModal from "./DocumentGeneratorModal";
+import dynamic from "next/dynamic";
 
-import { useProductivity } from "@/context/ProductivityContext";
+// Each modal is only downloaded when first opened, not upfront.
+// DocumentGeneratorModal alone is 43KB — this keeps it out of the main bundle.
+const AIAssistantModal = dynamic(() => import("./AIAssistantModal"), {
+  ssr: false,
+});
+
+const SendMailModal = dynamic(() => import("./SendMailModal"), {
+  ssr: false,
+});
+
+const DocumentGeneratorModal = dynamic(() => import("./DocumentGeneratorModal"), {
+  ssr: false,
+});
 
 export default function ProductivityModals() {
   return (

@@ -24,7 +24,11 @@ function classifyError(err) {
     };
   }
 
-  if (err instanceof ValidationError || err.errorCode === 'VALIDATION_ERROR') {
+  if (
+    err instanceof ValidationError ||
+    err.errorCode === 'VALIDATION_ERROR' ||
+    err.errorCode === 'PROMPT_PLACEHOLDERS_MISSING'
+  ) {
     return {
       status: 400,
       type: 'validation_error',
@@ -32,6 +36,7 @@ function classifyError(err) {
       error: err.message || 'Validation failed',
       errorCode: err.errorCode || 'VALIDATION_ERROR',
       errors: err.errors ? Object.values(err.errors) : undefined,
+      details: err.details || undefined,
     };
   }
 

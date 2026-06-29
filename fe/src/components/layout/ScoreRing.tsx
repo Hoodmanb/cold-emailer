@@ -1,7 +1,10 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React from "react";
 import { Box, Typography } from "@mui/material";
+import { motion } from "framer-motion";
+import { SPRINGS } from "@/motion/motionTokens";
+import { AnimatedCounter } from "@/motion/components/AnimatedCounter";
 
 interface ScoreRingProps {
   score: number;
@@ -16,18 +19,10 @@ const getColor = (score: number) => {
 };
 
 export default function ScoreRing({ score, size = 120, label = "ATS Score" }: ScoreRingProps) {
-  const circleRef = useRef<SVGCircleElement>(null);
-
   const radius = (size - 12) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (score / 100) * circumference;
   const color = getColor(score);
-
-  useEffect(() => {
-    if (circleRef.current) {
-      circleRef.current.style.strokeDashoffset = String(strokeDashoffset);
-    }
-  }, [strokeDashoffset]);
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5 }}>
@@ -43,8 +38,7 @@ export default function ScoreRing({ score, size = 120, label = "ATS Score" }: Sc
             strokeWidth={10}
           />
           {/* Score arc */}
-          <circle
-            ref={circleRef}
+          <motion.circle
             cx={size / 2}
             cy={size / 2}
             r={radius}
@@ -53,8 +47,9 @@ export default function ScoreRing({ score, size = 120, label = "ATS Score" }: Sc
             strokeWidth={10}
             strokeLinecap="round"
             strokeDasharray={circumference}
-            strokeDashoffset={circumference}
-            style={{ transition: "stroke-dashoffset 1s ease-in-out" }}
+            initial={{ strokeDashoffset: circumference }}
+            animate={{ strokeDashoffset }}
+            transition={SPRINGS.soft}
           />
         </svg>
         <Box
@@ -68,7 +63,7 @@ export default function ScoreRing({ score, size = 120, label = "ATS Score" }: Sc
           }}
         >
           <Typography variant="h5" fontWeight={700} color={color} lineHeight={1}>
-            {score}
+            <AnimatedCounter value={score} duration={1.2} />
           </Typography>
           <Typography variant="caption" color="text.secondary">
             /100
@@ -81,3 +76,4 @@ export default function ScoreRing({ score, size = 120, label = "ATS Score" }: Sc
     </Box>
   );
 }
+

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   List,
   ListItemButton,
@@ -81,35 +82,56 @@ const LinkHeader: React.FC<LinksProps> = ({
     return pathname === section ? { color: "black" } : "";
   };
 
+  const isActive = pathname === link || pathname === (link1 || "");
+
   return (
     <Link href={link}>
-      <ListItemButton
-        onClick={() => {
-          handleSectionSelect(text);
-          onNavClick?.();
-        }}
-        sx={{
-          ...getActiveStyle(link),
-          ...getActiveStyle(link1 || ""),
-          ...sectionStyles,
-          minHeight: 48,
-        }}
+      <motion.div
+        whileHover={{ scale: 1.02, x: 2 }}
+        whileTap={{ scale: 0.97 }}
+        transition={{ duration: 0.15, ease: "easeOut" }}
+        style={{ position: "relative", borderRadius: 10 }}
       >
-        <ListItemIcon>
-          <Icon
+        {isActive && (
+          <motion.div
+            layoutId="nav-active-pill"
             style={{
-              color: "grey",
-              ...getActiveStyleIcon(link),
-              ...getActiveStyleIcon(link1 || ""),
+              position: "absolute",
+              inset: 0,
+              borderRadius: 10,
+              background: "#0F172A1A",
+              zIndex: 0,
             }}
+            transition={{ type: "spring", stiffness: 380, damping: 30 }}
           />
-        </ListItemIcon>
-        {isDrawerOpen && (
-          <Typography color={pathname === link ? "black" : ""}>
-            {text1}
-          </Typography>
         )}
-      </ListItemButton>
+        <ListItemButton
+          onClick={() => {
+            handleSectionSelect(text);
+            onNavClick?.();
+          }}
+          sx={{
+            ...sectionStyles,
+            minHeight: 48,
+            position: "relative",
+            zIndex: 1,
+            backgroundColor: "transparent !important",
+          }}
+        >
+          <ListItemIcon>
+            <Icon
+              style={{
+                color: isActive ? "black" : "grey",
+              }}
+            />
+          </ListItemIcon>
+          {isDrawerOpen && (
+            <Typography color={isActive ? "black" : ""}>
+              {text1}
+            </Typography>
+          )}
+        </ListItemButton>
+      </motion.div>
     </Link>
   );
 };
@@ -348,7 +370,11 @@ const Drawer: React.FC<MiniDrawerProps> = ({ children }) => {
     styles: React.CSSProperties,
     dismiss?: () => void,
   ) => (
-    <>
+    <motion.div
+      initial={{ opacity: 0, x: -16 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1], staggerChildren: 0.04 }}
+    >
       <List sx={{ py: 0 }}>
         <LinkHeader
           text="dashboard"
@@ -580,7 +606,7 @@ const Drawer: React.FC<MiniDrawerProps> = ({ children }) => {
           </ListItemButton>
         )}
       </Box>
-    </>
+    </motion.div>
   );
 
   const sidebarHeader = (compact: boolean) => (

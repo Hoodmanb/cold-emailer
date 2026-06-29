@@ -2,6 +2,8 @@
 "use client";
 import React, { createContext, useContext, useState } from "react";
 import { useTheme } from "@mui/material";
+import { AnimatePresence, motion } from "framer-motion";
+import { modalOverlayVariants, modalContentVariants } from "@/motion/variants";
 
 const GlobalModalContext = createContext();
 
@@ -25,36 +27,48 @@ export const GlobalModalProvider = ({ children }) => {
   return (
     <GlobalModalContext.Provider value={{ isOpen, showModal, closeModal }}>
       {children}
-      {isOpen && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0, 0, 0, 0.4)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            // zIndex: 10000, // sit on top of EVERYTHING
-            zIndex: theme.zIndex.drawer + 2,
-            height: "100vh",
-            width: "100vw"
-          }}
-        >
-          <div
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            key="modal-overlay"
+            variants={modalOverlayVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
             style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0, 0, 0, 0.45)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              borderRadius: "8px",
-              width: "100%",
-              margin: "auto",
-              // minWidth: "300px",
+              zIndex: theme.zIndex.drawer + 2,
+              height: "100vh",
+              width: "100vw",
             }}
+            onClick={closeModal}
           >
-            {content}
-          </div>
-        </div>
-      )}
+            <motion.div
+              key="modal-content"
+              variants={modalContentVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: "12px",
+                width: "100%",
+                margin: "auto",
+              }}
+            >
+              {content}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </GlobalModalContext.Provider>
   );
 };

@@ -87,6 +87,9 @@ async function deleteApiKey(userId, provider) {
  * @returns {Promise<object>}
  */
 async function updateFeatureMap(userId, featureMap) {
+  const { assertFeatureMapPromptsValid } = require('../services/ai/promptPlaceholderValidation');
+  assertFeatureMapPromptsValid(featureMap);
+
   const currentSettings = await getAiSettings(userId);
   const updatedSettings = { ...currentSettings, featureMap };
 
@@ -111,9 +114,12 @@ async function updateFeatureMap(userId, featureMap) {
  * @returns {Promise<object>}
  */
 async function updateFeatureConfig(userId, featureId, updates) {
+  const { assertCustomPromptValid } = require('../services/ai/promptPlaceholderValidation');
   const currentSettings = await getAiSettings(userId);
   const featureMap = currentSettings.featureMap || {};
-  featureMap[featureId] = { ...(featureMap[featureId] || {}), ...updates };
+  const merged = { ...(featureMap[featureId] || {}), ...updates };
+  assertCustomPromptValid(featureId, merged);
+  featureMap[featureId] = merged;
 
   const updatedSettings = { ...currentSettings, featureMap };
   const { error } = await Supabase.upsert(

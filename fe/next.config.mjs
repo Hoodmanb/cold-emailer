@@ -1,6 +1,10 @@
 const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:9000"
 
 export default {
+  // AI document generation often exceeds the default 30s dev-proxy limit.
+  experimental: {
+    proxyTimeout: 300_000,
+  },
   async redirects() {
     return [
       {
