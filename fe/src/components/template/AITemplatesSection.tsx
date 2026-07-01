@@ -32,7 +32,7 @@ function AITemplateCard({ template, onPreview }: { template: SystemTemplate; onP
             <Button size="small" variant="contained" startIcon={<Wand2 size={14} />} onClick={() => openModal("generator", { templateId: template.id })}>
               Use Template
             </Button>
-            <Button size="small" variant="outlined" color="secondary" startIcon={<Layout size={14} />} onClick={() => router.push(`/dashboard/templates/builder?templateId=${template.id}`)}>
+            <Button size="small" variant="outlined" color="secondary" startIcon={<Layout size={14} />} onClick={() => router.push(`/dashboard/templates/builder?mode=fork&templateId=${template.id}&source=system`)}>
               Customize
             </Button>
           </Stack>

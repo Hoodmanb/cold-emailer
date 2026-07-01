@@ -74,6 +74,13 @@ const updateJob = async (req, res, next) => {
     if (!userId) return;
     const updated = await jobRepo.updateJob(req.params.id, req.body, userId);
     if (!updated) return res.status(404).json({ success: false, message: 'Job not found' });
+
+    await log('job_updated', {
+      module: 'job',
+      entityId: req.params.id,
+      details: `Updated job details for ${req.body.title || updated.title}`,
+    });
+
     return res.status(200).json({ success: true, message: 'updated successfully', data: updated });
   } catch (err) {
     next(err);

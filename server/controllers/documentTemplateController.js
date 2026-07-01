@@ -10,6 +10,8 @@ const { requireUserId } = require('../utils/requireUserId');
 const { getCurrentUserId } = require('../middleware/requestContext');
 const { findUserById } = require('../repositories/userRepository');
 const { renderTemplate } = require('../utils/renderJsonTemplate');
+const { templateListResponse } = require('../domains/templates/utils/apiResponse');
+const { mapDocumentRow } = require('../domains/templates/models/templateDomain');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Template CRUD
@@ -21,11 +23,10 @@ async function listTemplates(req, res) {
   
   try {
     const templates = await documentTemplateRepo.listForUser(userId);
-    return res.status(200).json({
-      success: true,
-      data: templates,
-      count: templates.length,
-    });
+    const starredIds = await templateService.getUserStarredIds(userId);
+    const items = templates.map(mapDocumentRow);
+    const payload = templateListResponse(items, { starredIds });
+    return res.status(200).json(payload);
   } catch (error) {
     console.error('[documentTemplateController.listTemplates] Error:', error.message);
     return res.status(500).json({
@@ -299,12 +300,12 @@ async function getPublicTemplates(req, res) {
       const normalizedType = documentTemplateRepo.normalizeType(type);
       templates = templates.filter(t => t.type === normalizedType);
     }
-    
-    return res.status(200).json({
-      success: true,
-      data: templates,
-      count: templates.length,
-    });
+
+    const userId = getCurrentUserId();
+    const starredIds = userId ? await templateService.getUserStarredIds(userId) : [];
+    const items = templates.map(mapDocumentRow);
+    const payload = templateListResponse(items, { starredIds });
+    return res.status(200).json(payload);
   } catch (error) {
     console.error('[documentTemplateController.getPublicTemplates] Error:', error.message);
     return res.status(500).json({
@@ -325,10 +326,10 @@ async function getStarredTemplates(req, res) {
   
   try {
     const starred = await templateService.getStarredTemplates(userId);
-    return res.status(200).json({
-      success: true,
-      data: starred,
-    });
+    const starredIds = await templateService.getUserStarredIds(userId);
+    const items = starred.map(mapDocumentRow);
+    const payload = templateListResponse(items, { starredIds });
+    return res.status(200).json(payload);
   } catch (error) {
     console.error('[documentTemplateController.getStarredTemplates] Error:', error.message);
     return res.status(500).json({

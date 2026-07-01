@@ -16,6 +16,7 @@
 
 const { v4: uuidv4 } = require('uuid');
 const Supabase = require('../services/supabaseService');
+const { enrichTemplateWithStructure } = require('../domains/templates/utils/structure');
 
 const TABLE = 'document_templates';
 
@@ -36,7 +37,7 @@ function fromRow(row) {
   const content = row.content && typeof row.content === 'object' ? row.content : {};
   const now = new Date().toISOString();
   
-  return {
+  const base = {
     id: row.id,
     userId: row.user_id || row.created_by || null,
     createdBy: row.created_by || row.user_id || null,
@@ -84,6 +85,8 @@ function fromRow(row) {
     // Raw content for advanced use
     content: content,
   };
+
+  return enrichTemplateWithStructure(base);
 }
 
 function toRow(template, userId) {

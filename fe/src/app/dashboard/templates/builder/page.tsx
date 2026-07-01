@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import {
   Box,
   Typography,
@@ -33,12 +33,12 @@ import {
   X,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import Link from "next/link";
 import LayoutEditor from "@/components/documentBuilder/LayoutEditor";
-import TemplateRenderer from "@/components/documentBuilder/TemplateRenderer"; // NEW
-import { useGetSystemTemplate, SystemTemplate } from "@/hooks/queryHooks/systemTemplates";
+import TemplateRenderer from "@/components/documentBuilder/TemplateRenderer";
+import { useTemplateBuilderMode } from "@/features/templates/hooks/useTemplateBuilderMode";
 import { DocumentTemplateType, mapDocTypeToTemplateType, TemplateBlock, TemplateLayout, TemplateStyle } from "@/types/documentTemplate";
-import { useCreateDocumentTemplate } from "@/hooks/queryHooks/documentTemplates";
+import { useCreateDocumentTemplate, useUpdateDocumentTemplate } from "@/hooks/queryHooks/documentTemplates";
+import { useProductivity } from "@/context/ProductivityContext";
 
 type BlockType = "profile" | "experience" | "education" | "skills" | "projects" | "certificates";
 
@@ -210,11 +210,19 @@ function BlockReorderPanel({
 
 // --- Main Page ---
 export default function TemplateBuilderPage() {
-  const searchParams = useSearchParams();
-  const templateId = searchParams.get("templateId");
+  const { openModal } = useProductivity();
 
-  const { template: baseTemplate, loading, error } = useGetSystemTemplate(templateId);
+  const {
+    baseTemplate,
+    loading,
+    error,
+    isEditMode,
+    isForkMode,
+    isCreateMode,
+  } = useTemplateBuilderMode();
+
   const createTemplate = useCreateDocumentTemplate();
+  const updateTemplate = useUpdateDocumentTemplate();
 
   const [name, setName] = useState("My Custom Template");
   const [layout, setLayout] = useState<TemplateLayout>({
@@ -234,7 +242,11 @@ export default function TemplateBuilderPage() {
 
   useEffect(() => {
     if (baseTemplate) {
-      setName(`${baseTemplate.name} (Custom)`);
+      if (!isEditMode) {
+        setName(isCreateMode ? "My Custom Template" : `${baseTemplate.name} (Custom)`);
+      } else {
+        setName(baseTemplate.name || "My Template");
+      }
       setLayout(baseTemplate.layout || {
         type: "single-column",
         blocks: ["profile", "experience", "education", "skills", "projects", "certificates"],
@@ -246,7 +258,7 @@ export default function TemplateBuilderPage() {
         spacing: 12,
       });
     }
-  }, [baseTemplate]);
+  }, [baseTemplate, isEditMode, isCreateMode]);
 
   // Derive blocks from current layout state
   const blocks = React.useMemo((): Record<string, TemplateBlock> => {
@@ -272,23 +284,34 @@ export default function TemplateBuilderPage() {
   const handleSave = useCallback(async () => {
     if (!baseTemplate) return;
     try {
+      const templateType = mapDocTypeToTemplateType(
+        baseTemplate.category ?? baseTemplate.type ?? "resume",
+      ) as DocumentTemplateType;
+
       const templateData = {
         name,
-        type: mapDocTypeToTemplateType(baseTemplate?.category ?? "resume") as DocumentTemplateType,
-        description: `Custom template based on ${baseTemplate?.name}`,
+        type: templateType,
+        description: isEditMode
+          ? baseTemplate.description
+          : `Custom template based on ${baseTemplate.name}`,
         layout,
         blocks,
         style: style || {},
-        isPublic: false,
-        category: baseTemplate?.category || "resume",
+        isPublic: isEditMode ? baseTemplate.isPublic : false,
+        category: baseTemplate.category || baseTemplate.type || "resume",
       };
-      await createTemplate.mutateAsync(templateData);
+
+      if (isEditMode && baseTemplate.id) {
+        await updateTemplate.mutateAsync({ id: baseTemplate.id, payload: templateData });
+      } else {
+        await createTemplate.mutateAsync(templateData);
+      }
       setSaveSuccess(true);
       setSaveDialogOpen(false);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Failed to save template");
     }
-  }, [name, baseTemplate, layout, blocks, style, createTemplate]);
+  }, [name, baseTemplate, layout, blocks, style, createTemplate, updateTemplate, isEditMode]);
 
   const handleReset = useCallback(() => {
     if (baseTemplate) {
@@ -316,6 +339,8 @@ export default function TemplateBuilderPage() {
     );
   }
 
+  const modeLabel = isEditMode ? "Edit" : isForkMode ? "Fork" : "Create";
+
   return (
     <Box sx={{ height: "calc(100vh - 64px)", overflow: "hidden" }}>
       {/* Header */}
@@ -324,7 +349,7 @@ export default function TemplateBuilderPage() {
           <Stack direction="row" alignItems="center" gap={2}>
             <Button component={Link} href="/dashboard/templates" startIcon={<ArrowLeft size={16} />}>Back</Button>
             <Typography variant="h6" fontWeight={800}>Document Builder</Typography>
-            <Chip icon={<Sparkles size={14} />} label={baseTemplate.name} color="primary" variant="outlined" size="small" />
+            <Chip icon={<Sparkles size={14} />} label={`${modeLabel}: ${baseTemplate.name}`} color="primary" variant="outlined" size="small" />
           </Stack>
           <Stack direction="row" gap={1}>
             <Tooltip title="Reset to default">
@@ -391,8 +416,8 @@ export default function TemplateBuilderPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setSaveDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleSave} variant="contained" disabled={createTemplate.isPending || !name}>
-            {createTemplate.isPending ? "Saving..." : "Save"}
+          <Button onClick={handleSave} variant="contained" disabled={(createTemplate.isPending || updateTemplate.isPending) || !name}>
+            {(createTemplate.isPending || updateTemplate.isPending) ? "Saving..." : isEditMode ? "Update" : "Save"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -408,7 +433,12 @@ export default function TemplateBuilderPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setPreviewOpen(false)}>Close</Button>
-          <Button variant="contained" startIcon={<Wand2 size={16} />} onClick={() => setPreviewOpen(false)}>Use This Template</Button>
+          <Button variant="contained" startIcon={<Wand2 size={16} />} onClick={() => {
+            setPreviewOpen(false);
+            if (baseTemplate.id) {
+              openModal("generator", { templateId: baseTemplate.id, docType: baseTemplate.type || "resume" });
+            }
+          }}>Use This Template</Button>
         </DialogActions>
       </Dialog>
 

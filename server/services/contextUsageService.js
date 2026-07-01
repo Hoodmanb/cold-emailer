@@ -2,6 +2,7 @@ const logger = require('../utils/logger');
 const recipientRepo = require('../repositories/recipientRepository');
 const templateRepo = require('../repositories/templateRepository');
 const smtpRepo = require('../repositories/smtpRepository');
+const { getCurrentUserId } = require('../middleware/requestContext');
 
 /**
  * After a successful send, bump usage stats for learning / suggestions.
@@ -15,7 +16,8 @@ async function recordSendContext(params) {
       if (r) await recipientRepo.bumpRecipientUsage(r.id);
     }
     if (templateId && typeof templateId === 'string') {
-      await templateRepo.bumpTemplateUsage(templateId);
+      const userId = getCurrentUserId();
+      await templateRepo.bumpTemplateUsage(templateId, userId);
     }
     if (smtpId && typeof smtpId === 'string') {
       await smtpRepo.recordSmtpLastUsed(smtpId);
@@ -40,7 +42,8 @@ async function recordSelection(body) {
       return { ok: true };
     }
     if (type === 'template' && id) {
-      await templateRepo.bumpTemplateUsage(id);
+      const userId = getCurrentUserId();
+      await templateRepo.bumpTemplateUsage(id, userId);
       return { ok: true };
     }
     if (type === 'smtp' && id) {

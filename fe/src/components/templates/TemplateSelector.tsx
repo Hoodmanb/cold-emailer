@@ -12,7 +12,7 @@ import {
   useUnstarDocumentTemplate,
 } from "@/hooks/queryHooks/documentTemplates";
 import type { DocumentTemplate, DocumentTemplateType } from "@/types/documentTemplate";
-import { TEMPLATE_TYPE_LABELS } from "@/types/documentTemplate";
+import { TEMPLATE_TYPE_LABELS, isTemplateUsableInGeneration, deriveStructureFromLayout } from "@/types/documentTemplate";
 
 interface TemplateSelectorProps {
   /** Filter templates by document type (resume, professional-cv, cover-letter, email) */
@@ -42,7 +42,7 @@ export default function TemplateSelector({
   const starMutation = useStarDocumentTemplate();
   const unstarMutation = useUnstarDocumentTemplate();
 
-  const templates = (data?.templates || []).filter((t) => t.approvalStatus === "approved" || t.isPublic);
+  const templates = (data?.templates || []).filter(isTemplateUsableInGeneration);
   const starredIds = new Set(data?.starredIds || []);
 
   const displayed = useMemo(() => {
@@ -150,7 +150,7 @@ function TemplateCard({
   onSelect: () => void;
   onToggleStar: (e: React.MouseEvent) => void;
 }) {
-  const structure = template.structure ?? [];
+  const structure = template.structure ?? deriveStructureFromLayout(template.layout, template.blocks);
   return (
     <Card
       variant="outlined"

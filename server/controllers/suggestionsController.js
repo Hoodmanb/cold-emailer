@@ -19,7 +19,8 @@ const recipients = async (req, res) => {
 const templates = async (req, res) => {
   try {
     const limit = parseLimit(req.query);
-    const data = await getTemplateSuggestions(limit);
+    const userId = req.user?.id || req.user?._id || null;
+    const data = await getTemplateSuggestions(limit, userId);
     return res.status(200).json({ success: true, data });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });

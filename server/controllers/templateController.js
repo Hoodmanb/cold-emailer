@@ -53,7 +53,7 @@ const updateTemplate = async (req, res) => {
   if (Array.isArray(attachmentRecords)) {
     await syncTemplateAttachments(req.params.id, attachmentRecords, userId);
   }
-  return res.status(200).json({ message: 'Template updated successfully', template: updated });
+  return res.status(200).json({ message: 'Template updated successfully', data: updated, template: updated });
 };
 
 const deleteTemplate = async (req, res) => {

@@ -36,8 +36,10 @@ async function getRecipientSuggestions(limit) {
   }));
 }
 
-async function getTemplateSuggestions(limit) {
-  const all = await templateRepo.listTemplates();
+async function getTemplateSuggestions(limit, userId) {
+  const all = userId
+    ? await templateRepo.listTemplates(userId)
+    : [];
   const sorted = sortSuggestionRows(all);
   return sorted.slice(0, limit).map((t) => {
     const body = t.body || '';

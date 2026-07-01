@@ -7,41 +7,14 @@
 const documentTemplateRepo = require('../repositories/documentTemplateRepository');
 const { renderTemplate } = require('../utils/renderJsonTemplate');
 const { getCurrentUserId } = require('../middleware/requestContext');
+const templateFacade = require('../domains/templates/templateFacade');
 
 /**
  * Get all system/AI templates (admin templates)
  */
 async function getSystemTemplates(req, res) {
   try {
-    // Get all admin templates (isAdminTemplate = true)
-    const all = await documentTemplateRepo.listAll();
-    const systemTemplates = all.filter(t => t.isAdminTemplate);
-    
-    // Transform to match frontend SystemTemplate type
-    const transformed = systemTemplates.map(template => ({
-      id: template.id,
-      slug: template.id,
-      name: template.name,
-      category: template.type || 'resume',
-      theme: template.style?.theme || 'default',
-      // Point preview to the API endpoint that returns raw HTML
-      preview: `/api/system-templates/${template.id}/preview`,
-      description: template.description || '',
-      version: template.version || 1,
-      engine: 'json',
-      tags: template.isPublic ? ['public', 'approved'] : [],
-      supportedDocuments: [template.type || 'resume'],
-      premium: template.featured || false,
-      supports: {
-        ats: true,
-        multiPage: true,
-        coverLetter: template.type === 'cover_letter',
-      },
-      // Include full template data for document builder
-      layout: template.layout,
-      blocks: template.blocks,
-      style: template.style,
-    }));
+    const transformed = await templateFacade.listSystemTemplates();
     
     return res.status(200).json({
       success: true,

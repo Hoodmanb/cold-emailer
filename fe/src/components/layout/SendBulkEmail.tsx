@@ -73,7 +73,7 @@ export default function SendBulkEmail() {
 
   const templateAutocompleteOptions: TemplateOpt[] = useMemo(() => {
     const sug = (suggestedTemplates || []).map((t) => ({
-      id: t.id,
+      id: t.id ?? "",
       label: t.name,
       subject: t.subject || "",
       snippet: t.bodySnippet || "",
@@ -83,7 +83,7 @@ export default function SendBulkEmail() {
     const rest = (template || [])
       .filter((t) => t._id && !sugIds.has(t._id))
       .map((t) => ({
-        id: t._id,
+        id: t._id ?? "",
         label: t.name,
         subject: t.subject || "",
         snippet: (t.body || "").replace(/<[^>]+>/g, " ").slice(0, 100).trim(),

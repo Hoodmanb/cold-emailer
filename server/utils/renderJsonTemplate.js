@@ -1,4 +1,8 @@
 // server/utils/renderJsonTemplate.js
+/**
+ * HTML rendering for document templates.
+ * Used by the unified template engine — do not call directly from controllers.
+ */
 const { marked } = require('marked');
 
 function escapeHtml(text) {

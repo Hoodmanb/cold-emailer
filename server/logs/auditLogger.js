@@ -24,6 +24,7 @@ const ACTION_TYPES = {
   PROFILE_UPDATED: 'profile_updated',
   EMAIL_CONFIG_UPDATED: 'email_config_updated',
   ACCOUNT_DELETED: 'account_deleted',
+  JOB_UPDATED: 'job_updated',
 };
 
 const log = async (action, details = {}) => {

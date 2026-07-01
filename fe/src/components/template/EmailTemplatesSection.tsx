@@ -34,6 +34,7 @@ import apiClient from "@/lib/apiClient";
 
 type EmailTemplate = {
   _id: string;
+  id?: string;
   name: string;
   subject: string;
   body: string;
@@ -42,8 +43,12 @@ type EmailTemplate = {
   approvalStatus?: string;
 };
 
-// Helper to filter only approved templates
-const onlyApproved = (templates: EmailTemplate[]) => templates.filter(t => t.approvalStatus === "approved");
+const visibleEmailTemplates = (templates: EmailTemplate[]) =>
+  templates.filter((t) => {
+    const status = t.approvalStatus;
+    if (!status || status === "approved" || status === "draft" || status === "published") return true;
+    return status !== "pending_approval" && status !== "submitted" && status !== "rejected";
+  });
 
 function TemplateAttachmentList({ templateId }: { templateId: string }) {
   const { attachments, loading } = useAttachments(templateId, "email_template");
@@ -247,7 +252,12 @@ export default function EmailTemplatesSection() {
 
   if (!mounted) return null;
 
-  const templates: EmailTemplate[] = Array.isArray(template) ? template : [];
+  const templates: EmailTemplate[] = Array.isArray(template)
+    ? template.map((t) => ({
+        ...t,
+        _id: t._id || t.id || "",
+      }))
+    : [];
 
   return (
     <Box>
@@ -347,7 +357,7 @@ export default function EmailTemplatesSection() {
       ) : (
         <Stack gap={2} mb={4}>
           <AnimatePresence>
-            {onlyApproved(templates).map((t) => (
+            {visibleEmailTemplates(templates).map((t) => (
               <EmailCard key={t._id} tpl={t} setRefresh={setRefresh} />
             ))}
           </AnimatePresence>

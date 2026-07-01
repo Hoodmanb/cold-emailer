@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useAnimation } from "framer-motion";
 import { Zap, Send, FileText, X } from "lucide-react";
 import { Box, Tooltip, IconButton, useTheme, Stack } from "@mui/material";
 import { useProductivity } from "@/context/ProductivityContext";
@@ -9,7 +9,6 @@ import { useProductivity } from "@/context/ProductivityContext";
 const STORAGE_KEY = "job-bot:productivity-widget:side";
 const WIDGET_SIZE = 68;
 const SAFE_MARGIN = 16;
-const DRAG_THRESHOLD = 5;
 
 type DockSide = "left" | "right";
 
@@ -18,127 +17,106 @@ interface DockPosition {
   y: number;
 }
 
-function clamp(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(value, max));
-}
+/**
+ * Reads the saved widget position from localStorage synchronously.
+ * Always returns a valid {x, y, side, rawY} — falls back to bottom-right corner.
+ * Safe to call on server (returns default values when window is undefined).
+ */
+function readSavedPosition(): {
+  x: number;
+  y: number;
+  side: DockSide;
+  rawY: number;
+} {
+  if (typeof window === "undefined") {
+    return { x: 0, y: 200, side: "right", rawY: 200 };
+  }
 
-function getViewport() {
-  if (typeof window === "undefined") return { width: 1200, height: 800 };
-  return { width: window.innerWidth, height: window.innerHeight };
-}
+  const defaultSide: DockSide = "right";
+  const defaultRawY = window.innerHeight - WIDGET_SIZE - SAFE_MARGIN - 80;
+  const defaultX = window.innerWidth - WIDGET_SIZE - SAFE_MARGIN;
 
-function getYBounds() {
-  const { height } = getViewport();
-  return {
-    min: SAFE_MARGIN,
-    max: height - WIDGET_SIZE - SAFE_MARGIN,
-  };
-}
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved) as DockPosition;
+      if (parsed?.side === "left" || parsed?.side === "right") {
+        const x =
+          parsed.side === "left"
+            ? SAFE_MARGIN
+            : window.innerWidth - WIDGET_SIZE - SAFE_MARGIN;
+        // Clamp Y so it's always on-screen even if viewport changed
+        const clampedY = Math.max(
+          SAFE_MARGIN,
+          Math.min(parsed.y, window.innerHeight - WIDGET_SIZE - SAFE_MARGIN)
+        );
+        return { x, y: clampedY, side: parsed.side, rawY: parsed.y };
+      }
+    }
+  } catch {
+    // ignore malformed JSON
+  }
 
-function getSideX(side: DockSide) {
-  const { width } = getViewport();
-  return side === "left" ? SAFE_MARGIN : width - WIDGET_SIZE - SAFE_MARGIN;
+  return { x: defaultX, y: defaultRawY, side: defaultSide, rawY: defaultRawY };
 }
 
 export default function FloatingProductivityWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
-  const [pos, setPos] = useState<DockPosition>({ side: "right", y: 200 });
   const [dragging, setDragging] = useState(false);
   const { openModal } = useProductivity();
   const theme = useTheme();
+  const controls = useAnimation();
 
-  const posRef = useRef(pos);
-  const dragStartRef = useRef<{ pointerY: number; startY: number; side: DockSide } | null>(null);
-  const rafRef = useRef<number | null>(null);
-  const dragMovedRef = useRef(false);
+  // Tracks current dock side + y for resize snapping
+  const posRef = useRef<DockPosition>({ side: "right", y: 200 });
 
-  const applyPosition = useCallback((next: DockPosition, persist = false) => {
-    const { min, max } = getYBounds();
-    const clamped: DockPosition = {
-      side: next.side,
-      y: clamp(next.y, min, max),
-    };
-    posRef.current = clamped;
-    setPos(clamped);
-    if (persist) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(clamped));
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved) as DockPosition;
-        if (parsed?.side === "left" || parsed?.side === "right") {
-          applyPosition(parsed);
-        }
-      } else {
-        const { height } = getViewport();
-        applyPosition({ side: "right", y: height - WIDGET_SIZE - SAFE_MARGIN - 80 });
-      }
-    } catch {
-      applyPosition({ side: "right", y: 200 });
-    }
+  /**
+   * useLayoutEffect fires synchronously after the DOM mutation but
+   * BEFORE the browser paints — so the widget is placed at its saved
+   * position before the user sees a single frame.
+   *
+   * controls.set() updates the Framer Motion value without animating,
+   * ensuring the motion.div (which has initial={false}) renders exactly
+   * at the saved position on first paint.
+   */
+  useLayoutEffect(() => {
+    const pos = readSavedPosition();
+    posRef.current = { side: pos.side, y: pos.rawY };
+    controls.set({ x: pos.x, y: pos.y });
     setHydrated(true);
-  }, [applyPosition]);
+  }, [controls]);
 
+  // Re-snap to the correct edge when the viewport is resized
   useEffect(() => {
-    const onResize = () => applyPosition(posRef.current, true);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [applyPosition]);
+    const handleResize = () => {
+      const { side, y } = posRef.current;
+      const targetX =
+        side === "left"
+          ? SAFE_MARGIN
+          : window.innerWidth - WIDGET_SIZE - SAFE_MARGIN;
 
-  const handlePointerDown = (event: React.PointerEvent) => {
-    if (isOpen) return;
-    dragMovedRef.current = false;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    dragStartRef.current = {
-      pointerY: event.clientY,
-      startY: posRef.current.y,
-      side: posRef.current.side,
+      const minY = SAFE_MARGIN;
+      const maxY = window.innerHeight - WIDGET_SIZE - SAFE_MARGIN;
+      const clampedY = Math.max(minY, Math.min(y, maxY));
+
+      posRef.current = { side, y: clampedY };
+      controls.start({
+        x: targetX,
+        y: clampedY,
+        transition: { type: "spring", stiffness: 350, damping: 28 },
+      });
     };
-    setDragging(true);
-  };
 
-  const handlePointerMove = (event: React.PointerEvent) => {
-    if (!dragStartRef.current || isOpen) return;
-    const deltaY = event.clientY - dragStartRef.current.pointerY;
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [controls]);
 
-    if (Math.abs(deltaY) > DRAG_THRESHOLD) {
-      dragMovedRef.current = true;
-    }
-
-    const { min, max } = getYBounds();
-    const nextY = clamp(dragStartRef.current.startY + deltaY, min, max);
-
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = requestAnimationFrame(() => {
-      posRef.current = { ...posRef.current, y: nextY };
-      setPos((prev) => ({ ...prev, y: nextY }));
-    });
-  };
-
-  const handlePointerUp = (event: React.PointerEvent) => {
-    if (!dragStartRef.current) return;
-    event.currentTarget.releasePointerCapture(event.pointerId);
-
-    const { width } = getViewport();
-    const centerX = event.clientX;
-    const side: DockSide = centerX < width / 2 ? "left" : "right";
-
-    applyPosition({ side, y: posRef.current.y }, true);
-    dragStartRef.current = null;
-    setDragging(false);
-
-    // Only toggle if it was a click, not a drag
-    if (!dragMovedRef.current && !isOpen) {
-      setIsOpen(true);
+  const handleWidgetTap = () => {
+    if (!dragging) {
+      setIsOpen((prev) => !prev);
     }
   };
-
-  const toggleOpen = () => setIsOpen((prev) => !prev);
 
   const actions = [
     {
@@ -176,12 +154,12 @@ export default function FloatingProductivityWidget() {
     },
   ];
 
+  // Don't render at all until position is set (happens before first paint via useLayoutEffect)
   if (!hydrated) return null;
-
-  const x = getSideX(pos.side);
 
   return (
     <>
+      {/* Backdrop overlay when menu is open */}
       <AnimatePresence>
         {isOpen && (
           <Box
@@ -189,11 +167,11 @@ export default function FloatingProductivityWidget() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={toggleOpen}
+            onClick={() => setIsOpen(false)}
             sx={{
               position: "fixed",
               inset: 0,
-              bgcolor: "rgba(0,0,0,0.1)",
+              bgcolor: "rgba(0,0,0,0.15)",
               backdropFilter: "blur(4px)",
               zIndex: 1999,
             }}
@@ -201,50 +179,103 @@ export default function FloatingProductivityWidget() {
         )}
       </AnimatePresence>
 
+      {/* Draggable Widget Container — fixed size, never resizes */}
       <Box
+        component={motion.div}
+        drag={!isOpen}
+        dragMomentum={false}
+        dragElastic={0.08}
+        // initial={false} → Framer skips the entry animation entirely and
+        // uses the value already set by controls.set() — no jump, no flash.
+        initial={false}
+        animate={controls}
+        onDragStart={() => setDragging(true)}
+        onDragEnd={(event, info) => {
+          setTimeout(() => setDragging(false), 50);
+
+          const width = window.innerWidth;
+          const endX = info.point.x;
+          const side: DockSide = endX < width / 2 ? "left" : "right";
+
+          const targetX =
+            side === "left"
+              ? SAFE_MARGIN
+              : width - WIDGET_SIZE - SAFE_MARGIN;
+
+          const minY = SAFE_MARGIN;
+          const maxY = window.innerHeight - WIDGET_SIZE - SAFE_MARGIN;
+          const targetY = Math.max(
+            minY,
+            Math.min(info.point.y - WIDGET_SIZE / 2, maxY)
+          );
+
+          posRef.current = { side, y: targetY };
+
+          controls.start({
+            x: targetX,
+            y: targetY,
+            transition: { type: "spring", stiffness: 350, damping: 25 },
+          });
+
+          localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify({ side, y: targetY })
+          );
+        }}
+        onTap={handleWidgetTap}
         sx={{
           position: "fixed",
           top: 0,
           left: 0,
           zIndex: 2005,
-          transform: `translate3d(${x}px, ${pos.y}px, 0)`,
-          transition: dragging ? "none" : "transform 0.35s cubic-bezier(0.22, 1, 0.36, 1)",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 2,
-          touchAction: "none",
-          willChange: "transform",
           width: WIDGET_SIZE,
-          height: "auto",
+          height: WIDGET_SIZE,
+          touchAction: "none",
+          cursor: isOpen ? "pointer" : dragging ? "grabbing" : "grab",
         }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
       >
+        {/* Action buttons — absolutely positioned above trigger, never affect layout */}
         <AnimatePresence>
           {isOpen && (
             <Stack
               component={motion.div}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 12 }}
-              sx={{ gap: 2, mb: 1, alignItems: "center" }}
+              initial={{ opacity: 0, scale: 0.85, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.85, y: 8 }}
+              transition={{ type: "spring", stiffness: 400, damping: 28 }}
+              sx={{
+                position: "absolute",
+                bottom: "calc(100% + 12px)",
+                left: 0,
+                right: 0,
+                gap: 1.5,
+                alignItems: "center",
+                overflow: "visible",
+              }}
             >
               {actions.map((action) => (
-                <Tooltip key={action.id} title={action.label} placement="left" arrow>
+                <Tooltip
+                  key={action.id}
+                  title={action.label}
+                  placement={posRef.current.side === "left" ? "right" : "left"}
+                  arrow
+                >
                   <IconButton
                     onClick={action.onClick}
+                    component={motion.button}
+                    whileHover={{ scale: 1.12, y: -2 }}
+                    whileTap={{ scale: 0.95 }}
                     sx={{
-                      width: 56,
-                      height: 56,
+                      width: 54,
+                      height: 54,
                       bgcolor: "background.paper",
                       color: action.color,
-                      boxShadow: "0 8px 30px rgba(0,0,0,0.12)",
+                      boxShadow: "0 8px 30px rgba(0,0,0,0.14)",
                       border: "1px solid",
                       borderColor: "divider",
-                      pointerEvents: "auto",
+                      "&:hover": {
+                        bgcolor: "background.paper",
+                      },
                     }}
                   >
                     {action.icon}
@@ -255,20 +286,25 @@ export default function FloatingProductivityWidget() {
           )}
         </AnimatePresence>
 
+        {/* Main Floating Trigger Button — always at a fixed position */}
         <IconButton
-          // REMOVED: onClick={handleClick}
+          component={motion.button}
+          whileHover={{ scale: 1.06 }}
+          whileTap={{ scale: 0.94 }}
           sx={{
             width: WIDGET_SIZE,
             height: WIDGET_SIZE,
             bgcolor: isOpen ? "text.primary" : "primary.main",
             color: "white",
             boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
-            cursor: isOpen ? "pointer" : dragging ? "grabbing" : "grab",
-            pointerEvents: "auto",
-            flexShrink: 0,
+            position: "absolute",
+            inset: 0,
+            "&:hover": {
+              bgcolor: isOpen ? "text.primary" : "primary.main",
+            },
           }}
         >
-          {isOpen ? <X size={28} /> : <Zap size={28} />}
+          {isOpen ? <X size={26} /> : <Zap size={26} />}
         </IconButton>
       </Box>
     </>

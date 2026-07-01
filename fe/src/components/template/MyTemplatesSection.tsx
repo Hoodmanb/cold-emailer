@@ -39,11 +39,11 @@ export default function MyTemplatesSection() {
     const submitMutation = useSubmitForReview();
 
     const handleCreate = () => {
-        router.push("/dashboard/templates/builder"); // no id → new draft
+        router.push("/dashboard/templates/builder?mode=create");
     };
 
     const handleEdit = (id: string) => {
-        router.push(`/dashboard/templates/builder?templateId=${id}`);
+        router.push(`/dashboard/templates/builder?mode=edit&templateId=${id}&source=user`);
     };
 
     const handleDelete = async (id: string) => {
